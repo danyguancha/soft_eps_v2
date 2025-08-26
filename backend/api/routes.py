@@ -1,11 +1,15 @@
+# routers/file_router.py
+from asyncio.log import logger
 import os
+import traceback
 from fastapi import APIRouter, UploadFile, File, HTTPException, Query
 from typing import Optional, List
-
 from fastapi.responses import FileResponse
+
 from models.schemas import (
-    BulkDeleteRequest, DeleteResponse, DeleteRowsByFilterRequest, DeleteRowsRequest, ExportRequest, ExportResponse, FileUploadResponse, DataRequest, TransformRequest, 
-    AIRequest, PaginatedResponse, FilterCondition, SortCondition
+    BulkDeleteRequest, CrossPreviewRequest, DeleteResponse, DeleteRowsByFilterRequest, DeleteRowsRequest, 
+    ExportRequest, ExportResponse, FileUploadResponse, DataRequest, TransformRequest, 
+    AIRequest, FilterCondition
 )
 from controllers import file_controller, cross_controller, ai_controller
 from services.export_service import ExportService
@@ -60,12 +64,52 @@ def delete_file(file_id: str):
         raise HTTPException(status_code=404, detail=str(e))
 
 @router.post("/cross")
-def cross_files(request):
+def cross_files(request: CrossPreviewRequest): 
     """Realiza cruce entre dos archivos"""
     try:
         return cross_controller.perform_cross(request)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+@router.get("/cross/columns/{file_id}")
+def get_columns_for_cross(file_id: str, sheet_name: str = None):
+    """Obtiene las columnas de un archivo para configurar el cruce"""
+    try:
+        return cross_controller.get_file_columns_for_cross(file_id, sheet_name)
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    
+@router.post("/cross/preview")
+def preview_cross_operation(request: CrossPreviewRequest):
+    """Previsualiza el resultado del cruce con una muestra"""
+    try:
+        logger.info(f"🔄 Preview request recibido: {request}")
+        
+        # ✅ Log detallado de los datos recibidos
+        logger.info(f"📁 file1_key: {request.file1_key}")
+        logger.info(f"📁 file2_key: {request.file2_key}")
+        logger.info(f"🔑 key_column_file1: {request.key_column_file1}")
+        logger.info(f"🔑 key_column_file2: {request.key_column_file2}")
+        logger.info(f"🔀 cross_type: {request.cross_type}")
+        
+        result = cross_controller.preview_cross(request, request.limit or 50)
+        
+        logger.info(f"✅ Preview exitoso: {len(result.get('sample_data', []))} filas")
+        return result
+        
+    except Exception as e:
+        # ✅ LOG DETALLADO DEL ERROR
+        logger.error(f"❌ Error en preview_cross_operation:")
+        logger.error(f"❌ Tipo de error: {type(e).__name__}")
+        logger.error(f"❌ Mensaje: {str(e)}")
+        logger.error(f"❌ Traceback completo:")
+        logger.error(traceback.format_exc())
+        
+        # Re-raise con más contexto
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Error en preview: {str(e)}"
+        )
 
 @router.post("/ai")
 def ask_ai(request: AIRequest):
@@ -75,7 +119,6 @@ def ask_ai(request: AIRequest):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-# Endpoints adicionales de utilidad
 @router.get("/files")
 def list_files():
     """Lista todos los archivos cargados"""

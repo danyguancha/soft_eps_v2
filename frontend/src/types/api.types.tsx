@@ -104,3 +104,43 @@ export interface DeleteResponse {
 export interface AIResponse {
   response: string;
 }
+
+//Cruce
+// types/index.ts - Agregar estos tipos
+
+export interface CrossRequest {
+  file1_key: string;
+  file2_key: string;
+  file1_sheet?: string;
+  file2_sheet?: string;
+  key_column_file1: string;
+  key_column_file2: string;
+  cross_type: 'inner' | 'left' | 'right' | 'outer';
+  columns_to_include?: {
+    file1_columns: string[];
+    file2_columns: string[];
+  };
+}
+
+export interface CrossPreviewRequest extends CrossRequest {
+  limit?: number;
+}
+
+export interface CrossResult {
+  data: any[];
+  columns: string[];
+  total_rows: number;
+  file1_matched: number;
+  file2_matched: number;
+  cross_type: string;
+}
+
+export interface CrossPreviewResult extends CrossResult {
+  preview: boolean;
+  sample_size: number;
+  file1_rows_sampled: number;
+  file2_rows_sampled: number;
+  result_rows: number;
+  sample_data: any[];
+}
+

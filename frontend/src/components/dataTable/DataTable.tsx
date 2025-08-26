@@ -19,6 +19,7 @@ interface DataTableProps {
     total: number;
     showSizeChanger: boolean;
     showQuickJumper: boolean;
+    size?: 'default' | 'small';
   };
   onPaginationChange: (page: number, pageSize: number) => void;
   onFiltersChange: (filters: FilterCondition[]) => void;
@@ -468,7 +469,7 @@ export const DataTable: React.FC<DataTableProps> = ({
             }}
             onChange={handleTableChange}
             scroll={{ 
-              x: totalWidth, // ===== ANCHO TOTAL CALCULADO =====
+              x: totalWidth,
               y: 300 // Altura fija
             }}
             size="small"

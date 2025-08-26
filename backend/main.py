@@ -1,9 +1,8 @@
-
+# main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from api.routes import router
-import os
 
 app = FastAPI(
     title="Sistema de Procesamiento de Archivos",
@@ -20,8 +19,6 @@ app.add_middleware(
 )
 
 
-if not os.path.exists("exports"):
-    os.makedirs("exports")
 
 app.mount("/static", StaticFiles(directory="exports"), name="static")
 app.include_router(router, prefix="/api/v1")

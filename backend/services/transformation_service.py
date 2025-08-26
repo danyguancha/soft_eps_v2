@@ -26,6 +26,8 @@ class TransformationService:
             return TransformationService._to_lowercase(df, params)
         elif operation == TransformOperation.EXTRACT_SUBSTRING:
             return TransformationService._extract_substring(df, params)
+        elif operation == TransformOperation.VLOOKUP:
+            return TransformationService._vlookup(df, params)
         else:
             raise ValueError(f"Operación no soportada: {operation}")
     
@@ -43,7 +45,7 @@ class TransformationService:
     def _split_column(df: pd.DataFrame, params: dict) -> pd.DataFrame:
         """Divide una columna en múltiples columnas"""
         column = params.get("column")
-        separator = params.get("separator", ",")
+        separator = params.get("separator", ";")
         new_columns = params.get("new_columns", [])
         
         split_data = df[column].astype(str).str.split(separator, expand=True)

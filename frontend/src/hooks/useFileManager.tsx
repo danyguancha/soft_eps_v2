@@ -1,4 +1,5 @@
-import { useState, useCallback } from 'react';
+// hooks/useFileManager.ts
+import { useState, useCallback, useEffect } from 'react'; // ← Agregar useEffect
 import { FileService } from '../services/FileService';
 import { DataService } from '../services/DataService';
 import type { FileInfo, DataRequest, PaginatedResponse } from '../types/api.types';
@@ -12,16 +13,25 @@ export function useFileManager() {
 
   const loadFiles = useCallback(async () => {
     try {
+      console.log('🔄 Cargando lista de archivos...');
       setLoading(true);
       const response = await FileService.listFiles();
+      console.log('📁 Archivos obtenidos del API:', response.files?.length || 0);
       setFiles(response.files);
       setError(null);
     } catch (err) {
+      console.error('❌ Error cargando archivos:', err);
       setError(err instanceof Error ? err.message : 'Error al cargar archivos');
     } finally {
       setLoading(false);
     }
   }, []);
+
+  // ✅ AGREGAR ESTE useEffect - Esta es la clave del problema
+  useEffect(() => {
+    console.log('🎯 useFileManager montado - cargando archivos iniciales...');
+    loadFiles();
+  }, [loadFiles]);
 
   const uploadFile = useCallback(async (file: File) => {
     try {
@@ -77,7 +87,7 @@ export function useFileManager() {
     currentData,
     loading,
     error,
-    loadFiles,
+    loadFiles, // ✅ Esta función ya estaba exportada correctamente
     uploadFile,
     loadFileData,
     deleteFile,

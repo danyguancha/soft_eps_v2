@@ -1,21 +1,34 @@
-from services.csv_service import CSVService
-from services.excel_service import ExcelService
-from services.cross_service import CrossService
-from controllers.file_controller import storage, file_services
+# controllers/cross_controller.py
+from typing import Dict, Any
+from controllers.files_controllers.cross_handler import CrossHandler
+from controllers.files_controllers.storage_manager import FileStorageManager
 
+class CrossController:
+    def __init__(self, storage_manager: FileStorageManager):
+        self.cross_handler = CrossHandler(storage_manager)
+    
+    def perform_cross(self, request) -> Dict[str, Any]:
+        """Realiza cruce entre dos archivos"""
+        return self.cross_handler.perform_cross(request)
+    
+    def get_file_columns_for_cross(self, file_id: str, sheet_name: str = None) -> Dict[str, Any]:
+        """Obtiene columnas disponibles para cruce"""
+        return self.cross_handler.get_available_columns(file_id, sheet_name)
+    
+    def preview_cross(self, request, limit: int = 100) -> Dict[str, Any]:
+        """Previsualiza el resultado del cruce"""
+        return self.cross_handler.preview_cross_operation(request, limit)
+
+# Crear instancia usando el storage_manager del file_controller
+from controllers.file_controller import file_controller
+cross_controller = CrossController(file_controller.storage_manager)
+
+# Funciones de compatibilidad (para mantener la API actual)
 def perform_cross(request):
-    file1 = storage.get(request.file1_key)
-    file2 = storage.get(request.file2_key)
-    if not file1 or not file2:
-        raise Exception("Archivos no encontrados")
+    return cross_controller.perform_cross(request)
 
-    service1 = file_services[file1["ext"]]
-    obj1 = service1.load(file1["path"])
-    df1 = service1.get_data(obj1, sheet_name=request.file1_sheet) if file1["ext"] != "csv" else service1.get_data(obj1)
+def get_file_columns_for_cross(file_id: str, sheet_name: str = None):
+    return cross_controller.get_file_columns_for_cross(file_id, sheet_name)
 
-    service2 = file_services[file2["ext"]]
-    obj2 = service2.load(file2["path"])
-    df2 = service2.get_data(obj2, sheet_name=request.file2_sheet) if file2["ext"] != "csv" else service2.get_data(obj2)
-
-    result = CrossService.cross_files(df1, df2, request.key_column_file1, request.key_column_file2)
-    return result
+def preview_cross(request, limit: int = 100):
+    return cross_controller.preview_cross(request, limit)

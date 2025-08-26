@@ -1,57 +1,63 @@
-// App.tsx - SOLUCIÓN DEFINITIVA PARA EL PROBLEMA DE SUPERPOSICIÓN
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+// src/App.tsx
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import {
   Layout,
-  Menu,
   Card,
   Row,
   Col,
   Spin,
   Alert,
   Typography,
-  Badge,
   Button,
   Space,
   message,
   Modal,
   Select,
-  Drawer
+  Drawer,
+  Tag
 } from 'antd';
 import {
   FileOutlined,
-  RobotOutlined,
-  DownloadOutlined,
-  UploadOutlined,
   DeleteOutlined,
-  FormOutlined,
   EyeOutlined,
-  MenuFoldOutlined,
-  MenuUnfoldOutlined,
-  HomeOutlined
+  DownloadOutlined,
+  SwapOutlined
 } from '@ant-design/icons';
+import { Grid } from 'antd';
 
-// Importar componentes
+/* ─── Componentes de UI ──────────────────────────────────────────────── */
+import { AppHeader } from './components/layout/AppHeader';
+import { NavigationMenu } from './components/navigation/NavigationMenu';
 import { FileUploader } from './components/fileUploader/FileUploader';
 import { DataTable } from './components/dataTable/DataTable';
 import { ChatBot } from './components/chatbot/ChatBot';
+import { TransformPanel } from './components/transform/TransformPanel';
+import FileCrossManager from './components/cross/FileCrossManager'; // ✅ Componente de cruce
 
-// Importar hooks y servicios
+/* ─── Hooks / servicios ──────────────────────────────────────────────── */
 import { useFileManager } from './hooks/useFileManager';
-import type { DataRequest, FilterCondition, SortCondition, TransformRequest } from './types/api.types';
+import type {
+  DataRequest,
+  FilterCondition,
+  SortCondition,
+  FileInfo,
+} from './types/api.types';
 import { TransformService } from './services/TransformService';
 import { ExportService } from './services/ExportService';
 import { DeleteService } from './services/DeleteService';
+import { FileService } from './services/FileService';
 
-// Importar estilos
+/* ─── Estilos globales ──────────────────────────────────────────────── */
 import 'antd/dist/reset.css';
 import './App.css';
 
 const { Header, Content, Sider, Footer } = Layout;
 const { Title, Text } = Typography;
 const { Option } = Select;
+const { useBreakpoint } = Grid;
 
-// ===== TYPES =====
-type TabKey = 'upload' | 'transform' | 'chat' | 'export' | 'settings';
+/* ─── Tipos de UI ───────────────────────────────────────────────────── */
+type TabKey = 'upload' | 'transform' | 'chat' | 'export' | 'cross'; // ✅ Agregado 'cross'
 
 interface FileData {
   file_id: string;
@@ -72,84 +78,15 @@ interface UIState {
   chatDrawerVisible: boolean;
   transformModalVisible: boolean;
   selectedTransform: string;
+  mobileMenuVisible: boolean;
+  crossModalVisible: boolean; // ✅ Estado para modal de cruce
 }
 
-// ===== TYPE GUARDS =====
-function isValidCurrentData(data: any): data is NonNullable<typeof data> {
-  return data != null && typeof data === 'object' && Array.isArray(data.data);
-}
+/* ─── Utilidades ────────────────────────────────────────────────────── */
+const isValidCurrentData = (d: any): d is { data: any[] } =>
+  d && typeof d === 'object' && Array.isArray(d.data);
 
-// ===== LAYOUT STYLES CORREGIDOS - SIN BOX-SHADOW PROBLEMÁTICO =====
-const layoutStyles = {
-  main: {
-    minHeight: '100vh',
-    width: '100%',
-    overflow: 'visible' as const,
-    position: 'relative' as const,
-    zIndex: 'auto' as const  // IMPORTANTE: Sin z-index forzado
-  },
-  header: {
-    background: '#001529',
-    padding: '0 16px',
-    display: 'flex' as const,
-    justifyContent: 'space-between' as const,
-    alignItems: 'center' as const,
-    width: '100%',
-    position: 'sticky' as const,
-    top: 0,
-    zIndex: 1000,
-    height: '64px',
-    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)'
-  },
-  sider: {
-    background: '#fff',
-    zIndex: 100,
-    height: 'auto',
-    boxShadow: '2px 0 8px rgba(0, 0, 0, 0.05)'
-  },
-  content: {
-    background: '#f0f2f5',  // IMPORTANTE: Fondo consistente
-    minHeight: 'calc(100vh - 64px)',
-    width: '100%',
-    padding: 0,
-    margin: 0,
-    position: 'relative' as const,
-    flex: 1,
-    zIndex: 'auto' as const  // IMPORTANTE: Sin z-index forzado
-  },
-  contentContainer: {
-    width: '100%',
-    maxWidth: '100%',
-    padding: '16px',
-    boxSizing: 'border-box' as const,
-    overflow: 'visible' as const,
-    minHeight: '100%',
-    position: 'relative' as const,
-    zIndex: 'auto' as const  // IMPORTANTE: Sin z-index forzado
-  },
-  // ===== CARD SIN BOX-SHADOW PROBLEMÁTICO =====
-  contentCard: {
-    width: '100%',
-    maxWidth: '100%',
-    marginBottom: '16px',
-    overflow: 'visible' as const,
-    position: 'relative' as const,
-    borderRadius: '8px',  // Reducido
-    // SIN BOX-SHADOW QUE CAUSE PROBLEMAS
-    border: '1px solid #e8e8e8',  // Borde simple en lugar de sombra
-    zIndex: 'auto' as const  // IMPORTANTE: Sin z-index forzado
-  },
-  footer: {
-    textAlign: 'center' as const,
-    background: '#fff',
-    padding: '16px 24px',
-    borderTop: '1px solid #e8e8e8',
-    marginTop: '0',
-    zIndex: 'auto' as const  // IMPORTANTE: Sin z-index forzado
-  }
-};
-
-// ===== ERROR BOUNDARY COMPONENT =====
+/* ─── Error Boundary ────────────────────────────────────────────────── */
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
   { hasError: boolean; error: Error | null }
@@ -158,24 +95,18 @@ class ErrorBoundary extends React.Component<
     super(props);
     this.state = { hasError: false, error: null };
   }
-
-  static getDerivedStateFromError(error: Error) {
-    return { hasError: true, error };
+  static getDerivedStateFromError(err: Error) {
+    return { hasError: true, error: err };
   }
-
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('Error caught by boundary:', error, errorInfo);
-  }
-
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{ padding: '50px', textAlign: 'center' }}>
+        <div className="error-boundary">
           <Alert
-            message="Algo salió mal"
-            description={this.state.error?.message || "Ha ocurrido un error inesperado"}
             type="error"
             showIcon
+            message="Algo salió mal"
+            description={this.state.error?.message}
             action={
               <Button
                 size="small"
@@ -189,31 +120,35 @@ class ErrorBoundary extends React.Component<
         </div>
       );
     }
-
     return this.props.children;
   }
 }
 
-// ===== MAIN APP COMPONENT =====
+/* ─── Componente principal ─────────────────────────────────────────── */
 const App: React.FC = () => {
-  // ===== ESTADOS DEL FILE MANAGER =====
+  /* breakpoints */
+  const screens = useBreakpoint();
+  const isMobile = !screens.md;
+  const isTablet = screens.md && !screens.lg;
+
+  /* File-manager state */
   const {
     files,
     currentFile,
     currentData,
     loading,
     error,
-    loadFiles,
     loadFileData,
     deleteFile,
     setCurrentFile,
-    setError
+    setError,
+    loadFiles,
   } = useFileManager();
 
-  // ===== ESTADOS DE LA UI AGRUPADOS =====
-  const [uiState, setUIState] = useState<UIState>({
+  /* UI state */
+  const [ui, setUI] = useState<UIState>({
     activeTab: 'upload',
-    collapsed: false,
+    collapsed: isMobile,
     currentPage: 1,
     pageSize: 20,
     filters: [],
@@ -221,306 +156,299 @@ const App: React.FC = () => {
     searchTerm: '',
     chatDrawerVisible: false,
     transformModalVisible: false,
-    selectedTransform: ''
+    selectedTransform: '',
+    mobileMenuVisible: false,
+    crossModalVisible: false, // ✅ Inicializado
   });
 
-  // ===== ESTADO PARA PRESERVAR DATOS =====
   const [lastProcessedFile, setLastProcessedFile] = useState<FileData | null>(null);
-  const [hasDataLoaded, setHasDataLoaded] = useState(false);
 
-  // ===== MEMO PARA ITEMS DEL MENU =====
-  const menuItems = useMemo(() => [
-    {
-      key: 'upload',
-      icon: <UploadOutlined />,
-      label: 'Cargar Archivo',
-    },
-    {
-      key: 'transform',
-      icon: <FormOutlined />,
-      label: 'Transformar',
-      disabled: !currentFile,
-    },
-    {
-      key: 'export',
-      icon: <DownloadOutlined />,
-      label: 'Exportar',
-      disabled: !currentFile,
-    },
-    {
-      key: 'chat',
-      icon: <RobotOutlined />,
-      label: 'Asistente IA',
-      disabled: !currentFile,
-    },
-  ], [currentFile]);
+  // ✅ ESTADO PARA RESULTADO DEL CRUCE
+  const [crossResult, setCrossResult] = useState<any>(null);
 
-  // ===== VERIFICAR SI HAY DATOS PARA MOSTRAR =====
-  const showTable = useMemo(() => {
-    return !!(currentFile && isValidCurrentData(currentData) && currentData && currentData.data.length > 0);
-  }, [currentFile, currentData]);
-
-  // ===== VERIFICAR SI MOSTRAR MENSAJE DE BIENVENIDA =====
-  const showWelcome = useMemo(() => {
-    return uiState.activeTab === 'upload' && !showTable;
-  }, [uiState.activeTab, showTable]);
-
-  // ===== EFECTOS =====
-  useEffect(() => {
-    loadFiles();
+  // Función para refrescar archivos desde TransformPanel
+  const handleRefreshFromTransform = useCallback(async () => {
+    console.log('🔄 Refrescando archivos desde TransformPanel...');
+    try {
+      await loadFiles();
+      console.log('✅ Archivos refrescados exitosamente');
+    } catch (error) {
+      console.error('❌ Error refrescando archivos:', error);
+      message.error('Error al refrescar la lista de archivos');
+    }
   }, [loadFiles]);
 
-  useEffect(() => {
-    if (currentFile) {
-      const request: DataRequest = {
-        file_id: currentFile.file_id,
-        page: uiState.currentPage,
-        page_size: uiState.pageSize,
-        filters: uiState.filters.length > 0 ? uiState.filters : undefined,
-        sort: uiState.sorting.length > 0 ? uiState.sorting : undefined,
-        search: uiState.searchTerm || undefined,
-      };
+  // Callback cuando se sube un archivo desde TransformPanel
+  const handleFileUploadedFromTransform = useCallback((fileInfo: FileInfo) => {
+    console.log('📤 Archivo subido desde TransformPanel:', fileInfo);
 
-      loadFileData(request);
-      setHasDataLoaded(true);
-      setLastProcessedFile(currentFile);
-    }
-  }, [currentFile, uiState.currentPage, uiState.pageSize, uiState.filters, uiState.sorting, uiState.searchTerm, loadFileData]);
-
-  // ===== HANDLERS OPTIMIZADOS =====
-  const handleUploadSuccess = useCallback((response: any) => {
-    const newFile: FileData = {
-      file_id: response.file_id,
-      original_name: response.original_name || response.filename || 'Archivo cargado',
-      columns: response.columns,
-      sheets: response.sheets,
-      total_rows: response.total_rows,
+    // Convertir FileInfo a FileData
+    const newFileData: FileData = {
+      file_id: fileInfo.file_id,
+      original_name: fileInfo.original_name,
+      columns: fileInfo.columns,
+      sheets: fileInfo.sheets,
+      total_rows: fileInfo.total_rows,
     };
 
-    setCurrentFile(newFile);
-    setLastProcessedFile(newFile);
-    message.success('Archivo cargado exitosamente');
-  }, [setCurrentFile]);
+    // Si no hay archivo actual, establecer este como actual
+    if (!currentFile) {
+      setCurrentFile(newFileData);
+      setLastProcessedFile(newFileData);
+      message.success(`Archivo "${fileInfo.original_name}" seleccionado automáticamente`);
+    }
 
-  const handlePaginationChange = useCallback((page: number, size: number) => {
-    setUIState(prev => ({
-      ...prev,
-      currentPage: page,
-      pageSize: size
-    }));
+    // Notificar éxito
+    message.success(`Archivo "${fileInfo.original_name}" disponible para cruce`);
+  }, [currentFile, setCurrentFile]);
+
+  // ✅ FUNCIÓN PARA MANEJAR RESULTADO DEL CRUCE
+  const handleCrossComplete = useCallback((result: any) => {
+    console.log('📊 Cruce completado:', result);
+    setCrossResult(result);
+    setUI(prev => ({ ...prev, crossModalVisible: false, activeTab: 'cross' })); // Cambiar a tab de cruce
+    message.success(`Cruce completado: ${result.total_rows?.toLocaleString()} registros procesados`);
   }, []);
 
-  const handleDeleteRows = useCallback(async (indices: number[]) => {
-    if (!currentFile) return;
-
-    try {
-      await DeleteService.deleteRows({
-        file_id: currentFile.file_id,
-        row_indices: indices
-      });
-
-      const request: DataRequest = {
-        file_id: currentFile.file_id,
-        page: uiState.currentPage,
-        page_size: uiState.pageSize,
-        filters: uiState.filters.length > 0 ? uiState.filters : undefined,
-        sort: uiState.sorting.length > 0 ? uiState.sorting : undefined,
-        search: uiState.searchTerm || undefined,
-      };
-      
-      loadFileData(request);
-      message.success(`${indices.length} filas eliminadas exitosamente`);
-    } catch (error) {
-      message.error('Error al eliminar filas');
+  // ✅ FUNCIÓN PARA EXPORTAR RESULTADO
+  // En App.tsx - función handleExportCrossResult
+  const handleExportCrossResult = useCallback(async (format: 'csv' | 'xlsx' = 'csv') => {
+    if (!crossResult) {
+      message.warning('No hay resultado de cruce para exportar');
+      return;
     }
-  }, [currentFile, uiState, loadFileData]);
-
-  const handleTransform = useCallback(async () => {
-    if (!currentFile || !uiState.selectedTransform) return;
 
     try {
-      const transformRequest: TransformRequest = {
-        file_id: currentFile.file_id,
-        operation: uiState.selectedTransform as any,
-        params: {}
-      };
+      const exportData = crossResult.data || [];
 
-      await TransformService.transformData(transformRequest);
-      message.success('Transformación aplicada exitosamente');
-      
-      setUIState(prev => ({ ...prev, transformModalVisible: false }));
+      if (format === 'csv') {
+        // ✅ EXPORTAR CON PUNTO Y COMA Y CODIFICACIÓN CORRECTA
+        const headers = crossResult.columns.join(';'); // ✅ Punto y coma en headers
+        const rows = exportData.map((row: any) =>
+          crossResult.columns.map((col: string) => {
+            const value = row[col];
+            // Manejar valores que contienen punto y coma o comillas
+            if (typeof value === 'string' && (value.includes(';') || value.includes('"'))) {
+              return `"${value.replace(/"/g, '""')}"`;
+            }
+            return value || '';
+          }).join(';') // ✅ Punto y coma como separador
+        );
 
-      const request: DataRequest = {
-        file_id: currentFile.file_id,
-        page: uiState.currentPage,
-        page_size: uiState.pageSize,
-      };
-      
-      loadFileData(request);
+        const csvContent = [headers, ...rows].join('\n');
+
+        // ✅ CREAR BLOB CON UTF-8-BOM PARA CARACTERES ESPECIALES
+        const BOM = '\uFEFF'; // Byte Order Mark para UTF-8
+        const blob = new Blob([BOM + csvContent], {
+          type: 'text/csv;charset=utf-8-sig;' 
+        });
+
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `cruce_resultado_${new Date().toISOString().slice(0, 10)}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        message.success('Archivo CSV exportado exitosamente con punto y coma');
+      }
     } catch (error) {
-      message.error('Error al aplicar transformación');
+      console.error('Error exportando archivo:', error);
+      message.error('Error al exportar archivo');
     }
-  }, [currentFile, uiState.selectedTransform, uiState.currentPage, uiState.pageSize, loadFileData]);
+  }, [crossResult]);
 
-  const handleExport = useCallback(async (format: 'csv' | 'excel' | 'json') => {
+
+  // ✅ FUNCIÓN PARA LIMPIAR RESULTADO DEL CRUCE
+  const handleClearCrossResult = useCallback(() => {
+    setCrossResult(null);
+    message.info('Resultado del cruce eliminado');
+  }, []);
+
+  /* --- Data loading -------------------------------------------------- */
+  useEffect(() => {
     if (!currentFile) return;
+    const req: DataRequest = {
+      file_id: currentFile.file_id,
+      page: ui.currentPage,
+      page_size: ui.pageSize,
+      filters: ui.filters.length ? ui.filters : undefined,
+      sort: ui.sorting.length ? ui.sorting : undefined,
+      search: ui.searchTerm || undefined,
+    };
+    loadFileData(req);
+    setLastProcessedFile(currentFile);
+  }, [
+    currentFile,
+    ui.currentPage,
+    ui.pageSize,
+    ui.filters,
+    ui.sorting,
+    ui.searchTerm,
+    loadFileData,
+  ]);
+
+  /* --- Helpers ------------------------------------------------------- */
+  const showTable = !!(
+    currentFile &&
+    isValidCurrentData(currentData) &&
+    currentData.data.length
+  );
+
+  /* --- Handlers ------------------------------------------------------ */
+  const handleTabChange = (key: string) =>
+    setUI((p) => ({
+      ...p,
+      activeTab: key as TabKey,
+      mobileMenuVisible: false,
+    }));
+
+  const handleToggleSidebar = () =>
+    setUI((p) =>
+      isMobile ? { ...p, mobileMenuVisible: !p.mobileMenuVisible } : { ...p, collapsed: !p.collapsed },
+    );
+
+  const handleUploadSuccess = (res: any) => {
+    const newFile: FileData = {
+      file_id: res.file_id,
+      original_name: res.original_name ?? res.filename ?? 'Archivo',
+      columns: res.columns,
+      sheets: res.sheets,
+      total_rows: res.total_rows,
+    };
+    setCurrentFile(newFile);
+    setLastProcessedFile(newFile);
+    message.success('Archivo cargado');
+  };
+
+  const handlePaginationChange = (page: number, size: number) =>
+    setUI((p) => ({ ...p, currentPage: page, pageSize: size }));
+
+  const handleDeleteRows = async (idx: number[]) => {
+    if (!currentFile) return;
+    await DeleteService.deleteRows({
+      file_id: currentFile.file_id,
+      row_indices: idx,
+    });
+    message.success(`${idx.length} filas eliminadas`);
+    loadFileData({
+      file_id: currentFile.file_id,
+      page: ui.currentPage,
+      page_size: ui.pageSize,
+    });
+  };
+
+  const handleTransform = async () => {
+    if (!currentFile || !ui.selectedTransform) return;
+    await TransformService.transformData({
+      file_id: currentFile.file_id,
+      operation: ui.selectedTransform as any,
+      params: {},
+    });
+    message.success('Transformación aplicada');
+    setUI((p) => ({ ...p, transformModalVisible: false }));
+    loadFileData({
+      file_id: currentFile.file_id,
+      page: ui.currentPage,
+      page_size: ui.pageSize,
+    });
+  };
+
+  const handleExport = async (format: 'csv' | 'excel' | 'json') => {
+    if (!currentFile) {
+      message.warning('Selecciona un archivo para exportar');
+      return;
+    }
 
     try {
-      const exportRequest = {
+      const res = await ExportService.exportData({
         file_id: currentFile.file_id,
         format,
-        filters: uiState.filters.length > 0 ? uiState.filters : undefined,
-        sort: uiState.sorting.length > 0 ? uiState.sorting : undefined,
-        search: uiState.searchTerm || undefined,
-        include_headers: true
-      };
-
-      const response = await ExportService.exportData(exportRequest);
-      message.success(`Archivo exportado: ${response.filename}`);
+        include_headers: true,
+      });
+      message.success(`Descargado: ${res.filename}`);
     } catch (error) {
       message.error('Error al exportar archivo');
     }
-  }, [currentFile, uiState.filters, uiState.sorting, uiState.searchTerm]);
+  };
 
-  const handleSelectExistingFile = useCallback((file: any) => {
-    setCurrentFile(file);
-    setLastProcessedFile(file);
-    message.success(`Archivo "${file.original_name}" cargado`);
-  }, [setCurrentFile]);
-
-  const handleTabChange = useCallback((key: string) => {
-    setUIState(prev => ({ ...prev, activeTab: key as TabKey }));
-  }, []);
-
-  const handleToggleSidebar = useCallback(() => {
-    setUIState(prev => ({ ...prev, collapsed: !prev.collapsed }));
-  }, []);
-
-  // ===== RENDER FUNCTIONS =====
-  const renderWelcomeMessage = () => (
-    <div style={{
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      minHeight: '400px',
-      padding: '20px',
-      background: 'transparent'  // IMPORTANTE: Sin background que cause problemas
-    }}>
-      <div style={{ textAlign: 'center', maxWidth: '500px' }}>
-        <div style={{
-          width: '80px',
-          height: '80px',
-          background: 'linear-gradient(135deg, #1890ff 0%, #722ed1 100%)',
-          borderRadius: '24px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          margin: '0 auto 24px',
-          fontSize: '32px'
-        }}>
-          📊
-        </div>
-        <h2 style={{
-          fontSize: '24px',
-          fontWeight: 'bold',
-          color: '#262626',
-          marginBottom: '16px'
-        }}>
-          ¡Bienvenido al Procesador de Archivos!
+  /* --- Render helpers ------------------------------------------------ */
+  const renderWelcome = () => (
+    <div className="welcome-container">
+      <div className="welcome-content">
+        <div className="welcome-icon">📊</div>
+        <h2 className="welcome-title">
+          {isMobile ? '¡Bienvenido!' : '¡Bienvenido al Procesador de Archivos!'}
         </h2>
-        <p style={{
-          fontSize: '16px',
-          color: '#595959',
-          lineHeight: '1.6'
-        }}>
-          Selecciona una herramienta del menú lateral para comenzar a procesar tus archivos Excel y CSV.
-          Cada herramienta está diseñada para tareas específicas de manipulación de datos.
+        <p className="welcome-description">
+          {isMobile
+            ? 'Usa el menú para comenzar.'
+            : 'Selecciona una herramienta del menú lateral para manipular tus archivos.'}
         </p>
       </div>
     </div>
   );
 
   const renderUploadTab = () => (
-    <div style={layoutStyles.contentContainer}>
-      {/* Mostrar mensaje de bienvenida si no hay datos */}
-      {showWelcome && renderWelcomeMessage()}
-
-      {/* Card del uploader - SIN BOX-SHADOW PROBLEMÁTICO */}
-      <Card 
-        title="Cargar Archivo Excel/CSV" 
-        style={{
-          ...layoutStyles.contentCard,
-          background: '#fff',
-          position: 'static'  // IMPORTANTE: static en lugar de relative
-        }}
-      >
-        <div style={{ textAlign: 'center', padding: '40px' }}>
-          <FileUploader
-            onUploadSuccess={handleUploadSuccess}
-            loading={loading}
-          />
-          <Text type="secondary" style={{ display: 'block', marginTop: '16px' }}>
-            Formatos soportados: .csv, .xlsx, .xls
+    <div className="content-container">
+      {!showTable && renderWelcome()}
+      {/* uploader */}
+      <Card title="Cargar Archivo Excel/CSV" className="upload-card">
+        <div className="uploader-content">
+          <FileUploader loading={loading} onUploadSuccess={handleUploadSuccess} />
+          <Text type="secondary" className="upload-hint">
+            {isMobile ? 'CSV, XLSX, XLS' : 'Formatos soportados: .csv, .xlsx, .xls'}
           </Text>
         </div>
       </Card>
 
-      {/* Archivos disponibles - SIN BOX-SHADOW PROBLEMÁTICO */}
-      {files && Array.isArray(files) && files.length > 0 && (
-        <Card 
-          title="Archivos Disponibles" 
-          style={{
-            ...layoutStyles.contentCard,
-            background: '#fff',
-            position: 'static'  // IMPORTANTE: static en lugar de relative
-          }}
-        >
+      {/* archivos */}
+      {files?.length ? (
+        <Card title="Archivos Disponibles" className="files-card">
           <Row gutter={[16, 16]}>
-            {files.map((file) => (
-              <Col xs={24} sm={12} lg={8} key={file.file_id}>
+            {files.map((f) => (
+              <Col xs={24} sm={12} md={isTablet ? 12 : 8} lg={8} xl={6} key={f.file_id}>
                 <Card
                   size="small"
                   hoverable
-                  style={{
-                    border: currentFile?.file_id === file.file_id ? '2px solid #1890ff' : '1px solid #e8e8e8',
-                    background: currentFile?.file_id === file.file_id ? '#f0f8ff' : '#fff',
-                    borderRadius: '6px',
-                    position: 'static'  // IMPORTANTE: static
-                  }}
+                  className={`file-item ${currentFile?.file_id === f.file_id ? 'selected' : ''}`}
                   actions={[
                     <Button
-                      key="select"
-                      type={currentFile?.file_id === file.file_id ? "primary" : "link"}
+                      key="sel"
+                      type={currentFile?.file_id === f.file_id ? 'primary' : 'link'}
                       icon={<EyeOutlined />}
-                      onClick={() => handleSelectExistingFile(file)}
+                      size={isMobile ? 'small' : 'middle'}
+                      onClick={() => setCurrentFile(f)}
                     >
-                      {currentFile?.file_id === file.file_id ? 'Seleccionado' : 'Seleccionar'}
+                      {currentFile?.file_id === f.file_id ? 'Actual' : isMobile ? 'Ver' : 'Seleccionar'}
                     </Button>,
                     <Button
-                      key="delete"
+                      key="del"
                       type="link"
                       danger
                       icon={<DeleteOutlined />}
-                      onClick={() => deleteFile(file.file_id)}
+                      size={isMobile ? 'small' : 'middle'}
+                      onClick={() => deleteFile(f.file_id)}
                     >
-                      Eliminar
-                    </Button>
+                      {isMobile ? 'Del' : 'Eliminar'}
+                    </Button>,
                   ]}
                 >
                   <Card.Meta
-                    title={file.original_name}
+                    title={
+                      isMobile && f.original_name.length > 18
+                        ? `${f.original_name.slice(0, 18)}…`
+                        : f.original_name
+                    }
                     description={
-                      <div>
-                        <Text>{file.total_rows?.toLocaleString() || 0} filas</Text>
+                      <>
+                        <Text>{f.total_rows?.toLocaleString()} filas</Text>
                         <br />
-                        <Text>{file.columns?.length || 0} columnas</Text>
-                        {file.sheets && file.sheets.length > 0 && (
-                          <>
-                            <br />
-                            <Text>{file.sheets.length} hojas</Text>
-                          </>
-                        )}
-                      </div>
+                        <Text>{f.columns?.length} columnas</Text>
+                      </>
                     }
                   />
                 </Card>
@@ -528,233 +456,295 @@ const App: React.FC = () => {
             ))}
           </Row>
         </Card>
-      )}
+      ) : null}
 
-      {/* ===== TABLA CORREGIDA - SIN SUPERPOSICIÓN ===== */}
-      {showTable && currentData && (
+      {/* tabla */}
+      {showTable && (
         <Card
+          className="data-table-card"
           title={
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              alignItems: 'center',
-              padding: '8px 0'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <span>📋 Datos: {currentFile?.original_name}</span>
-                {lastProcessedFile?.file_id === currentFile?.file_id && (
-                  <Badge count="Actual" style={{ backgroundColor: '#52c41a' }} />
-                )}
+            <div className="table-header">
+              <div className="table-title">
+                <span>
+                  {isMobile ? '📋' : '📋 Datos: '}
+                  {isMobile && currentFile
+                    ? currentFile.original_name.slice(0, 15)
+                    : currentFile?.original_name}
+                </span>
               </div>
-              <Space>
-                <Badge count={currentData?.total || 0} style={{ backgroundColor: '#52c41a' }}>
-                  <Text>Total registros</Text>
-                </Badge>
-                <Button
-                  icon={<RobotOutlined />}
-                  onClick={() => setUIState(prev => ({ ...prev, chatDrawerVisible: true }))}
-                >
-                  Asistente IA
-                </Button>
-              </Space>
             </div>
           }
-          bodyStyle={{ 
-            padding: '0',
-            background: '#fff'  // IMPORTANTE: Background explícito
-          }}
-          style={{
-            width: '100%',
-            maxWidth: '100%',
-            marginBottom: '16px',
-            overflow: 'visible',
-            background: '#fff',
-            border: '1px solid #e8e8e8',
-            borderRadius: '8px',
-            position: 'static',  // IMPORTANTE: static para evitar stacking context
-            zIndex: 'auto'       // IMPORTANTE: sin z-index forzado
-          }}
         >
-          {/* WRAPPER DE LA TABLA SIN PROBLEMAS DE SUPERPOSICIÓN */}
-          <div 
-            style={{ 
-              width: '100%',
-              overflow: 'visible',
-              position: 'static',  // IMPORTANTE: static
-              zIndex: 'auto'       // IMPORTANTE: sin z-index forzado
+          <DataTable
+            data={currentData?.data ?? []}
+            columns={currentFile?.columns ?? []}
+            loading={loading}
+            pagination={{
+              current: currentData?.page ?? 1,
+              pageSize: currentData?.page_size ?? 20,
+              total: currentData?.total ?? 0,
+              showSizeChanger: !isMobile,
+              showQuickJumper: !isMobile,
+              size: isMobile ? 'small' : 'default',
             }}
-          >
-            <DataTable
-              data={currentData?.data || []}
-              columns={currentFile?.columns || []}
-              loading={loading}
-              pagination={{
-                current: currentData?.page || 1,
-                pageSize: currentData?.page_size || 20,
-                total: currentData?.total || 0,
-                showSizeChanger: true,
-                showQuickJumper: true,
-              }}
-              onPaginationChange={handlePaginationChange}
-              onFiltersChange={(filters) => setUIState(prev => ({ ...prev, filters }))}
-              onSortChange={(sorting) => setUIState(prev => ({ ...prev, sorting }))}
-              onDeleteRows={handleDeleteRows}
-              onSearch={(searchTerm) => setUIState(prev => ({ ...prev, searchTerm }))}
-            />
-          </div>
+            onPaginationChange={handlePaginationChange}
+            onFiltersChange={(filters) => setUI((p) => ({ ...p, filters }))}
+            onSortChange={(sorting) => setUI((p) => ({ ...p, sorting }))}
+            onDeleteRows={handleDeleteRows}
+            onSearch={(t) => setUI((p) => ({ ...p, searchTerm: t }))}
+          />
         </Card>
       )}
     </div>
   );
 
   const renderTransformTab = () => (
-    <div style={layoutStyles.contentContainer}>
-      <Card title="Transformaciones de Datos" style={{
-        ...layoutStyles.contentCard,
-        background: '#fff',
-        position: 'static'
-      }}>
-        <Row gutter={[16, 16]}>
-          <Col xs={24} md={12}>
-            <Card size="small" title="Operaciones Básicas">
-              <Space direction="vertical" style={{ width: '100%' }}>
-                <Button
-                  block
-                  onClick={() => setUIState(prev => ({ 
-                    ...prev, 
-                    selectedTransform: 'concatenate',
-                    transformModalVisible: true 
-                  }))}
-                >
-                  Concatenar Columnas
-                </Button>
-                <Button
-                  block
-                  onClick={() => setUIState(prev => ({ 
-                    ...prev, 
-                    selectedTransform: 'split_column',
-                    transformModalVisible: true 
-                  }))}
-                >
-                  Dividir Columna
-                </Button>
-                <Button
-                  block
-                  onClick={() => setUIState(prev => ({ 
-                    ...prev, 
-                    selectedTransform: 'replace_values',
-                    transformModalVisible: true 
-                  }))}
-                >
-                  Reemplazar Valores
-                </Button>
-              </Space>
-            </Card>
-          </Col>
-          <Col xs={24} md={12}>
-            <Card size="small" title="Operaciones Avanzadas">
-              <Space direction="vertical" style={{ width: '100%' }}>
-                <Button
-                  block
-                  onClick={() => setUIState(prev => ({ 
-                    ...prev, 
-                    selectedTransform: 'to_uppercase',
-                    transformModalVisible: true 
-                  }))}
-                >
-                  Convertir a Mayúsculas
-                </Button>
-                <Button
-                  block
-                  onClick={() => setUIState(prev => ({ 
-                    ...prev, 
-                    selectedTransform: 'fill_null',
-                    transformModalVisible: true 
-                  }))}
-                >
-                  Llenar Valores Nulos
-                </Button>
-                <Button
-                  block
-                  onClick={() => setUIState(prev => ({ 
-                    ...prev, 
-                    selectedTransform: 'delete_column',
-                    transformModalVisible: true 
-                  }))}
-                >
-                  Eliminar Columna
-                </Button>
-              </Space>
-            </Card>
-          </Col>
-        </Row>
+    <div className="content-container">
+      <TransformPanel
+        isMobile={isMobile}
+        onSelectOp={(op) =>
+          setUI((p) => ({ ...p, selectedTransform: op, transformModalVisible: true }))
+        }
+        availableFiles={files || []}
+        onRefreshFiles={handleRefreshFromTransform}
+        onFileUploaded={handleFileUploadedFromTransform}
+      />
+
+      {/* ✅ BOTÓN PARA ABRIR MODAL DE CRUCE */}
+      <Card title="🔄 Cruzar Archivos" style={{ marginTop: 16 }}>
+        <Alert
+          message="Cruce de Archivos - VLOOKUP"
+          description="Combina datos de dos archivos basándose en columnas clave comunes. Perfecto para enriquecer tus datos principales con información adicional."
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+        />
+
+        <Space>
+          <Button
+            type="primary"
+            icon={<SwapOutlined />}
+            size="large"
+            onClick={() => setUI(p => ({ ...p, crossModalVisible: true }))}
+            disabled={!files || files.length < 2}
+          >
+            {isMobile ? 'Cruzar' : 'Iniciar Cruce de Archivos'}
+          </Button>
+
+          {(!files || files.length < 2) && (
+            <Text type="secondary">
+              (Necesitas al menos 2 archivos cargados)
+            </Text>
+          )}
+        </Space>
       </Card>
     </div>
   );
 
   const renderExportTab = () => (
-    <div style={layoutStyles.contentContainer}>
-      <Card title="Exportar Datos" style={{
-        ...layoutStyles.contentCard,
-        background: '#fff',
-        position: 'static'
-      }}>
+    <div className="content-container">
+      <Card title="Exportar Datos" className="export-card">
+        {!currentFile && (
+          <Alert
+            message="Sin archivo seleccionado"
+            description="Selecciona un archivo en la sección 'Cargar' para poder exportar datos."
+            type="info"
+            showIcon
+            style={{ marginBottom: 16 }}
+            action={
+              <Button
+                size="small"
+                type="primary"
+                onClick={() => setUI(p => ({ ...p, activeTab: 'upload' }))}
+              >
+                Ir a Cargar
+              </Button>
+            }
+          />
+        )}
+
         <Row gutter={[16, 16]}>
-          <Col xs={24} md={8}>
-            <Card 
-              size="small" 
-              hoverable 
-              onClick={() => handleExport('csv')}
-              style={{ position: 'static' }}
-            >
-              <div style={{ textAlign: 'center', padding: '20px' }}>
-                <FileOutlined style={{ fontSize: '48px', color: '#1890ff' }} />
-                <Title level={4}>Exportar CSV</Title>
-                <Text type="secondary">Formato separado por comas</Text>
-              </div>
-            </Card>
-          </Col>
-          <Col xs={24} md={8}>
-            <Card 
-              size="small" 
-              hoverable 
-              onClick={() => handleExport('excel')}
-              style={{ position: 'static' }}
-            >
-              <div style={{ textAlign: 'center', padding: '20px' }}>
-                <FileOutlined style={{ fontSize: '48px', color: '#52c41a' }} />
-                <Title level={4}>Exportar Excel</Title>
-                <Text type="secondary">Formato Microsoft Excel</Text>
-              </div>
-            </Card>
-          </Col>
-          <Col xs={24} md={8}>
-            <Card 
-              size="small" 
-              hoverable 
-              onClick={() => handleExport('json')}
-              style={{ position: 'static' }}
-            >
-              <div style={{ textAlign: 'center', padding: '20px' }}>
-                <FileOutlined style={{ fontSize: '48px', color: '#faad14' }} />
-                <Title level={4}>Exportar JSON</Title>
-                <Text type="secondary">Formato JavaScript Object</Text>
-              </div>
-            </Card>
-          </Col>
+          {[
+            { key: 'csv', label: 'CSV', color: 'csv-icon' },
+            { key: 'excel', label: 'Excel', color: 'excel-icon' },
+            { key: 'json', label: 'JSON', color: 'json-icon' },
+          ].map((o) => (
+            <Col xs={24} sm={8} key={o.key}>
+              <Card
+                size="small"
+                hoverable={!!currentFile}
+                onClick={() => handleExport(o.key as any)}
+                className={`export-option ${o.key}-option ${!currentFile ? 'disabled' : ''}`}
+                style={{
+                  opacity: !currentFile ? 0.6 : 1,
+                  cursor: !currentFile ? 'not-allowed' : 'pointer'
+                }}
+              >
+                <div className="export-content">
+                  <FileOutlined className={`export-icon ${o.color}`} />
+                  <Title level={isMobile ? 5 : 4}>{o.label}</Title>
+                  <Text type="secondary">
+                    {o.key === 'csv'
+                      ? isMobile
+                        ? 'Separado por comas'
+                        : 'Formato separado por comas'
+                      : o.key === 'excel'
+                        ? isMobile
+                          ? 'Microsoft Excel'
+                          : 'Formato Microsoft Excel'
+                        : isMobile
+                          ? 'JavaScript Object'
+                          : 'Formato JavaScript Object'}
+                  </Text>
+                </div>
+              </Card>
+            </Col>
+          ))}
         </Row>
+
+        {currentFile && (
+          <Card size="small" style={{ marginTop: 16 }} title="Archivo actual">
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Text><strong>Nombre:</strong> {currentFile.original_name}</Text>
+              <Text><strong>Filas:</strong> {currentFile.total_rows?.toLocaleString()}</Text>
+              <Text><strong>Columnas:</strong> {currentFile.columns?.length}</Text>
+              {currentFile.sheets && currentFile.sheets.length > 0 && (
+                <Text><strong>Hojas:</strong> {currentFile.sheets.join(', ')}</Text>
+              )}
+            </Space>
+          </Card>
+        )}
       </Card>
     </div>
   );
 
+  // ✅ TAB PARA MOSTRAR RESULTADO DEL CRUCE USANDO DATATABLE
+  const renderCrossTab = () => (
+    <div className="content-container">
+      {!crossResult ? (
+        <Card title="📊 Resultado del Cruce">
+          <Alert
+            message="Sin resultado de cruce"
+            description="Realiza un cruce de archivos desde la sección 'Transformar' para ver los resultados aquí."
+            type="info"
+            showIcon
+            action={
+              <Button
+                size="small"
+                type="primary"
+                onClick={() => setUI(p => ({ ...p, activeTab: 'transform' }))}
+              >
+                Ir a Transformar
+              </Button>
+            }
+          />
+        </Card>
+      ) : (
+        <>
+          {/* ✅ INFORMACIÓN DEL CRUCE */}
+          <Alert
+            message="🎉 Cruce completado exitosamente"
+            description={`${crossResult.total_rows?.toLocaleString()} registros con ${crossResult.columns?.length} columnas`}
+            type="success"
+            style={{ marginBottom: 16 }}
+            action={
+              <Space>
+                <Button
+                  type="primary"
+                  icon={<DownloadOutlined />}
+                  onClick={() => handleExportCrossResult('csv')}
+                >
+                  {isMobile ? 'CSV' : 'Exportar CSV'}
+                </Button>
+                <Button
+                  onClick={handleClearCrossResult}
+                  danger
+                >
+                  {isMobile ? 'Limpiar' : 'Limpiar Resultado'}
+                </Button>
+              </Space>
+            }
+          />
+
+          {/* ✅ USAR DATATABLE EN LUGAR DE TABLE NATIVA */}
+          <Card
+            title="📊 Resultado del Cruce de Archivos"
+            size="small"
+          >
+            <DataTable
+              data={crossResult.data || []}
+              columns={crossResult.columns || []}
+              loading={loading}
+              pagination={{
+                current: 1,
+                pageSize: 50,
+                total: crossResult.total_rows || 0,
+                showSizeChanger: true,
+                showQuickJumper: !isMobile,
+                size: isMobile ? 'small' : 'default'
+              }}
+              // ✅ CALLBACKS PARA FUNCIONALIDAD COMPLETA DEL DATATABLE
+              onPaginationChange={(page: number, size: number) => {
+                console.log(`Navegación: página ${page}, tamaño ${size}`);
+                // La paginación se maneja localmente en DataTable
+              }}
+              onFiltersChange={(filters) => {
+                console.log('Filtros aplicados en resultado de cruce:', filters);
+                // Los filtros se aplican localmente en DataTable
+              }}
+              onSortChange={(sort) => {
+                console.log('Ordenamiento aplicado en resultado de cruce:', sort);
+                // El ordenamiento se aplica localmente en DataTable
+              }}
+              onSearch={(searchTerm) => {
+                console.log('Búsqueda en resultado de cruce:', searchTerm);
+                // La búsqueda se aplica localmente en DataTable
+              }} onDeleteRows={function (indices: number[]): void {
+                throw new Error('Function not implemented.');
+              }}              // ✅ NO INCLUIR onDeleteRows PARA PROTEGER EL RESULTADO
+            />
+
+            {/* ✅ INFORMACIÓN ADICIONAL SI HAY MUCHOS DATOS */}
+            {(crossResult.data?.length || 0) > 100 && (
+              <Alert
+                message="Optimización de rendimiento"
+                description="Para mejor performance, se muestran los primeros registros. Usa filtros, búsqueda o exporta para trabajar con todos los datos."
+                type="info"
+                style={{ marginTop: 16 }}
+              />
+            )}
+          </Card>
+        </>
+      )}
+    </div>
+  );
+
   const renderChatTab = () => (
-    <div style={layoutStyles.contentContainer}>
+    <div className="content-container">
+      {!currentFile && (
+        <Alert
+          message="Recomendación"
+          description="Para obtener respuestas más precisas, selecciona un archivo en la sección 'Cargar' para dar contexto al chat."
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+          action={
+            <Button
+              size="small"
+              type="primary"
+              onClick={() => setUI(p => ({ ...p, activeTab: 'upload' }))}
+            >
+              Seleccionar Archivo
+            </Button>
+          }
+        />
+      )}
       <ChatBot fileContext={currentFile?.file_id} />
     </div>
   );
 
   const renderContent = () => {
-    switch (uiState.activeTab) {
+    switch (ui.activeTab) {
       case 'upload':
         return renderUploadTab();
       case 'transform':
@@ -763,182 +753,150 @@ const App: React.FC = () => {
         return renderExportTab();
       case 'chat':
         return renderChatTab();
+      case 'cross': // ✅ Caso para tab de cruce
+        return renderCrossTab();
       default:
-        return renderUploadTab();
+        return null;
     }
   };
 
-  // ===== MAIN RENDER =====
+  /* --- Debug Info (opcional, remover en producción) ----------------- */
+  console.log('🎭 App Render:', {
+    filesCount: files?.length || 0,
+    currentFile: currentFile?.original_name || 'none',
+    activeTab: ui.activeTab,
+    loading,
+    hasCrossResult: !!crossResult
+  });
+
+  /* --- Render principal --------------------------------------------- */
   return (
     <ErrorBoundary>
-      {/* ===== CONTENEDOR PRINCIPAL CORREGIDO ===== */}
-      <div style={{ 
-        width: '100%', 
-        minHeight: '100vh', 
-        overflow: 'visible',
-        position: 'static',  // IMPORTANTE: static en lugar de relative
-        backgroundColor: '#f0f2f5'
-      }}>
-        <Layout style={layoutStyles.main}>
-          {/* Header */}
-          <Header style={layoutStyles.header}>
-            <div style={{ display: 'flex', alignItems: 'center' }}>
-              <Button
-                type="text"
-                icon={uiState.collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-                onClick={handleToggleSidebar}
-                style={{ color: 'white', fontSize: '16px' }}
-              />
-              <HomeOutlined style={{ color: 'white', fontSize: '20px', margin: '0 16px' }} />
-              <Title level={3} style={{ color: 'white', margin: 0 }}>
-                Procesador de Archivos Excel/CSV
-              </Title>
-            </div>
-
-            <Space>
-              {currentFile && (
-                <Badge count={currentFile.total_rows} style={{ backgroundColor: '#52c41a' }}>
-                  <Button type="primary" ghost>
-                    {currentFile.original_name}
-                  </Button>
-                </Badge>
-              )}
-            </Space>
+      <div className={`app-container ${isMobile ? 'mobile' : isTablet ? 'tablet' : 'desktop'}`}>
+        <Layout className="main-layout">
+          {/* Header desacoplado */}
+          <Header className="app-header">
+            <AppHeader
+              isMobile={isMobile}
+              isTablet={isTablet}
+              collapsed={ui.collapsed}
+              currentFile={currentFile}
+              onToggleSidebar={handleToggleSidebar}
+            />
           </Header>
 
-          {/* Layout interno */}
-          <Layout style={{ 
-            width: '100%', 
-            display: 'flex',
-            flexDirection: 'row',
-            minHeight: 'calc(100vh - 64px)',
-            position: 'static'  // IMPORTANTE: static
-          }}>
-            {/* Sidebar */}
-            <Sider
-              width={200}
-              style={layoutStyles.sider}
-              collapsed={uiState.collapsed}
-              collapsedWidth={80}
-            >
-              <Menu
-                mode="inline"
-                selectedKeys={[uiState.activeTab]}
-                onSelect={({ key }) => handleTabChange(key)}
-                style={{ 
-                  height: '100%', 
-                  borderRight: 0,
-                  overflow: 'auto'
-                }}
-                items={menuItems}
-              />
-            </Sider>
+          <Layout className="inner-layout">
+            {/* Sidebar desktop */}
+            {!isMobile && (
+              <Sider
+                width={200}
+                className="app-sider"
+                collapsed={ui.collapsed}
+                collapsedWidth={80}
+              >
+                <NavigationMenu
+                  layout="inline"
+                  isMobile={false}
+                  activeKey={ui.activeTab}
+                  currentFile={null}
+                  onSelect={handleTabChange}
+                />
+              </Sider>
+            )}
 
-            {/* Content */}
-            <Layout style={{ 
-              ...layoutStyles.content,
-              flex: 1,
-              display: 'flex',
-              flexDirection: 'column',
-              position: 'static'  // IMPORTANTE: static
-            }}>
-              <Content style={{
-                ...layoutStyles.content,
-                flex: 1,
-                display: 'flex',
-                flexDirection: 'column',
-                position: 'static'  // IMPORTANTE: static
-              }}>
-                {/* Alertas de error */}
+            {/* Contenido */}
+            <Layout className="content-layout">
+              <Content className="app-content">
                 {error && (
                   <Alert
+                    type="error"
                     message="Error"
                     description={error}
-                    type="error"
                     closable
-                    style={{ 
-                      margin: '16px 16px 0 16px',
-                      flexShrink: 0,
-                      position: 'static'  // IMPORTANTE: static
-                    }}
+                    className="error-alert"
                     onClose={() => setError(null)}
                   />
                 )}
 
-                {/* Contenido principal */}
-                <div style={{
-                  flex: 1,
-                  overflow: 'visible',
-                  width: '100%',
-                  position: 'static'  // IMPORTANTE: static
-                }}>
-                  {loading && !currentData ? (
-                    <div style={{
-                      display: 'flex',
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      height: '50vh',
-                      width: '100%',
-                      position: 'static'  // IMPORTANTE: static
-                    }}>
-                      <Spin size="large">
-                        <div style={{ padding: '50px' }}>
-                          <span>Procesando...</span>
-                        </div>
-                      </Spin>
+                <div className="main-content">
+                  {loading && !currentData && ui.activeTab === 'upload' ? (
+                    <div className="loading-container">
+                      <Spin size={isMobile ? 'default' : 'large'} />
                     </div>
                   ) : (
                     renderContent()
                   )}
                 </div>
               </Content>
-
-              {/* Footer */}
-              <Footer style={{
-                ...layoutStyles.footer,
-                flexShrink: 0,
-                marginTop: 'auto',
-                position: 'static'  // IMPORTANTE: static
-              }}>
-                Procesador de Archivos ©2025 - Desarrollado con React + FastAPI
+              <Footer className="app-footer">
+                {isMobile ? 'Procesador ©2025' : 'Procesador de Archivos ©2025'}
               </Footer>
             </Layout>
           </Layout>
 
-          {/* Drawer para Chat */}
+          {/* Drawer móvil */}
           <Drawer
-            title="Asistente IA"
-            placement="right"
-            width={400}
-            onClose={() => setUIState(prev => ({ ...prev, chatDrawerVisible: false }))}
-            open={uiState.chatDrawerVisible}
-            style={{ zIndex: 2000 }}
+            title="Menú"
+            placement="left"
+            width={280}
+            open={isMobile && ui.mobileMenuVisible}
+            onClose={() => setUI((p) => ({ ...p, mobileMenuVisible: false }))}
+            className="mobile-menu-drawer"
           >
-            <ChatBot fileContext={currentFile?.file_id} />
+            <NavigationMenu
+              layout="vertical"
+              isMobile
+              activeKey={ui.activeTab}
+              currentFile={null}
+              onSelect={handleTabChange}
+            />
           </Drawer>
 
-          {/* Modal para Transformaciones */}
+          {/* Modal Transformación */}
           <Modal
             title="Aplicar Transformación"
-            open={uiState.transformModalVisible}
+            open={ui.transformModalVisible}
             onOk={handleTransform}
-            onCancel={() => setUIState(prev => ({ ...prev, transformModalVisible: false }))}
+            onCancel={() => setUI((p) => ({ ...p, transformModalVisible: false }))}
             okText="Aplicar"
             cancelText="Cancelar"
-            style={{ zIndex: 2000 }}
+            className="transform-modal"
+            width={isMobile ? '90%' : 520}
           >
-            <Space direction="vertical" style={{ width: '100%' }}>
-              <Text>Operación seleccionada: <Text strong>{uiState.selectedTransform}</Text></Text>
+            <Space direction="vertical" className="transform-modal-content">
+              <Text>
+                Operación: <Text strong>{ui.selectedTransform}</Text>
+              </Text>
               <Select
-                style={{ width: '100%' }}
+                className="column-select"
                 placeholder="Seleccionar columna"
                 disabled={!currentFile}
+                size={isMobile ? 'large' : 'middle'}
               >
-                {(currentFile?.columns || []).map(col => (
-                  <Option key={col} value={col}>{col}</Option>
+                {(currentFile?.columns ?? []).map((c) => (
+                  <Option value={c} key={c}>
+                    {c}
+                  </Option>
                 ))}
               </Select>
             </Space>
+          </Modal>
+
+          {/* ✅ MODAL PARA CRUCE DE ARCHIVOS */}
+          <Modal
+            title="🔄 Cruzar Archivos - VLOOKUP"
+            open={ui.crossModalVisible}
+            onCancel={() => setUI((p) => ({ ...p, crossModalVisible: false }))}
+            footer={null}
+            width="95%"
+            style={{ top: 20 }}
+            className="cross-modal"
+          >
+            <FileCrossManager
+              availableFiles={files || []}
+              onRefreshFiles={handleRefreshFromTransform}
+              onCrossComplete={handleCrossComplete}
+            />
           </Modal>
         </Layout>
       </div>

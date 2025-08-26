@@ -1,9 +1,12 @@
 import google.generativeai as genai
 from config import GEMINI_API_KEY
-from controllers.file_controller import storage, data_cache
+from controllers.files_controllers.storage_manager import FileStorageManager
 
 genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel('gemini-1.5-flash')
+
+storage = FileStorageManager().storage
+data_cache = FileStorageManager().data_cache
 
 def ask_ai(request):
     """Procesa consulta al asistente IA con contexto de archivos"""

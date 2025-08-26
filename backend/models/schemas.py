@@ -64,7 +64,7 @@ class DataRequest(BaseModel):
     sort: Optional[List[SortCondition]] = []
     page: int = 1
     page_size: int = 100
-    search: Optional[str] = None  # Búsqueda global
+    search: Optional[str] = None 
 
 class TransformOperation(str, Enum):
     CONCATENATE = "concatenate"
@@ -77,6 +77,17 @@ class TransformOperation(str, Enum):
     TO_UPPERCASE = "to_uppercase"
     TO_LOWERCASE = "to_lowercase"
     EXTRACT_SUBSTRING = "extract_substring"
+
+class CrossPreviewRequest(BaseModel):
+    file1_key: str
+    file2_key: str
+    file1_sheet: Optional[str] = None
+    file2_sheet: Optional[str] = None
+    key_column_file1: str
+    key_column_file2: str
+    cross_type: str = "inner"
+    columns_to_include: Optional[Dict[str, List[str]]] = None
+    limit: Optional[int] = 50
 
 class TransformRequest(BaseModel):
     file_id: str
