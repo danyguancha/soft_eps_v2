@@ -20,7 +20,7 @@ interface Props {
   isMobile: boolean;
   onSelectOp: (op: string) => void;
   availableFiles?: FileInfo[];
-  onRefreshFiles?: () => Promise<void>; // Cambiar a Promise<void> para async
+  onRefreshFiles?: () => Promise<void>;
   onFileUploaded?: (fileInfo: FileInfo) => void;
 }
 
@@ -36,7 +36,6 @@ export const TransformPanel: React.FC<Props> = ({
   const [uploading, setUploading] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
 
-  // Validar que onRefreshFiles existe
   const safeRefreshFiles = useCallback(async () => {
     if (onRefreshFiles) {
       console.log('🔄 Llamando onRefreshFiles...');
@@ -51,28 +50,6 @@ export const TransformPanel: React.FC<Props> = ({
     }
   }, [onRefreshFiles]);
 
-  const handleOpenCross = () => {
-    console.log('🚀 handleOpenCross ejecutado');
-    console.log('📊 Archivos disponibles:', availableFiles.length);
-    console.log('📁 Lista actual de archivos:', availableFiles.map(f => ({ id: f.file_id, name: f.original_name })));
-    
-    if (availableFiles.length < 2) {
-      messageApi.warning({
-        content: `Necesitas al menos 2 archivos para realizar un cruce. Actualmente tienes ${availableFiles.length} archivo(s).`,
-        duration: 4,
-        style: { marginTop: '10vh' }
-      });
-      
-      setTimeout(() => {
-        setUploadModalVisible(true);
-      }, 1000);
-      
-      return;
-    }
-    
-    setCrossModalVisible(true);
-  };
-
   const handleFileUpload = async (file: File) => {
     console.log('📤 Iniciando subida de archivo:', file.name);
     setUploading(true);
@@ -83,7 +60,6 @@ export const TransformPanel: React.FC<Props> = ({
       
       messageApi.success(`Archivo "${file.name}" subido exitosamente`);
       
-      // Callback opcional para notificar al padre inmediatamente
       if (onFileUploaded) {
         const fileInfo: FileInfo = {
           file_id: result.file_id,
@@ -95,20 +71,12 @@ export const TransformPanel: React.FC<Props> = ({
         onFileUploaded(fileInfo);
       }
       
-      // Refrescar la lista de archivos
       await safeRefreshFiles();
       
-      // Verificar si ahora tenemos suficientes archivos
-      // Nota: usamos setTimeout para permitir que el estado se actualice
+      // Cerrar el modal automáticamente después de la subida exitosa
       setTimeout(() => {
-        console.log('📊 Archivos después del refresh:', availableFiles.length);
-        if (availableFiles.length >= 1) { // Se compara con >= 1 porque acabamos de subir uno
-          messageApi.info({
-            content: `¡Genial! Archivo subido. ${availableFiles.length >= 2 ? '¿Quieres hacer el cruce ahora?' : 'Sube un archivo más para poder hacer el cruce.'}`,
-            duration: 6
-          });
-        }
-      }, 1500);
+        setUploadModalVisible(false);
+      }, 1000); // Dar tiempo para que se vea el mensaje de éxito
       
     } catch (error: any) {
       console.error('❌ Error al subir archivo:', error);
@@ -139,8 +107,6 @@ export const TransformPanel: React.FC<Props> = ({
       console.log('✅ Archivo eliminado exitosamente');
       
       messageApi.success(`Archivo "${fileName}" eliminado exitosamente`);
-      
-      // Refrescar la lista
       await safeRefreshFiles();
       
     } catch (error: any) {
@@ -169,11 +135,6 @@ export const TransformPanel: React.FC<Props> = ({
       }, 0);
     },
   };
-
-  // Debug: Mostrar estado actual
-  console.log('🎭 Rendering TransformPanel');
-  console.log('📁 availableFiles.length:', availableFiles.length);
-  console.log('📋 onRefreshFiles defined:', !!onRefreshFiles);
 
   return (
     <div className="content-container">
@@ -237,28 +198,7 @@ export const TransformPanel: React.FC<Props> = ({
           <Col xs={24} sm={24} md={8}>
             <Card size="small" title="Cruce de Datos" className="transform-category">
               <Space direction="vertical" className="transform-buttons" style={{ width: '100%' }}>
-                <Button
-                  type="primary"
-                  size={isMobile ? 'large' : 'middle'}
-                  icon={<LinkOutlined />}
-                  onClick={handleOpenCross}
-                  style={{ width: '100%' }}
-                  disabled={availableFiles.length < 2}
-                >
-                  Cruzar Archivos ({availableFiles.length}/2)
-                </Button>
                 
-                <Button
-                  type="default"
-                  size={isMobile ? 'large' : 'middle'}
-                  icon={<FileTextOutlined />}
-                  onClick={handleOpenCross}
-                  style={{ width: '100%' }}
-                  disabled={availableFiles.length < 2}
-                >
-                  VLOOKUP Avanzado
-                </Button>
-
                 <Divider style={{ margin: '8px 0' }} />
 
                 <Button
@@ -273,19 +213,6 @@ export const TransformPanel: React.FC<Props> = ({
                     ? 'Subir Archivos' 
                     : `Subir Más (${availableFiles.length})`
                   }
-                </Button>
-
-                {/* Debug button */}
-                <Button
-                  type="dashed"
-                  size="small"
-                  onClick={async () => {
-                    console.log('🔄 Refresh manual triggered');
-                    await safeRefreshFiles();
-                  }}
-                  style={{ width: '100%', fontSize: '10px' }}
-                >
-                  🔄 Refresh Manual
                 </Button>
 
                 {/* Información de archivos */}
@@ -359,32 +286,20 @@ export const TransformPanel: React.FC<Props> = ({
         </Row>
       </Card>
 
-      {/* Modal para subir archivos */}
+      {/* Modal simplificado para subir archivos */}
       <Modal
-        title="📤 Subir Archivos para Cruce"
+        title="📤 Subir Archivos"
         open={uploadModalVisible}
         onCancel={() => setUploadModalVisible(false)}
         footer={[
-          <Button key="refresh" onClick={safeRefreshFiles}>
-            🔄 Actualizar Lista
-          </Button>,
           <Button key="close" onClick={() => setUploadModalVisible(false)}>
             Cerrar
           </Button>
         ]}
         width={600}
-        destroyOnClose
+        destroyOnHidden
       >
         <div style={{ padding: '20px 0' }}>
-          <div style={{ marginBottom: '20px', textAlign: 'center' }}>
-            <h4 style={{ color: '#1890ff' }}>
-              {availableFiles.length === 0 
-                ? 'Sube al menos 2 archivos para poder hacer el cruce'
-                : `Tienes ${availableFiles.length} archivo(s). ${availableFiles.length < 2 ? `Sube ${2 - availableFiles.length} más para hacer el cruce.` : '¡Ya puedes hacer el cruce!'}`
-              }
-            </h4>
-          </div>
-
           <Dragger {...uploadProps} style={{ marginBottom: '20px' }}>
             <p className="ant-upload-drag-icon">
               <InboxOutlined style={{ fontSize: '48px', color: '#1890ff' }} />
@@ -393,19 +308,21 @@ export const TransformPanel: React.FC<Props> = ({
               Arrastra archivos aquí o haz clic para seleccionar
             </p>
             <p className="ant-upload-hint">
-              Soporta archivos .xlsx, .xls y .csv. Puedes subir múltiples archivos.
+              Soporta archivos .xlsx, .xls y .csv. El modal se cerrará automáticamente después de subir.
             </p>
           </Dragger>
 
           {/* Archivos actuales */}
           {availableFiles.length > 0 && (
             <>
-              <h4>📁 Archivos Actuales:</h4>
+              <h4>📁 Archivos Actuales ({availableFiles.length}):</h4>
               <div style={{ 
                 background: '#f6ffed', 
                 padding: '15px', 
                 borderRadius: '6px',
-                border: '1px solid #b7eb8f'
+                border: '1px solid #b7eb8f',
+                maxHeight: '200px',
+                overflow: 'auto'
               }}>
                 {availableFiles.map((file, index) => (
                   <div key={file.file_id} style={{ 
@@ -420,11 +337,6 @@ export const TransformPanel: React.FC<Props> = ({
                       <span style={{ color: '#666', marginLeft: '8px' }}>
                         ({file.total_rows} filas)
                       </span>
-                      {file.sheets && file.sheets.length > 0 && (
-                        <span style={{ color: '#666', marginLeft: '8px' }}>
-                          | {file.sheets.length} hoja{file.sheets.length !== 1 ? 's' : ''}
-                        </span>
-                      )}
                     </div>
                     <Button
                       type="text"
@@ -438,53 +350,10 @@ export const TransformPanel: React.FC<Props> = ({
               </div>
             </>
           )}
-
-          {availableFiles.length >= 2 && (
-            <div style={{ 
-              marginTop: '20px', 
-              textAlign: 'center',
-              background: '#e6f7ff',
-              padding: '15px',
-              borderRadius: '6px',
-              border: '1px solid #91d5ff'
-            }}>
-              <p style={{ color: '#1890ff', fontWeight: 'bold', margin: 0 }}>
-                ✅ ¡Perfecto! Ya tienes {availableFiles.length} archivos.
-              </p>
-              <Button 
-                type="primary" 
-                size="large"
-                icon={<LinkOutlined />}
-                onClick={() => {
-                  setUploadModalVisible(false);
-                  setCrossModalVisible(true);
-                }}
-                style={{ marginTop: '10px' }}
-              >
-                Proceder al Cruce de Archivos
-              </Button>
-            </div>
-          )}
         </div>
       </Modal>
 
-      {/* Modal para el cruce de archivos */}
-      <Modal
-        title="🔄 Cruzar Archivos"
-        open={crossModalVisible}
-        onCancel={() => setCrossModalVisible(false)}
-        footer={null}
-        width="95%"
-        style={{ maxWidth: '1400px' }}
-        destroyOnClose
-        centered
-      >
-        <FileCrossManager
-          availableFiles={availableFiles}
-          onRefreshFiles={safeRefreshFiles}
-          onComplete={() => setCrossModalVisible(false)}
-        />
-      </Modal>
+     
     </div>
   );
 };

@@ -1,32 +1,9 @@
 // components/cross/FileCrossManager.tsx
 import React, { useState } from 'react';
-import {
-  Card,
-  Typography,
-  Row,
-  Col,
-  Form,
-  Select,
-  Button,
-  Checkbox,
-  Steps,
-  Alert,
-  Space,
-  Spin,
-  Divider,
-  message,
-  Tag
-} from 'antd';
-import {
-  SwapOutlined,
-  CheckCircleOutlined,
-  DownloadOutlined,
-  PlayCircleOutlined,
-  ArrowLeftOutlined
-} from '@ant-design/icons';
+import {Card,Typography,Row,Col,Form,Select,Button,Checkbox,Steps,Alert,Space,Spin,Divider,message,Tag } from 'antd';
+import {SwapOutlined,CheckCircleOutlined,DownloadOutlined,PlayCircleOutlined,ArrowLeftOutlined } from '@ant-design/icons';
 import type { FileInfo } from '../../types/api.types';
 import { CrossService, type FileCrossRequest } from '../../services/CrossService';
-import { DataTable } from '../dataTable/DataTable'; // ✅ IMPORTAR EL COMPONENTE DATATABLE
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -35,6 +12,7 @@ interface FileCrossManagerProps {
   availableFiles: FileInfo[];
   onRefreshFiles: () => void;
   onCrossComplete?: (result: any) => void;
+  onComplete: () => void;
 }
 
 const FileCrossManager: React.FC<FileCrossManagerProps> = ({
@@ -53,7 +31,6 @@ const FileCrossManager: React.FC<FileCrossManagerProps> = ({
   const [file2Columns, setFile2Columns] = useState<string[]>([]);
   const [selectedColumnsToAdd, setSelectedColumnsToAdd] = useState<string[]>([]);
 
-  // ✅ NUEVO ESTADO PARA RESULTADO
   const [crossResult, setCrossResult] = useState<any>(null);
 
   // ✅ STEPS ACTUALIZADOS
@@ -154,7 +131,7 @@ const FileCrossManager: React.FC<FileCrossManagerProps> = ({
     }
   };
 
-  // ✅ FUNCIÓN DE CRUCE MEJORADA
+  // FUNCIÓN DE CRUCE 
   const handleExecuteCross = async (allValues: any) => {
     try {
       setLoading(true);
@@ -193,53 +170,6 @@ const FileCrossManager: React.FC<FileCrossManagerProps> = ({
       message.error(error.response?.data?.detail || 'Error al ejecutar el cruce');
     } finally {
       setLoading(false);
-    }
-  };
-
-  // ✅ FUNCIÓN PARA EXPORTAR RESULTADO
-  const handleExportResult = (format: 'csv' | 'xlsx' = 'csv') => {
-    if (!crossResult || !crossResult.data) {
-      message.warning('No hay datos para exportar');
-      return;
-    }
-
-    try {
-      if (format === 'csv') {
-        // ✅ EXPORTAR CON PUNTO Y COMA Y BOM PARA CARACTERES ESPECIALES
-        const headers = crossResult.columns.join(';'); // ✅ Punto y coma
-        const rows = crossResult.data.map((row: any) =>
-          crossResult.columns.map((col: string) => {
-            const value = row[col];
-            if (typeof value === 'string' && (value.includes(';') || value.includes('"'))) {
-              return `"${value.replace(/"/g, '""')}"`;
-            }
-            return value || '';
-          }).join(';') // ✅ Punto y coma como separador
-        );
-
-        const csvContent = [headers, ...rows].join('\n');
-
-        // ✅ AGREGAR BOM PARA UTF-8 Y CARACTERES ESPECIALES
-        const BOM = '\uFEFF';
-        const blob = new Blob([BOM + csvContent], {
-          type: 'text/csv;charset=utf-8-sig;'
-        });
-
-        const link = document.createElement('a');
-        const url = URL.createObjectURL(blob);
-        link.setAttribute('href', url);
-        link.setAttribute('download', `cruce_resultado_${new Date().toISOString().slice(0, 10)}.csv`);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-
-        message.success('Archivo CSV exportado exitosamente');
-      }
-    } catch (error) {
-      console.error('Error exportando:', error);
-      message.error('Error al exportar archivo');
     }
   };
 
@@ -475,22 +405,11 @@ const FileCrossManager: React.FC<FileCrossManagerProps> = ({
                     type={selectedColumnsToAdd.length > 0 ? "success" : "warning"}
                   />
                 </div>
-
-                <div style={{ marginTop: 16 }}>
-                  <h4>📋 Vista Previa del Resultado Final:</h4>
-                  <div style={{ padding: 12, backgroundColor: '#f6ffed', borderRadius: 6 }}>
-                    <p><strong>Columnas del archivo principal:</strong> {file1Columns.length} columnas</p>
-                    <p><strong>Columnas a agregar:</strong> {selectedColumnsToAdd.length} columnas</p>
-                    <p><strong>Total columnas resultado:</strong> {file1Columns.length + selectedColumnsToAdd.length} columnas</p>
-                    <p><strong>Registros resultado:</strong> Los mismos que el archivo principal ({file1?.total_rows?.toLocaleString()} filas)</p>
-                  </div>
-                </div>
               </Card>
             </Col>
           </Row>
         );
 
-      // ✅ PASO 3 - USAR EL COMPONENTE DATATABLE
       case 3:
         return (
           <div>
@@ -501,72 +420,7 @@ const FileCrossManager: React.FC<FileCrossManagerProps> = ({
                   description={`Se procesaron ${crossResult.total_rows?.toLocaleString()} registros con ${crossResult.columns?.length} columnas.`}
                   type="success"
                   style={{ marginBottom: 16 }}
-                />
-
-                {/* Información del cruce */}
-                <div style={{ marginBottom: 16, padding: 12, backgroundColor: '#f6ffed', borderRadius: 6 }}>
-                  <Space wrap>
-                    <Tag color="blue">🏠 Columnas del archivo principal</Tag>
-                    <Tag color="orange">📁 Columnas agregadas del archivo de búsqueda</Tag>
-                  </Space>
-                </div>
-
-                <Space wrap style={{ marginBottom: 16 }}>
-                  <Tag color="blue">Total: {crossResult.total_rows?.toLocaleString()} filas</Tag>
-                  <Tag color="green">Columnas: {crossResult.columns?.length}</Tag>
-                  <Tag color="purple">Tipo: LEFT JOIN</Tag>
-                  {crossResult.file1_matched && (
-                    <Tag color="cyan">Coincidencias: {crossResult.file1_matched?.toLocaleString()}</Tag>
-                  )}
-                </Space>
-
-                {/* ✅ USAR EL COMPONENTE DATATABLE EXISTENTE */}
-                <Card
-                  title="📊 Resultado del Cruce"
-                  extra={
-                    <Button
-                      type="primary"
-                      icon={<DownloadOutlined />}
-                      onClick={() => handleExportResult('csv')}
-                    >
-                      Exportar CSV
-                    </Button>
-                  }
-                  size="small"
-                >
-                  <DataTable
-                    data={crossResult.data || []}
-                    columns={crossResult.columns || []}
-                    loading={loading}
-                    pagination={{
-                      current: 1,
-                      pageSize: 50,
-                      total: crossResult.total_rows || 0,
-                      showSizeChanger: true,
-                      showQuickJumper: true,
-                      size: 'small'
-                    }}
-                    // ✅ CALLBACKS OPCIONALES PARA DATATABLE
-                    onPaginationChange={(page: number, size: number) => {
-                      console.log(`Página cambiada: ${page}, tamaño: ${size}`);
-                      // Aquí podrías implementar paginación del lado del servidor si necesitas
-                    }}
-                    onFiltersChange={(filters) => {
-                      console.log('Filtros aplicados:', filters);
-                      // Los filtros se aplicarán localmente en el DataTable
-                    }}
-                    onSortChange={(sort) => {
-                      console.log('Ordenamiento aplicado:', sort);
-                      // El ordenamiento se aplicará localmente en el DataTable
-                    }}
-                    onSearch={(searchTerm) => {
-                      console.log('Búsqueda aplicada:', searchTerm);
-                      // La búsqueda se aplicará localmente en el DataTable
-                    }} onDeleteRows={function (indices: number[]): void {
-                      throw new Error('Function not implemented.');
-                    }}                    // ✅ NO PASAR onDeleteRows PARA PROTEGER EL RESULTADO DEL CRUCE
-                  />
-                </Card>
+                />               
               </>
             )}
           </div>
@@ -581,7 +435,7 @@ const FileCrossManager: React.FC<FileCrossManagerProps> = ({
     <Spin spinning={loading} tip="Procesando cruce...">
       <div style={{ padding: '24px' }}>
         <Title level={4} style={{ marginBottom: 24 }}>
-          🔄 Cruzar Archivos - VLOOKUP
+          🔄 Cruzar Archivos
         </Title>
 
         <Steps current={currentStep} items={steps} style={{ marginBottom: 32 }} />

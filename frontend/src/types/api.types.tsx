@@ -1,3 +1,8 @@
+// src/types/api.types.ts
+
+// src/types/api.types.ts
+import type { ReactNode } from 'react';
+
 // Tipos base
 export interface FileInfo {
   file_id: string;
@@ -28,6 +33,71 @@ export interface PaginatedResponse<T> {
   total_pages: number;
   has_next: boolean;
   has_previous: boolean;
+}
+
+// ✅ Nuevas interfaces para el sistema de tabs extensible
+export interface FileData {
+  file_id: string;
+  original_name: string;
+  columns: string[];
+  sheets?: string[];
+  total_rows: number;
+}
+
+export type TabKey = 'welcome' | 'upload' | 'transform' | 'chat' | 'export' | 'cross';
+
+export interface TabProps {
+  fileData?: FileData | null;  // ← Cambiar undefined por null
+  isMobile: boolean;
+  isTablet: boolean;  // ← Quitar undefined innecesario
+  onTabChange: (tab: string) => void;
+  onOpenCrossModal?: () => void;
+  // Props específicos para CrossTab
+  crossResult?: any;
+  crossTableState?: CrossTableState;
+  processedCrossData?: any[];
+  crossDataTotal?: number;
+  onCrossPaginationChange?: (page: number, size: number) => void;
+  onCrossFiltersChange?: (filters: FilterCondition[]) => void;
+  onCrossSortChange?: (sorting: SortCondition[]) => void;
+  onCrossSearch?: (searchTerm: string) => void;
+  onExportCrossResult?: (format: 'csv' | 'xlsx') => void;
+  onClearCrossResult?: () => void;
+  // Cualquier prop adicional que los tabs necesiten
+  [key: string]: any;
+}
+
+export interface TabConfig {
+  key: string;
+  label: string;
+  icon: ReactNode;
+  component: React.ComponentType<TabProps>;
+  requiresFile?: boolean;
+}
+
+// ✅ Estados de UI para el componente principal
+export interface UIState {
+  activeTab: TabKey;
+  collapsed: boolean;
+  currentPage: number;
+  pageSize: number;
+  filters: FilterCondition[];
+  sorting: SortCondition[];
+  searchTerm: string;
+  chatDrawerVisible: boolean;
+  transformModalVisible: boolean;
+  selectedTransform: string;
+  mobileMenuVisible: boolean;
+  crossModalVisible: boolean;
+}
+
+// ✅ Estado específico para la tabla del cruce
+export interface CrossTableState {
+  currentPage: number;
+  pageSize: number;
+  filters: FilterCondition[];
+  sorting: SortCondition[];
+  searchTerm: string;
 }
 
 // Request types
@@ -105,9 +175,7 @@ export interface AIResponse {
   response: string;
 }
 
-//Cruce
-// types/index.ts - Agregar estos tipos
-
+// Cruce - tipos para funcionalidad de cruce de archivos
 export interface CrossRequest {
   file1_key: string;
   file2_key: string;
@@ -144,3 +212,56 @@ export interface CrossPreviewResult extends CrossResult {
   sample_data: any[];
 }
 
+// ✅ Utilidades de validación de tipos
+export const isValidCurrentData = (d: any): d is { data: any[] } =>
+  d && typeof d === 'object' && Array.isArray(d.data);
+
+// ✅ Tipos auxiliares para extensibilidad
+export type TabComponentType = React.ComponentType<TabProps>;
+export type TabRegistryType = Record<string, TabConfig>;
+
+// ✅ Props para componentes específicos
+export interface WelcomeComponentProps {
+  isMobile: boolean;
+}
+
+export interface TabRendererProps extends TabProps {
+  activeTab: string;
+}
+
+export interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+// ✅ Props para hooks personalizados
+export interface UseFileOperationsReturn {
+  files: FileData[] | null;
+  currentFile: FileData | null;
+  currentData: PaginatedResponse<Record<string, any>> | null;  // ✅ Cambio aquí
+  loading: boolean;
+  error: string | null;
+  setCurrentFile: (file: FileData | null) => void;
+  setError: (error: string | null) => void;
+  loadFiles: () => Promise<void>;
+  loadFileData: (request: DataRequest) => Promise<PaginatedResponse<Record<string, any>>>;
+  deleteFile: (fileId: string) => Promise<void>;
+  handleUploadSuccess: (res: any) => Promise<void>;
+  handleDeleteRows: (indices: number[]) => Promise<void>;
+  handleExport: (format: 'csv' | 'excel' | 'json') => Promise<void>;
+  handleFileUploadedFromTransform: (fileInfo: FileInfo) => Promise<void>;
+}
+
+export interface UseCrossDataReturn {
+  crossResult: any;
+  crossTableState: CrossTableState;
+  processedCrossData: any[];
+  crossDataTotal: number;
+  handleCrossPaginationChange: (page: number, size: number) => void;
+  handleCrossFiltersChange: (filters: FilterCondition[]) => void;
+  handleCrossSortChange: (sorting: SortCondition[]) => void;
+  handleCrossSearch: (searchTerm: string) => void;
+  handleCrossComplete: (result: any) => Promise<void>;
+  handleExportCrossResult: (format: 'csv' | 'xlsx') => Promise<void>;
+  handleClearCrossResult: () => Promise<void>;
+}

@@ -463,7 +463,7 @@ export const DataTable: React.FC<DataTableProps> = ({
                 `${range[0]}-${range[1]} de ${total} registros`,
               showSizeChanger: true,
               showQuickJumper: true,
-              pageSizeOptions: ['50', '100', '200', '500'],
+              pageSizeOptions: ['20','50', '100', '200', '500'],
               onChange: onPaginationChange,
               onShowSizeChange: onPaginationChange,
             }}

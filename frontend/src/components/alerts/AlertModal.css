@@ -1,0 +1,132 @@
+/* src/components/AlertModal.css */
+.alert-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0,0,0,0.5);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.alert-modal {
+  background: #fff;
+  border-radius: 10px;
+  min-width: 320px;
+  max-width: 92vw;
+  box-shadow: 0 4px 32px rgba(0,0,0,0.15);
+  animation: fadeInModal 0.3s;
+  display: flex;
+  flex-direction: column;
+}
+
+@keyframes fadeInModal {
+  from { opacity: 0; transform: translateY(-30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.alert-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 18px 6px 18px;
+  font-weight: bold;
+  border-bottom: 1px solid #eee;
+}
+
+.alert-modal-title {
+  font-size: 1.22rem;
+}
+
+.alert-modal-close {
+  background: none;
+  border: none;
+  font-size: 2rem;
+  cursor: pointer;
+  color: #888;
+  transition: color 0.2s;
+}
+
+.alert-modal-close:hover {
+  color: #333;
+}
+
+.alert-modal-body {
+  padding: 16px 18px;
+  font-size: 1rem;
+  color: #222;
+  line-height: 1.5;
+}
+
+.alert-modal-footer {
+  display: flex;
+  border-top: 1px solid #eee;
+  padding: 12px 18px;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.alert-modal-action {
+  padding: 8px 20px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 1rem;
+  transition: all 0.2s;
+  min-width: 80px;
+}
+
+.alert-modal-action.primary {
+  background: #1890ff;
+  color: #fff;
+}
+
+.alert-modal-action.primary:hover {
+  background: #40a9ff;
+}
+
+.alert-modal-action.secondary {
+  background: #f1f1f1;
+  color: #444;
+}
+
+.alert-modal-action.secondary:hover {
+  background: #e6e6e6;
+}
+
+/* Variants con colores distintivos */
+.alert-info { 
+  border-left: 5px solid #1890ff; 
+}
+
+.alert-success { 
+  border-left: 5px solid #52c41a; 
+}
+
+.alert-error { 
+  border-left: 5px solid #ff4d4f; 
+}
+
+.alert-warning { 
+  border-left: 5px solid #faad14; 
+}
+
+/* Responsive design */
+@media (max-width: 480px) {
+  .alert-modal {
+    min-width: 280px;
+    margin: 20px;
+  }
+  
+  .alert-modal-footer {
+    flex-direction: column;
+  }
+  
+  .alert-modal-action {
+    width: 100%;
+  }
+}

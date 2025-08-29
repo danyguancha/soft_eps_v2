@@ -29,8 +29,9 @@ const CrossPage: React.FC = () => {
     <Box sx={{ p: 3 }}>
       <FileCrossManager 
         availableFiles={files}
-        onRefreshFiles={loadFiles}
-      />
+        onRefreshFiles={loadFiles} onComplete={function (): void {
+          throw new Error('Function not implemented.');
+        } }      />
     </Box>
   );
 };

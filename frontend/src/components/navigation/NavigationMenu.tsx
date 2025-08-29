@@ -1,9 +1,7 @@
 import React, { useMemo } from 'react';
 import { Menu } from 'antd';
 import {
-  UploadOutlined,
   FormOutlined,
-  DownloadOutlined,
   RobotOutlined,
 } from '@ant-design/icons';
 
@@ -13,7 +11,7 @@ interface Props {
   layout: LayoutMode;
   isMobile: boolean;
   activeKey: string;
-  currentFile: any;               // usar tu tipo FileData si está exportado
+  currentFile: any;     
   onSelect: (key: string) => void;
 }
 
@@ -24,24 +22,12 @@ export const NavigationMenu: React.FC<Props> = ({
   currentFile,
   onSelect,
 }) => {
-  /* items generados según breakpoint y disponibilidad de archivo */
   const items = useMemo(
     () => [
-      {
-        key: 'upload',
-        icon: <UploadOutlined />,
-        label: isMobile ? 'Cargar' : 'Cargar Archivo',
-      },
       {
         key: 'transform',
         icon: <FormOutlined />,
         label: isMobile ? 'Transform' : 'Transformar',
-      },
-      {
-        key: 'export',
-        icon: <DownloadOutlined />,
-        label: isMobile ? 'Export' : 'Exportar',
-     
       },
       {
         key: 'chat',
