@@ -26,11 +26,6 @@ export class CrossService {
     return response.data;
   }
 
-  static async previewCross(request: CrossPreviewRequest): Promise<any> {
-    const response = await api.post('/cross/preview', request);
-    return response.data;
-  }
-
   static async getFileColumnsForCross(fileId: string, sheetName?: string): Promise<any> {
     const params = sheetName ? `?sheet_name=${sheetName}` : '';
     const response = await api.get(`/cross/columns/${fileId}${params}`);

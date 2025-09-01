@@ -8,14 +8,6 @@ export class TransformService {
         return response.data;
     }
 
-    static async previewTransformation(request: TransformRequest, previewRows: number = 10): Promise<any> {
-        const response = await api.post('/transform/preview', {
-            ...request,
-            preview_rows: previewRows,
-        });
-        return response.data;
-    }
-
     static async getAvailableTransformations(): Promise<any> {
         const response = await api.get('/transform/available');
         return response.data;

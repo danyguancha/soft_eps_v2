@@ -23,11 +23,12 @@ class FileUploadResponse(BaseModel):
 class FileCrossRequest(BaseModel):
     file1_key: str
     file2_key: str
-    file1_sheet: Optional[str]
-    file2_sheet: Optional[str]
+    file1_sheet: Optional[str]=None
+    file2_sheet: Optional[str]=None
     key_column_file1: str
     key_column_file2: str
-    join_type: str = "inner"  # inner, left, right, outer
+    cross_type: str = "left"
+    columns_to_include: Optional[Dict[str, List[str]]] = None 
 
 class FilterOperator(str, Enum):
     EQUALS = "equals"
@@ -85,10 +86,10 @@ class CrossPreviewRequest(BaseModel):
     file2_sheet: Optional[str] = None
     key_column_file1: str
     key_column_file2: str
-    cross_type: str = "inner"
+    cross_type: str = "left"  # ✅ Mantener consistente
     columns_to_include: Optional[Dict[str, List[str]]] = None
     limit: Optional[int] = 50
-
+    
 class TransformRequest(BaseModel):
     file_id: str
     operation: TransformOperation

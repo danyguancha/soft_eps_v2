@@ -1,7 +1,7 @@
 // components/cross/FileCrossManager.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {Card,Typography,Row,Col,Form,Select,Button,Checkbox,Steps,Alert,Space,Spin,Divider,message,Tag } from 'antd';
-import {SwapOutlined,CheckCircleOutlined,DownloadOutlined,PlayCircleOutlined,ArrowLeftOutlined } from '@ant-design/icons';
+import {SwapOutlined,CheckCircleOutlined,DownloadOutlined,PlayCircleOutlined,ArrowLeftOutlined,ReloadOutlined } from '@ant-design/icons';
 import type { FileInfo } from '../../types/api.types';
 import { CrossService, type FileCrossRequest } from '../../services/CrossService';
 
@@ -22,6 +22,7 @@ const FileCrossManager: React.FC<FileCrossManagerProps> = ({
 }) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [form] = Form.useForm();
 
   // Estados para configuración
@@ -30,10 +31,57 @@ const FileCrossManager: React.FC<FileCrossManagerProps> = ({
   const [file1Columns, setFile1Columns] = useState<string[]>([]);
   const [file2Columns, setFile2Columns] = useState<string[]>([]);
   const [selectedColumnsToAdd, setSelectedColumnsToAdd] = useState<string[]>([]);
-
   const [crossResult, setCrossResult] = useState<any>(null);
 
-  // ✅ STEPS ACTUALIZADOS
+  // ✅ NUEVO: useEffect para detectar cambios en availableFiles
+  useEffect(() => {
+    console.log('📁 availableFiles changed:', availableFiles.length);
+    
+    // Si no hay archivos y no estamos en el paso final, refrescar
+    if (availableFiles.length === 0 && currentStep < 3) {
+      handleRefreshFiles();
+    }
+    
+    // Si estamos en step 0 y los archivos seleccionados ya no existen, limpiar
+    if (currentStep === 0) {
+      const file1Id = form.getFieldValue('file1_id');
+      const file2Id = form.getFieldValue('file2_id');
+      
+      if (file1Id && !availableFiles.find(f => f.file_id === file1Id)) {
+        form.setFieldValue('file1_id', undefined);
+        setFile1(null);
+        setFile1Columns([]);
+      }
+      
+      if (file2Id && !availableFiles.find(f => f.file_id === file2Id)) {
+        form.setFieldValue('file2_id', undefined);
+        setFile2(null);
+        setFile2Columns([]);
+        setSelectedColumnsToAdd([]);
+      }
+    }
+  }, [availableFiles, currentStep, form]);
+
+  // ✅ NUEVO: useEffect para cargar archivos al montar el componente
+  useEffect(() => {
+    if (availableFiles.length === 0) {
+      handleRefreshFiles();
+    }
+  }, []); // Solo ejecutar al montar
+
+  // ✅ NUEVO: Función mejorada para refrescar archivos
+  const handleRefreshFiles = async () => {
+    try {
+      setRefreshing(true);
+      await onRefreshFiles();
+      message.success('Lista de archivos actualizada');
+    } catch (error) {
+      message.error('Error al actualizar la lista de archivos');
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   const steps = [
     {
       title: 'Seleccionar Archivos',
@@ -131,7 +179,6 @@ const FileCrossManager: React.FC<FileCrossManagerProps> = ({
     }
   };
 
-  // FUNCIÓN DE CRUCE 
   const handleExecuteCross = async (allValues: any) => {
     try {
       setLoading(true);
@@ -150,15 +197,9 @@ const FileCrossManager: React.FC<FileCrossManagerProps> = ({
         }
       };
 
-      console.log('🚀 REQUEST FINAL PARA CRUCE:', JSON.stringify(request, null, 2));
-
       const result = await CrossService.crossFiles(request);
-      console.log('✅ Final result:', result);
-
-      // ✅ GUARDAR RESULTADO LOCALMENTE
       setCrossResult(result);
 
-      // ✅ NOTIFICAR AL PADRE SI EXISTE CALLBACK
       if (onCrossComplete) {
         onCrossComplete(result);
       }
@@ -193,6 +234,36 @@ const FileCrossManager: React.FC<FileCrossManagerProps> = ({
       case 0:
         return (
           <Row gutter={[16, 16]}>
+            <Col xs={24}>
+              {/* ✅ NUEVO: Header con botón de refresh */}
+              <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text strong>Archivos disponibles: {availableFiles.length}</Text>
+                <Button
+                  icon={<ReloadOutlined />}
+                  onClick={handleRefreshFiles}
+                  loading={refreshing}
+                  size="small"
+                >
+                  Actualizar Lista
+                </Button>
+              </div>
+
+              {/* ✅ NUEVO: Alert si no hay archivos */}
+              {availableFiles.length === 0 && (
+                <Alert
+                  message="No hay archivos disponibles"
+                  description="No se encontraron archivos cargados. Asegúrate de haber subido archivos antes de intentar hacer un cruce."
+                  type="warning"
+                  style={{ marginBottom: 16 }}
+                  action={
+                    <Button size="small" onClick={handleRefreshFiles} loading={refreshing}>
+                      Actualizar
+                    </Button>
+                  }
+                />
+              )}
+            </Col>
+
             <Col xs={24} md={12}>
               <Card title="📁 Archivo Principal" size="small">
                 <Alert
@@ -214,6 +285,8 @@ const FileCrossManager: React.FC<FileCrossManagerProps> = ({
                       setFile1(selected || null);
                       form.setFieldsValue({ file1_sheet: undefined });
                     }}
+                    notFoundContent={refreshing ? <Spin size="small" /> : "No hay archivos disponibles"}
+                    loading={refreshing}
                   >
                     {availableFiles.map((file) => (
                       <Option key={file.file_id} value={file.file_id}>
@@ -266,6 +339,8 @@ const FileCrossManager: React.FC<FileCrossManagerProps> = ({
                       setFile2(selected || null);
                       form.setFieldsValue({ file2_sheet: undefined });
                     }}
+                    notFoundContent={refreshing ? <Spin size="small" /> : "No hay archivos disponibles"}
+                    loading={refreshing}
                   >
                     {availableFiles.map((file) => (
                       <Option key={file.file_id} value={file.file_id}>
@@ -414,14 +489,12 @@ const FileCrossManager: React.FC<FileCrossManagerProps> = ({
         return (
           <div>
             {crossResult && (
-              <>
-                <Alert
-                  message="🎉 Cruce Completado Exitosamente"
-                  description={`Se procesaron ${crossResult.total_rows?.toLocaleString()} registros con ${crossResult.columns?.length} columnas.`}
-                  type="success"
-                  style={{ marginBottom: 16 }}
-                />               
-              </>
+              <Alert
+                message="🎉 Cruce Completado Exitosamente"
+                description={`Se procesaron ${crossResult.total_rows?.toLocaleString()} registros con ${crossResult.columns?.length} columnas.`}
+                type="success"
+                style={{ marginBottom: 16 }}
+              />
             )}
           </div>
         );
@@ -468,7 +541,10 @@ const FileCrossManager: React.FC<FileCrossManagerProps> = ({
                 type="primary"
                 onClick={handleNext}
                 loading={loading}
-                disabled={currentStep === 2 && selectedColumnsToAdd.length === 0}
+                disabled={
+                  (currentStep === 2 && selectedColumnsToAdd.length === 0) ||
+                  (currentStep === 0 && availableFiles.length === 0)
+                }
               >
                 {currentStep === 2 ? '🚀 Ejecutar Cruce' : 'Siguiente →'}
               </Button>

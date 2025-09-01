@@ -13,15 +13,6 @@ export class DeleteService {
         return response.data;
     }
 
-    static async previewDelete(fileId: string, filters: any[], sheetName?: string): Promise<any> {
-        const response = await api.post('/rows/preview-delete', {
-            file_id: fileId,
-            filters,
-            sheet_name: sheetName,
-        });
-        return response.data;
-    }
-
     static async bulkDelete(fileId: string, conditions: any[], confirmDelete: boolean = false, sheetName?: string): Promise<DeleteResponse> {
         const response = await api.delete('/rows/bulk', {
             data: {

@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse
 
 from models.schemas import (
     BulkDeleteRequest, CrossPreviewRequest, DeleteResponse, DeleteRowsByFilterRequest, DeleteRowsRequest, 
-    ExportRequest, ExportResponse, FileUploadResponse, DataRequest, TransformRequest, 
+    ExportRequest, ExportResponse, FileCrossRequest, FileUploadResponse, DataRequest, TransformRequest, 
     AIRequest, FilterCondition
 )
 from controllers import file_controller, cross_controller, ai_controller
@@ -20,7 +20,7 @@ router = APIRouter()
 async def upload_file(file: UploadFile = File(...)):
     """Carga un archivo Excel o CSV"""
     try:
-        result = file_controller.upload_file(file)
+        result = await file_controller.upload_file(file)
         return FileUploadResponse(
             message="Archivo cargado exitosamente",
             file_id=result["file_id"],
@@ -64,11 +64,16 @@ def delete_file(file_id: str):
         raise HTTPException(status_code=404, detail=str(e))
 
 @router.post("/cross")
-def cross_files(request: CrossPreviewRequest): 
+def cross_files(request: FileCrossRequest):
     """Realiza cruce entre dos archivos"""
     try:
+        print(f"📥 Request recibido correctamente:")
+        print(f"   - cross_type: {request.cross_type}")
+        print(f"   - columns_to_include: {request.columns_to_include}")
+        
         return cross_controller.perform_cross(request)
     except Exception as e:
+        print(f"❌ Error en endpoint: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/cross/columns/{file_id}")
@@ -78,38 +83,7 @@ def get_columns_for_cross(file_id: str, sheet_name: str = None):
         return cross_controller.get_file_columns_for_cross(file_id, sheet_name)
     except Exception as e:
         raise HTTPException(status_code=404, detail=str(e))
-    
-@router.post("/cross/preview")
-def preview_cross_operation(request: CrossPreviewRequest):
-    """Previsualiza el resultado del cruce con una muestra"""
-    try:
-        logger.info(f"🔄 Preview request recibido: {request}")
-        
-        # ✅ Log detallado de los datos recibidos
-        logger.info(f"📁 file1_key: {request.file1_key}")
-        logger.info(f"📁 file2_key: {request.file2_key}")
-        logger.info(f"🔑 key_column_file1: {request.key_column_file1}")
-        logger.info(f"🔑 key_column_file2: {request.key_column_file2}")
-        logger.info(f"🔀 cross_type: {request.cross_type}")
-        
-        result = cross_controller.preview_cross(request, request.limit or 50)
-        
-        logger.info(f"✅ Preview exitoso: {len(result.get('sample_data', []))} filas")
-        return result
-        
-    except Exception as e:
-        # ✅ LOG DETALLADO DEL ERROR
-        logger.error(f"❌ Error en preview_cross_operation:")
-        logger.error(f"❌ Tipo de error: {type(e).__name__}")
-        logger.error(f"❌ Mensaje: {str(e)}")
-        logger.error(f"❌ Traceback completo:")
-        logger.error(traceback.format_exc())
-        
-        # Re-raise con más contexto
-        raise HTTPException(
-            status_code=400, 
-            detail=f"Error en preview: {str(e)}"
-        )
+
 
 @router.post("/ai")
 def ask_ai(request: AIRequest):
@@ -188,18 +162,6 @@ def delete_rows_by_filter(request: DeleteRowsByFilterRequest):
             rows_deleted=result["rows_deleted"],
             remaining_rows=result["remaining_rows"]
         )
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-@router.post("/rows/preview-delete")
-def preview_delete(
-    file_id: str,
-    filters: List[FilterCondition],
-    sheet_name: Optional[str] = None
-):
-    """Previsualiza qué filas serían eliminadas por los filtros"""
-    try:
-        return file_controller.preview_delete_operation(file_id, filters, sheet_name)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
