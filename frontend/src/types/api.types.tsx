@@ -44,7 +44,7 @@ export interface FileData {
   total_rows: number;
 }
 
-export type TabKey = 'welcome' | 'upload' | 'transform' | 'chat' | 'export' | 'cross';
+export type TabKey = 'welcome' | 'upload' | 'transform' | 'chat' | 'export' | 'cross' | 'technical_note';
 
 export interface TabProps {
   fileData?: FileData | null;  // ← Cambiar undefined por null

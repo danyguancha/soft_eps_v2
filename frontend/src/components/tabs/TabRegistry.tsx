@@ -1,6 +1,5 @@
 // src/components/tabs/TabRegistry.tsx
-import React from 'react';
-import {  UploadOutlined, MessageOutlined, DownloadOutlined, SwapOutlined, HomeOutlined } from '@ant-design/icons';
+import {  UploadOutlined, MessageOutlined, DownloadOutlined, SwapOutlined, HomeOutlined, FileTextOutlined } from '@ant-design/icons';
 import type { TabConfig } from '../../types/api.types';
 
 // Importar tabs
@@ -11,8 +10,7 @@ import { ChatTab } from './chartTab/ChatTab';
 import { CrossTab } from './crossTab/CrossTab';
 import { TransformOutlined } from '@mui/icons-material';
 import { WelcomeTab } from './welcomeTab/WelcomeTab';
-
-// ✅ Registro de tabs - FÁCIL AGREGAR NUEVOS SIN MODIFICAR CÓDIGO EXISTENTE
+import TechnicalNoteViewer from '../technical_note/TechnicalNoteViewer'
 export const TAB_REGISTRY: Record<string, TabConfig> = {
    welcome: {  // ✅ Nuevo tab de bienvenida
     key: 'welcome',
@@ -54,6 +52,13 @@ export const TAB_REGISTRY: Record<string, TabConfig> = {
     label: 'Cruce',
     icon: <SwapOutlined />,
     component: CrossTab,
+    requiresFile: false,
+  },
+  technical_note: {
+    key: 'technical_note',
+    label: 'Nota técnica',
+    icon: <FileTextOutlined />,
+    component: TechnicalNoteViewer,
     requiresFile: false,
   },
 };

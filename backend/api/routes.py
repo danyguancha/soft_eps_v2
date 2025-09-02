@@ -12,6 +12,7 @@ from models.schemas import (
     AIRequest, FilterCondition
 )
 from controllers import file_controller, cross_controller, ai_controller
+from services.cross_service import CrossService
 from services.export_service import ExportService
 
 router = APIRouter()
@@ -222,4 +223,26 @@ def list_exported_files():
         
         return {"files": files, "total": len(files)}
     except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    
+
+cross_handler_instance = CrossService()
+@router.post("/cross-download")
+def cross_files_download(request: FileCrossRequest):
+    """Realiza cruce y descarga resultado como CSV (para archivos grandes)"""
+    try:
+        print(f"📥 Request de cruce con descarga:")
+        print(f"   - cross_type: {request.cross_type}")
+        print(f"   - Archivos grandes detectados, usando streaming")
+        
+        # Usar el CrossHandler existente para validación y carga
+        result = cross_handler_instance.perform_cross_for_streaming(request)
+        
+        if not result["success"]:
+            raise HTTPException(status_code=400, detail=result.get("error", "Error en cruce"))
+        
+        return result["streaming_response"]
+        
+    except Exception as e:
+        print(f"❌ Error en cruce con descarga: {e}")
         raise HTTPException(status_code=400, detail=str(e))

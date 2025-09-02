@@ -3,6 +3,7 @@ import { Menu } from 'antd';
 import {
   FormOutlined,
   RobotOutlined,
+  FileTextOutlined
 } from '@ant-design/icons';
 
 type LayoutMode = 'inline' | 'vertical';
@@ -33,6 +34,12 @@ export const NavigationMenu: React.FC<Props> = ({
         key: 'chat',
         icon: <RobotOutlined />,
         label: isMobile ? 'IA' : 'Asistente IA',
+       
+      },
+      {
+        key: 'technical_note',
+        icon: <FileTextOutlined />,
+        label: isMobile ? 'Technical_note' : 'Nota técnica',
        
       },
     ],

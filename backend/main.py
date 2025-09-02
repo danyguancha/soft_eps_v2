@@ -10,6 +10,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from contextlib import asynccontextmanager
 
 from api.routes import router
+from api.technical_note_routes import router as technical_note_router
 from middleware.content_size_limit import ContentSizeLimitMiddleware
 
 
@@ -144,6 +145,7 @@ if os.path.exists(Config.EXPORTS_DIR):
 
 # Incluir rutas de la API
 app.include_router(router, prefix="/api/v1", tags=["API"])
+app.include_router(technical_note_router, prefix="/api/v1/technical-note", tags=["Technical Note"])
 
 
 # Manejador global de errores para archivos grandes
@@ -210,7 +212,7 @@ if __name__ == "__main__":
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=8001,
+        port=8000,
         reload=True,
         reload_dirs=[".", "api", "controllers", "services"],
         log_level="info",
