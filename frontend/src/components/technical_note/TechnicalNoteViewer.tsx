@@ -1,18 +1,20 @@
-// components/technical-note/TechnicalNoteViewer.tsx
+// components/technical-note/TechnicalNoteViewer.tsx 
 import React from 'react';
-import { Card, Typography, Row, Col, Spin, Alert, Space, Tooltip, Progress } from 'antd';
+import { Card, Typography, Row, Col, Spin, Alert, Space, Tooltip, Progress, Button } from 'antd';
 import { 
-  UserOutlined, 
-  TeamOutlined, 
-  UsergroupAddOutlined,
-  UserAddOutlined,
-  UserSwitchOutlined,
-  UserDeleteOutlined,
-  FileTextOutlined,
-  ClockCircleOutlined
+  ClockCircleOutlined,
+  ReloadOutlined,
 } from '@ant-design/icons';
 import { useTechnicalNote } from '../../hooks/useTechnicalNote';
 import { DataTable } from '../dataTable/DataTable';
+
+
+import primInfanciaIcon from '../../assets/icons/prim-inf.png';
+import infanciaIcon from '../../assets/icons/infancia.png';
+import adolescenciaIcon from '../../assets/icons/adolescencia.png';
+import juventudIcon from '../../assets/icons/juventud.png';
+import adultezIcon from '../../assets/icons/adulto.png';
+import vejezIcon from '../../assets/icons/vejez.png';
 
 const { Title, Text } = Typography;
 
@@ -29,26 +31,25 @@ const TechnicalNoteViewer: React.FC = () => {
   const {
     // Estados básicos
     availableFiles,
-    currentFileData,
     currentFileMetadata,
     loading,
     loadingFiles,
-    loadingMetadata,
     selectedFile,
     
-    // ✅ Estados para DataTable
+    // Estados para DataTable
     filteredData,
     pagination,
     
-    // ✅ Estados de paginación del servidor
+    // Estados de paginación del servidor
     currentPage,
     totalPages,
     
     // Acciones
     loadFileData,
+    loadAvailableFiles,
     getFileByDisplayName,
     
-    // ✅ Handlers para DataTable
+    // Handlers para DataTable
     handlePaginationChange,
     handleFiltersChange,
     handleSortChange,
@@ -58,15 +59,26 @@ const TechnicalNoteViewer: React.FC = () => {
     // Helpers
     hasData,
     columns,
-    currentPageInfo
+    currentPageInfo,
   } = useTechnicalNote();
 
-  // Configuración de grupos etarios con iconos
+  // ✅ Configuración de grupos etarios con iconos PNG
   const ageGroups: AgeGroupIcon[] = [
     {
       key: 'primera-infancia',
       displayName: 'Primera Infancia',
-      icon: <UserOutlined style={{ fontSize: '24px' }} />,
+      icon: (
+        <img 
+          src={primInfanciaIcon} 
+          alt="Primera Infancia" 
+          style={{ 
+            width: '32px', 
+            height: '32px', 
+            objectFit: 'contain',
+            filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))'
+          }} 
+        />
+      ),
       color: '#ff7a45',
       description: 'Datos de primera infancia (0-5 años)',
       filename: 'PrimeraInfanciaNueva.csv'
@@ -74,7 +86,18 @@ const TechnicalNoteViewer: React.FC = () => {
     {
       key: 'infancia',
       displayName: 'Infancia',
-      icon: <TeamOutlined style={{ fontSize: '24px' }} />,
+      icon: (
+        <img 
+          src={infanciaIcon} 
+          alt="Infancia" 
+          style={{ 
+            width: '32px', 
+            height: '32px', 
+            objectFit: 'contain',
+            filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))'
+          }} 
+        />
+      ),
       color: '#40a9ff',
       description: 'Datos de población infantil (6-11 años)',
       filename: 'InfanciaNueva.csv'
@@ -82,7 +105,18 @@ const TechnicalNoteViewer: React.FC = () => {
     {
       key: 'adolescencia',
       displayName: 'Adolescencia',
-      icon: <UsergroupAddOutlined style={{ fontSize: '24px' }} />,
+      icon: (
+        <img 
+          src={adolescenciaIcon} 
+          alt="Adolescencia" 
+          style={{ 
+            width: '32px', 
+            height: '32px', 
+            objectFit: 'contain',
+            filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))'
+          }} 
+        />
+      ),
       color: '#73d13d',
       description: 'Datos de población adolescente (12-17 años)',
       filename: 'AdolescenciaNueva.csv'
@@ -90,7 +124,18 @@ const TechnicalNoteViewer: React.FC = () => {
     {
       key: 'juventud',
       displayName: 'Juventud',
-      icon: <UserAddOutlined style={{ fontSize: '24px' }} />,
+      icon: (
+        <img 
+          src={juventudIcon} 
+          alt="Juventud" 
+          style={{ 
+            width: '32px', 
+            height: '32px', 
+            objectFit: 'contain',
+            filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))'
+          }} 
+        />
+      ),
       color: '#ffc53d',
       description: 'Datos de población joven (18-28 años)',
       filename: 'JuventudNueva.csv'
@@ -98,7 +143,18 @@ const TechnicalNoteViewer: React.FC = () => {
     {
       key: 'adulto',
       displayName: 'Adultez',
-      icon: <UserSwitchOutlined style={{ fontSize: '24px' }} />,
+      icon: (
+        <img 
+          src={adultezIcon} 
+          alt="Adultez" 
+          style={{ 
+            width: '32px', 
+            height: '32px', 
+            objectFit: 'contain',
+            filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))'
+          }} 
+        />
+      ),
       color: '#9254de',
       description: 'Datos de población adulta (29-59 años)',
       filename: 'AdultezNueva.csv'
@@ -106,7 +162,18 @@ const TechnicalNoteViewer: React.FC = () => {
     {
       key: 'vejez',
       displayName: 'Vejez',
-      icon: <UserDeleteOutlined style={{ fontSize: '24px' }} />,
+      icon: (
+        <img 
+          src={vejezIcon} 
+          alt="Vejez" 
+          style={{ 
+            width: '32px', 
+            height: '32px', 
+            objectFit: 'contain',
+            filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))'
+          }} 
+        />
+      ),
       color: '#f759ab',
       description: 'Datos de población adulto mayor (60+ años)',
       filename: 'VejezNueva.csv'
@@ -118,16 +185,11 @@ const TechnicalNoteViewer: React.FC = () => {
       const fileInfo = getFileByDisplayName(ageGroup.displayName);
       const filename = fileInfo?.filename || ageGroup.filename;
       
+      console.log(`🔍 Cargando archivo: ${filename} para ${ageGroup.displayName}`);
       await loadFileData(filename);
     } else {
       console.warn(`No filename configured for ${ageGroup.displayName}`);
     }
-  };
-
-  // ✅ Crear objeto de paginación extendido (sin showTotal en la interfaz)
-  const extendedPagination = {
-    ...pagination,
-    // Remover showTotal de aquí ya que no está en la interfaz DataTableProps
   };
 
   return (
@@ -136,15 +198,24 @@ const TechnicalNoteViewer: React.FC = () => {
       <Row justify="space-between" align="middle" style={{ marginBottom: 24 }}>
         <Col>
           <Title level={3} style={{ margin: 0 }}>
-            Nota Técnica de Indicadores de Salud
+            Nota Técnica
           </Title>
           <Text type="secondary">
-            Selecciona un grupo etario para ver sus indicadores
+            Selecciona un grupo etario
           </Text>
+        </Col>
+        <Col>
+          <Button 
+            icon={<ReloadOutlined />} 
+            onClick={loadAvailableFiles}
+            loading={loadingFiles}
+          >
+            Actualizar
+          </Button>
         </Col>
       </Row>
 
-      {/* ✅ Indicador de progreso para carga inicial */}
+      {/* Indicador de progreso para carga inicial */}
       {loadingFiles && (
         <Card style={{ marginBottom: 16 }}>
           <Row align="middle">
@@ -160,7 +231,7 @@ const TechnicalNoteViewer: React.FC = () => {
         </Card>
       )}
 
-      {/* Iconos de Grupos Etarios */}
+      {/* ✅ Iconos de Grupos Etarios con imágenes PNG */}
       <Card 
         title="Grupos Etarios" 
         size="small" 
@@ -169,7 +240,7 @@ const TechnicalNoteViewer: React.FC = () => {
       >
         <Row gutter={[16, 16]} justify="center">
           {ageGroups.map((group) => {
-            const isSelected = selectedFile && (selectedFile.includes(group.key) || getFileByDisplayName(group.displayName)?.filename === selectedFile);
+            const isSelected = selectedFile && getFileByDisplayName(group.displayName)?.filename === selectedFile;
             const isAvailable = availableFiles.some(f => f.display_name === group.displayName);
             
             return (
@@ -180,39 +251,80 @@ const TechnicalNoteViewer: React.FC = () => {
                       textAlign: 'center',
                       cursor: isAvailable ? 'pointer' : 'not-allowed',
                       padding: '16px 8px',
-                      borderRadius: '8px',
+                      borderRadius: '12px',
                       border: `2px solid ${isSelected ? group.color : '#f0f0f0'}`,
                       backgroundColor: isSelected ? `${group.color}15` : isAvailable ? '#fafafa' : '#f5f5f5',
-                      transition: 'all 0.3s ease',
-                      opacity: isAvailable ? 1 : 0.6
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                      opacity: isAvailable ? 1 : 0.6,
+                      boxShadow: isSelected 
+                        ? `0 4px 12px ${group.color}40` 
+                        : '0 2px 8px rgba(0,0,0,0.06)',
+                      transform: isSelected ? 'translateY(-1px)' : 'translateY(0)'
                     }}
                     onClick={() => isAvailable && handleAgeGroupClick(group)}
                     onMouseEnter={(e) => {
-                      if (isAvailable) {
-                        e.currentTarget.style.backgroundColor = `${group.color}25`;
-                        e.currentTarget.style.transform = 'translateY(-2px)';
+                      if (isAvailable && !isSelected) {
+                        e.currentTarget.style.backgroundColor = `${group.color}10`;
+                        e.currentTarget.style.transform = 'translateY(-3px)';
+                        e.currentTarget.style.boxShadow = `0 6px 16px ${group.color}30`;
                       }
                     }}
                     onMouseLeave={(e) => {
-                      if (isAvailable) {
-                        e.currentTarget.style.backgroundColor = isSelected ? `${group.color}15` : '#fafafa';
+                      if (isAvailable && !isSelected) {
+                        e.currentTarget.style.backgroundColor = '#fafafa';
                         e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)';
                       }
                     }}
                   >
-                    <div style={{ color: isAvailable ? group.color : '#bfbfbf', marginBottom: 8 }}>
+                    {/* ✅ Container para el icono PNG con efectos mejorados */}
+                    <div 
+                      style={{ 
+                        marginBottom: 12,
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        height: '40px',
+                        opacity: isAvailable ? 1 : 0.5,
+                        filter: !isAvailable ? 'grayscale(100%)' : 'none'
+                      }}
+                    >
                       {group.icon}
                     </div>
+                    
+                    {/* Nombre del grupo */}
                     <div style={{ 
-                      fontSize: '12px', 
-                      fontWeight: isSelected ? 'bold' : 'normal',
-                      color: isAvailable ? '#262626' : '#bfbfbf'
+                      fontSize: '13px', 
+                      fontWeight: isSelected ? 600 : 500,
+                      color: isAvailable ? '#262626' : '#bfbfbf',
+                      lineHeight: 1.3
                     }}>
                       {group.displayName}
                     </div>
+                    
+                    {/* Indicador de estado */}
                     {!isAvailable && (
-                      <div style={{ fontSize: '10px', color: '#ff4d4f', marginTop: 4 }}>
+                      <div style={{ 
+                        fontSize: '10px', 
+                        color: '#ff4d4f', 
+                        marginTop: 6,
+                        fontWeight: 500 
+                      }}>
                         No disponible
+                      </div>
+                    )}
+                    
+                    {/* Indicador de selección */}
+                    {isSelected && (
+                      <div style={{ 
+                        fontSize: '10px', 
+                        color: group.color, 
+                        marginTop: 4,
+                        fontWeight: 600,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px'
+                      }}>
+                        ● Activo
                       </div>
                     )}
                   </div>
@@ -223,42 +335,13 @@ const TechnicalNoteViewer: React.FC = () => {
         </Row>
       </Card>
 
-      {/* ✅ Información del archivo seleccionado con metadatos */}
-      {(currentFileData || currentFileMetadata) && (
-        <Card 
-          size="small" 
-          style={{ marginBottom: 16 }}
-          bodyStyle={{ padding: '12px 16px' }}
-        >
-          <Row justify="space-between" align="middle">
-            <Col flex="auto">
-              <Space>
-                <FileTextOutlined style={{ color: '#1890ff' }} />
-                <Text strong>
-                  {currentFileData?.display_name || currentFileMetadata?.display_name}
-                </Text>
-                <Text type="secondary">
-                  ({currentFileData?.filename || currentFileMetadata?.filename})
-                </Text>
-                {loadingMetadata && (
-                  <Spin size="small" />
-                )}
-              </Space>
-            </Col>
-          </Row>
-        </Card>
-      )}
-
-      {/* ✅ Indicador de progreso para carga de datos */}
+      {/* Indicador de progreso para carga de datos */}
       {loading && currentFileMetadata && (
         <Card style={{ marginBottom: 16 }}>
           <Row align="middle">
             <Col span={24}>
               <Space direction="vertical" style={{ width: '100%' }}>
-                <Text>
-                  <ClockCircleOutlined spin /> Cargando {currentFileMetadata.display_name} - 
-                  Página {currentPage} de {totalPages || '...'}
-                </Text>
+               
                 {totalPages > 0 && (
                   <Progress 
                     percent={Math.round((currentPage / totalPages) * 100)} 
@@ -272,7 +355,7 @@ const TechnicalNoteViewer: React.FC = () => {
         </Card>
       )}
 
-      {/* ✅ DATATABLE con paginación del servidor */}
+      {/* Contenido principal */}
       {loading ? (
         <Card>
           <div style={{ textAlign: 'center', padding: '60px 0' }}>
@@ -288,12 +371,13 @@ const TechnicalNoteViewer: React.FC = () => {
           </div>
         </Card>
       ) : hasData ? (
-        <div>          
+        <div>
           <DataTable
             data={filteredData}
             columns={columns}
+            filename={selectedFile ?? undefined}
             loading={loading}
-            pagination={extendedPagination}
+            pagination={pagination}
             onPaginationChange={handlePaginationChange}
             onFiltersChange={handleFiltersChange}
             onSortChange={handleSortChange}
@@ -304,13 +388,6 @@ const TechnicalNoteViewer: React.FC = () => {
       ) : (
         <Card>
           <div style={{ textAlign: 'center', padding: '60px 0' }}>
-            <div style={{ fontSize: '48px', color: '#bfbfbf', marginBottom: 16 }}>
-              📊
-            </div>
-            <Text type="secondary">
-              Selecciona un grupo etario para ver sus indicadores
-            </Text>
-            
             {availableFiles.length === 0 && !loadingFiles && (
               <div style={{ marginTop: 16 }}>
                 <Alert 
@@ -321,7 +398,6 @@ const TechnicalNoteViewer: React.FC = () => {
                 />
               </div>
             )}
-           
           </div>
         </Card>
       )}

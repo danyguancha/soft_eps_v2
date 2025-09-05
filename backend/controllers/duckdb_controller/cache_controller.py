@@ -1,0 +1,266 @@
+import os
+import json
+import hashlib
+from datetime import datetime
+from typing import Dict, Any, Optional
+
+class CacheController:
+    """Controlador para manejo inteligente de cache"""
+    
+    def __init__(self, parquet_dir: str, metadata_dir: str):
+        self.parquet_dir = parquet_dir
+        self.metadata_dir = metadata_dir
+        self.file_cache: Dict[str, Dict[str, Any]] = {}
+        self._load_cache_metadata()
+
+    def calculate_file_hash(self, file_path: str) -> str:
+        """Calcula hash SHA-256 del archivo para identificación única"""
+        hash_sha256 = hashlib.sha256()
+        
+        try:
+            with open(file_path, "rb") as f:
+                for chunk in iter(lambda: f.read(4096), b""):
+                    hash_sha256.update(chunk)
+            
+            file_hash = hash_sha256.hexdigest()[:16]
+            print(f"🔑 Hash calculado: {file_hash} para {os.path.basename(file_path)}")
+            return file_hash
+            
+        except Exception as e:
+            print(f"❌ Error calculando hash: {e}")
+            # Fallback: usar timestamp + tamaño de archivo
+            stat = os.stat(file_path)
+            fallback_hash = hashlib.sha256(
+                f"{stat.st_size}_{stat.st_mtime}_{os.path.basename(file_path)}".encode()
+            ).hexdigest()[:16]
+            
+            print(f"🔄 Usando hash fallback: {fallback_hash}")
+            return fallback_hash
+
+    def get_cache_metadata_path(self, file_hash: str) -> str:
+        """Obtiene path del archivo de metadata del cache"""
+        return os.path.join(self.metadata_dir, f"{file_hash}_metadata.json")
+
+    def get_cached_parquet_path(self, file_hash: str) -> str:
+        """Obtiene path del archivo Parquet cacheado"""
+        return os.path.join(self.parquet_dir, f"{file_hash}.parquet")
+
+    def save_cache_metadata(self, file_hash: str, metadata: Dict[str, Any]):
+        """Guarda metadata del archivo cacheado"""
+        metadata_path = self.get_cache_metadata_path(file_hash)
+        
+        try:
+            # Limpiar columns antes de guardar
+            if "columns" in metadata and isinstance(metadata["columns"], list):
+                metadata["columns"] = [str(col) if col is not None else f'col_{i}' 
+                                     for i, col in enumerate(metadata["columns"])]
+                print(f"🧹 Columns limpiadas en cache: {len(metadata['columns'])} elementos")
+            
+            # Agregar información de cache
+            cache_info = {
+                **metadata,
+                "cached_at": datetime.now().isoformat(),
+                "last_accessed": datetime.now().isoformat(),
+                "access_count": 1,
+                "file_hash": file_hash
+            }
+            
+            with open(metadata_path, 'w', encoding='utf-8') as f:
+                json.dump(cache_info, f, indent=2)
+            
+            # Actualizar cache en memoria
+            self.file_cache[file_hash] = cache_info
+            print(f"💾 Metadata guardado con columns limpias: {file_hash}")
+            
+        except Exception as e:
+            print(f"❌ Error guardando metadata: {e}")
+
+    def _load_cache_metadata(self):
+        """Carga metadata de archivos cacheados al iniciar"""
+        if not os.path.exists(self.metadata_dir):
+            return
+        
+        cached_count = 0
+        
+        for metadata_file in os.listdir(self.metadata_dir):
+            if not metadata_file.endswith('_metadata.json'):
+                continue
+                
+            try:
+                metadata_path = os.path.join(self.metadata_dir, metadata_file)
+                
+                with open(metadata_path, 'r', encoding='utf-8') as f:
+                    metadata = json.load(f)
+                
+                file_hash = metadata.get('file_hash')
+                if file_hash:
+                    self.file_cache[file_hash] = metadata
+                    cached_count += 1
+                    
+            except Exception as e:
+                print(f"⚠️ Error cargando metadata {metadata_file}: {e}")
+        
+        if cached_count > 0:
+            print(f"📚 Cargados {cached_count} archivos en cache")
+
+    def update_cache_access(self, file_hash: str):
+        """Actualiza estadísticas de acceso al cache"""
+        if file_hash in self.file_cache:
+            self.file_cache[file_hash]["last_accessed"] = datetime.now().isoformat()
+            self.file_cache[file_hash]["access_count"] = self.file_cache[file_hash].get("access_count", 0) + 1
+            
+            # Guardar metadata actualizado
+            metadata_path = self.get_cache_metadata_path(file_hash)
+            try:
+                with open(metadata_path, 'w', encoding='utf-8') as f:
+                    json.dump(self.file_cache[file_hash], f, indent=2)
+            except Exception as e:
+                print(f"⚠️ Error actualizando estadísticas de acceso: {e}")
+
+    def is_file_cached(self, file_path: str) -> tuple[bool, Optional[str], Optional[Dict[str, Any]]]:
+        """Verifica si el archivo ya está en cache con validación"""
+        
+        # Calcular hash del archivo actual
+        file_hash = self.calculate_file_hash(file_path)
+        
+        # Verificar si existe en memoria
+        if file_hash not in self.file_cache:
+            return False, file_hash, None
+        
+        # Verificar si el archivo Parquet físicamente existe
+        parquet_path = self.get_cached_parquet_path(file_hash)
+        
+        if not os.path.exists(parquet_path):
+            print(f"⚠️ Cache inconsistente: metadata existe pero no el Parquet para {file_hash}")
+            self._cleanup_inconsistent_cache(file_hash)
+            return False, file_hash, None
+        
+        print(f"🎯 CACHE HIT: Archivo encontrado y validado en cache ({file_hash})")
+        return True, file_hash, self.file_cache[file_hash]
+
+    def _cleanup_inconsistent_cache(self, file_hash: str):
+        """Limpia cache inconsistente"""
+        try:
+            # Remover de memoria
+            if file_hash in self.file_cache:
+                del self.file_cache[file_hash]
+            
+            # Remover archivos físicos
+            parquet_path = self.get_cached_parquet_path(file_hash)
+            metadata_path = self.get_cache_metadata_path(file_hash)
+            
+            for path in [parquet_path, metadata_path]:
+                if os.path.exists(path):
+                    os.remove(path)
+                    print(f"🗑️ Removido archivo inconsistente: {os.path.basename(path)}")
+                    
+        except Exception as e:
+            print(f"❌ Error limpiando cache inconsistente: {e}")
+
+    def get_cache_stats(self) -> Dict[str, Any]:
+        """Obtiene estadísticas del cache"""
+        if not self.file_cache:
+            return {
+                "total_cached_files": 0,
+                "total_cache_size_mb": 0,
+                "cache_hit_potential": "N/A"
+            }
+        
+        total_files = len(self.file_cache)
+        total_size = 0
+        total_accesses = 0
+        files_with_multiple_access = 0
+        
+        for file_hash, metadata in self.file_cache.items():
+            parquet_path = self.get_cached_parquet_path(file_hash)
+            if os.path.exists(parquet_path):
+                total_size += os.path.getsize(parquet_path)
+            
+            access_count = metadata.get("access_count", 0)
+            total_accesses += access_count
+            
+            if access_count > 1:
+                files_with_multiple_access += 1
+        
+        cache_efficiency = (files_with_multiple_access / total_files * 100) if total_files > 0 else 0
+        
+        return {
+            "total_cached_files": total_files,
+            "total_cache_size_mb": round(total_size / 1024 / 1024, 2),
+            "files_with_multiple_access": files_with_multiple_access,
+            "cache_efficiency_percent": round(cache_efficiency, 1),
+            "total_accesses": total_accesses,
+            "average_accesses_per_file": round(total_accesses / total_files, 1) if total_files > 0 else 0
+        }
+
+    def cleanup_old_cache(self, days_old: int = 30, min_access_count: int = 1):
+        """Limpieza inteligente del cache"""
+        import time
+        cutoff_time = time.time() - (days_old * 24 * 60 * 60)
+        cleaned_files = 0
+        total_size_cleaned = 0
+        
+        files_to_remove = []
+        
+        for file_hash, metadata in self.file_cache.items():
+            cached_at = metadata.get("cached_at")
+            access_count = metadata.get("access_count", 0)
+            
+            should_remove = False
+            reason = ""
+            
+            try:
+                if cached_at:
+                    cached_timestamp = datetime.fromisoformat(cached_at).timestamp()
+                    if cached_timestamp < cutoff_time and access_count <= min_access_count:
+                        should_remove = True
+                        reason = f"antiguo ({days_old}+ días) y poco usado ({access_count} accesos)"
+                
+                # Verificar si los archivos físicos existen
+                parquet_path = self.get_cached_parquet_path(file_hash)
+                if not os.path.exists(parquet_path):
+                    should_remove = True
+                    reason = "archivo Parquet faltante"
+                
+                if should_remove:
+                    files_to_remove.append((file_hash, reason))
+                    
+            except Exception as e:
+                print(f"⚠️ Error evaluando {file_hash} para limpieza: {e}")
+                files_to_remove.append((file_hash, "error de evaluación"))
+        
+        # Remover archivos identificados
+        for file_hash, reason in files_to_remove:
+            try:
+                parquet_path = self.get_cached_parquet_path(file_hash)
+                metadata_path = self.get_cache_metadata_path(file_hash)
+                
+                # Calcular tamaño antes de remover
+                if os.path.exists(parquet_path):
+                    total_size_cleaned += os.path.getsize(parquet_path)
+                
+                # Remover archivos físicos
+                for path in [parquet_path, metadata_path]:
+                    if os.path.exists(path):
+                        os.remove(path)
+                
+                # Remover de memoria
+                if file_hash in self.file_cache:
+                    original_name = self.file_cache[file_hash].get("original_name", file_hash[:8])
+                    del self.file_cache[file_hash]
+                    print(f"🗑️ Removido del cache: {original_name} ({reason})")
+                    cleaned_files += 1
+                
+            except Exception as e:
+                print(f"❌ Error removiendo {file_hash}: {e}")
+        
+        print(f"🧹 Limpieza de cache completada:")
+        print(f"   📊 Archivos removidos: {cleaned_files}")
+        print(f"   💾 Espacio liberado: {total_size_cleaned/1024/1024:.1f}MB")
+        print(f"   📈 Archivos restantes en cache: {len(self.file_cache)}")
+        
+        return {
+            "cleaned_files": cleaned_files,
+            "size_cleaned_mb": round(total_size_cleaned/1024/1024, 1),
+            "remaining_files": len(self.file_cache)
+        }

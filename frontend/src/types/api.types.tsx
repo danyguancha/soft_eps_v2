@@ -17,7 +17,7 @@ export interface FilterCondition {
   column: string;
   operator: 'equals' | 'contains' | 'starts_with' | 'ends_with' | 'gt' | 'lt' | 'gte' | 'lte' | 'in' | 'not_in' | 'is_null' | 'is_not_null';
   value?: any;
-  values?: any[];
+  values?: string[];
 }
 
 export interface SortCondition {

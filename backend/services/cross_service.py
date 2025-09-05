@@ -125,8 +125,6 @@ class CrossService:
             lookup_dict = df2_lookup.set_index(key2)[col].to_dict()
             result_df[col] = result_df[key1].map(lookup_dict)
         
-        print(f"✅ Cruce completado: {len(result_df):,} registros")
-        
         # ✅ GENERAR STREAMING RESPONSE
         def generate_csv():
             # Crear buffer en memoria

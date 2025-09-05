@@ -20,6 +20,39 @@ class FileUploadResponse(BaseModel):
     sheets: Optional[List[str]] = None
     total_rows: int
 
+    sheets: List[str] = []  # ✅ NUEVO: Lista de hojas
+    default_sheet: Optional[str] = None  # ✅ NUEVO: Hoja por defecto
+    total_rows: int
+    
+    # ✅ NUEVOS CAMPOS PARA EXCEL
+    is_excel: bool = False  
+    has_sheets: bool = False
+    sheet_count: int = 0
+    sheet_detection_time: Optional[float] = None
+    
+    # Campos adicionales opcionales
+    ultra_fast: bool = True
+    engine: str = "DuckDB"
+    file_size_mb: Optional[float] = None
+    processing_method: Optional[str] = None
+    from_cache: bool = False
+    
+    class Config:
+        schema_extra = {
+            "example": {
+                "message": "Archivo cargado exitosamente",
+                "file_id": "123e4567-e89b-12d3-a456-426614174000",
+                "columns": ["ID", "Nombre", "Email"],
+                "sheets": ["Hoja1", "Datos", "Resumen"],
+                "default_sheet": "Hoja1", 
+                "total_rows": 1500,
+                "is_excel": True,
+                "has_sheets": True,
+                "sheet_count": 3,
+                "sheet_detection_time": 0.125
+            }
+        }
+
 class FileCrossRequest(BaseModel):
     file1_key: str
     file2_key: str

@@ -1,6 +1,6 @@
-// services/TechnicalNoteService.ts - VERSIÓN CORREGIDA
+// services/TechnicalNoteService.tsx
 import api from '../Api';
-import type { FilterCondition } from '../types/api.types'; // ✅ USAR SOLO LA IMPORTADA
+import type { FilterCondition } from '../types/api.types';
 
 export interface TechnicalFileInfo {
   filename: string;
@@ -67,6 +67,16 @@ export interface TechnicalFileMetadata {
   recommended_page_size: number;
 }
 
+// ✅ NUEVA INTERFAZ PARA VALORES ÚNICOS ESTILO EXCEL
+export interface ColumnUniqueValues {
+  filename: string;
+  column_name: string;
+  unique_values: string[];
+  total_unique: number;
+  limited: boolean;
+  limit_applied: number;
+}
+
 export class TechnicalNoteService {
   
   static async getAvailableFiles(): Promise<TechnicalFileInfo[]> {
@@ -88,7 +98,7 @@ export class TechnicalNoteService {
     page: number = 1, 
     pageSize: number = 1000, 
     sheetName?: string,
-    filters?: FilterCondition[], // ✅ USAR LA INTERFAZ IMPORTADA
+    filters?: FilterCondition[],
     search?: string,
     sortBy?: string,
     sortOrder?: 'asc' | 'desc'
@@ -106,24 +116,54 @@ export class TechnicalNoteService {
         })
       });
       
-      console.log(`🌐 API Request con filtros: GET /technical-note/data/${filename}?${params}`);
+      console.log(`🌐 API Request con filtros estilo Excel: GET /technical-note/data/${filename}?${params}`);
       
       const response = await api.get(`/technical-note/data/${filename}?${params}`, {
         timeout: 45000
       });
       
-      console.log('✅ Respuesta con filtros del servidor:', {
+      console.log('✅ Respuesta con filtros estilo Excel:', {
         status: response.status,
         rowsInPage: response.data?.pagination?.rows_in_page,
         totalFiltered: response.data?.pagination?.total_rows,
         originalTotal: response.data?.pagination?.original_total,
-        filtered: response.data?.pagination?.filtered,
-        showing: response.data?.pagination?.showing
+        filtered: response.data?.pagination?.filtered
       });
       
       return response.data;
     } catch (error) {
-      console.error(`❌ Error con filtros del servidor:`, error);
+      console.error(`❌ Error con filtros estilo Excel:`, error);
+      throw error;
+    }
+  }
+
+  // ✅ NUEVO: Obtener valores únicos de una columna (estilo Excel)
+  static async getColumnUniqueValues(
+    filename: string,
+    columnName: string,
+    sheetName?: string,
+    limit: number = 1000
+  ): Promise<ColumnUniqueValues> {
+    try {
+      const params = new URLSearchParams({
+        ...(sheetName && { sheet_name: sheetName }),
+        limit: limit.toString()
+      });
+      
+      console.log(`🔍 Obteniendo valores únicos estilo Excel: ${filename} - ${columnName}`);
+      
+      const response = await api.get(
+        `/technical-note/unique-values/${filename}/${columnName}?${params}`, 
+        {
+          timeout: 15000
+        }
+      );
+      
+      console.log(`✅ Valores únicos estilo Excel obtenidos: ${response.data.total_unique} para ${columnName}`);
+      
+      return response.data;
+    } catch (error) {
+      console.error(`❌ Error obteniendo valores únicos de ${columnName}:`, error);
       throw error;
     }
   }
@@ -145,33 +185,27 @@ export class TechnicalNoteService {
     }
   }
 
-  static async searchFileData(
-    filename: string,
-    searchTerm: string,
-    page: number = 1,
-    pageSize: number = 1000,
-    sheetName?: string
-  ): Promise<TechnicalFileData> {
-    console.log(`🔍 Búsqueda del servidor: "${searchTerm}"`);
-    return this.getFileData(filename, page, pageSize, sheetName, undefined, searchTerm);
+  static async getFileColumns(filename: string): Promise<{
+    filename: string;
+    columns: string[];
+    total_columns: number;
+    display_name: string;
+  }> {
+    try {
+      console.log(`📋 Obteniendo columnas: ${filename}`);
+      
+      const response = await api.get(`/technical-note/columns/${filename}`, {
+        timeout: 10000
+      });
+      
+      return response.data;
+    } catch (error) {
+      console.error(`Error obteniendo columnas de ${filename}:`, error);
+      throw error;
+    }
   }
 
-  static async filterFileData(
-    filename: string,
-    filters: FilterCondition[], // ✅ USAR LA INTERFAZ IMPORTADA
-    page: number = 1,
-    pageSize: number = 1000,
-    sheetName?: string,
-    search?: string,
-    sortBy?: string,
-    sortOrder?: 'asc' | 'desc'
-  ): Promise<TechnicalFileData> {
-    console.log(`🔧 Filtrado del servidor:`, filters);
-    return this.getFileData(filename, page, pageSize, sheetName, filters, search, sortBy, sortOrder);
-  }
-
-  // ... resto de métodos igual ...
-
+  // Métodos de utilidad
   static formatFileSize(bytes: number): string {
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     if (bytes === 0) return '0 Bytes';
@@ -195,7 +229,6 @@ export class TechnicalNoteService {
   }
 }
 
-// ✅ EXPORTAR SOLO LOS HELPERS (SIN CONFLICTO)
 export const TechnicalNoteHelpers = {
   formatFileSize: TechnicalNoteService.formatFileSize,
   isLargeFile: TechnicalNoteService.isLargeFile,

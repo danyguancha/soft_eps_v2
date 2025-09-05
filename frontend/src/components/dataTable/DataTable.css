@@ -1,11 +1,9 @@
-
-
 /* Container principal */
 .data-table-container {
   border: 1px solid #e5e7eb;
   border-radius: 4px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  font-size: 12px;
+  font-size: 11px; 
   color: #374151;
   overflow: visible;
   width: 100%;
@@ -17,9 +15,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
+  padding: 6px 10px;
   border-bottom: 1px solid #e5e7eb;
-  min-height: 40px;
+  min-height: 36px;
   background: white;
 }
 
@@ -36,13 +34,35 @@
 
 /* Info de la tabla */
 .data-table-container .data-table-info {
-  padding: 6px 12px;
+  padding: 4px 10px;
   background: #f9fafb;
   border-bottom: 1px solid #e5e7eb;
   font-size: 11px;
   color: #6b7280;
 }
 
+/* ===== SOLUCIÓN 1: ELIMINAR FILAS EN BLANCO - CRÍTICO ===== */
+.data-table-container .data-table-wrapper .ant-table-placeholder {
+  display: none !important; /* Eliminar placeholder que causa filas en blanco */
+}
+
+.data-table-container .data-table-wrapper .ant-table-tbody::before {
+  display: none !important; /* Eliminar pseudo-elemento que causa espacios */
+}
+
+.data-table-container .data-table-wrapper .ant-table-thead::after {
+  display: none !important; /* Eliminar espacios después del header */
+}
+
+.data-table-container .data-table-wrapper .ant-table-thead::before {
+  display: none !important; /* Eliminar espacios antes del header */
+}
+
+.data-table-container .data-table-wrapper .ant-table-tbody::after {
+  display: none !important; /* Eliminar espacios después del body */
+}
+
+/* Wrapper principal de la tabla */
 .data-table-container .data-table-wrapper {
   overflow: visible !important;
   background: #ffffff;
@@ -51,112 +71,306 @@
   border-top: none;
 }
 
-
+/* Tabla base - COLAPSAR BORDES PARA ELIMINAR ESPACIOS */
 .data-table-container .data-table-wrapper .ant-table {
-  font-size: 10px !important;
+  font-size: 11px !important;
   background: #ffffff !important;
   table-layout: fixed !important; 
   width: 100% !important;
+  border-collapse: collapse !important; /* CRÍTICO: Colapsar bordes */
+  border-spacing: 0 !important; /* CRÍTICO: Sin espaciado */
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 .data-table-container .data-table-wrapper .ant-table-wrapper {
   overflow: visible !important;
   width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 .data-table-container .data-table-wrapper .ant-table-container {
   background: #ffffff !important;
   overflow: visible !important;
   width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 .data-table-container .data-table-wrapper .ant-table-content {
   background: #ffffff !important;
   overflow: visible !important;
   width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 /* ===== BODY CON SCROLL CONTROLADO ===== */
 .data-table-container .data-table-wrapper .ant-table-body {
   overflow-x: auto !important;
   overflow-y: auto !important;
-  max-height: 300px !important;
+  max-height: 280px !important;
   background: #ffffff !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border-spacing: 0 !important;
 }
 
-/* ===== HEADERS CON ALINEACIÓN PERFECTA ===== */
+/* ===== THEAD SIN ESPACIOS EXTRA ===== */
+.data-table-container .data-table-wrapper .ant-table-thead {
+  background: #018308ff !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border-spacing: 0 !important;
+  border-collapse: collapse !important;
+}
+
+.data-table-container .data-table-wrapper .ant-table-thead > tr {
+  margin: 0 !important;
+  padding: 0 !important;
+  height: 24px !important; /* ALTURA FIJA REDUCIDA */
+  border-spacing: 0 !important;
+}
+
+/* ===== HEADERS ULTRA COMPACTOS ===== */
 .data-table-container .data-table-wrapper .ant-table-thead > tr > th {
-  padding: 4px 8px !important;
-  font-size: 9px !important;
+  padding: 2px 4px !important; /* PADDING MUY REDUCIDO */
+  font-size: 11px !important;
   font-weight: 600 !important;
   border-bottom: 1px solid #e2e8f0 !important;
   border-right: 1px solid #e2e8f0 !important;
   text-align: left !important;
-  color: #475569 !important;
-  line-height: 1.2 !important;
-  height: 36px !important;
-  background: #ffffff !important;
-  position: sticky;
-  background: #018308ff !important;
   color: #ffffff !important;
+  line-height: 1.0 !important; /* LINE-HEIGHT ULTRA REDUCIDO */
+  height: 24px !important; /* ALTURA FIJA PEQUEÑA */
+  background: #018308ff !important;
+  position: sticky;
   top: 0;
   z-index: 10;
-
-  
-  /* ===== ALINEACIÓN CORRECTA ===== */
   vertical-align: middle !important;
   box-sizing: border-box !important;
   white-space: nowrap !important;
   overflow: hidden !important;
+  margin: 0 !important;
+  border-top: none !important;
+  min-height: 0 !important; /* ELIMINAR MIN-HEIGHT */
 }
 
-/* ===== CONTENIDO DEL HEADER - ICONOS ALINEADOS ===== */
-.data-table-container .data-table-wrapper .ant-table-thead > tr > th .ant-table-column-title {
+/* ===== SOLUCIÓN 2: CHECKBOXES ULTRA PEQUEÑOS ===== */
+.data-table-container .data-table-wrapper .ant-checkbox-wrapper {
+  transform: scale(2.5) !important; /* MUY REDUCIDO */
+  transform-origin: center !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 1 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.data-table-container .data-table-wrapper .ant-checkbox {
+  transform: scale(0.5) !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 1 !important;
+  vertical-align: middle !important;
+}
+
+.data-table-container .data-table-wrapper .ant-checkbox-inner {
+  width: 10px !important; /* TAMAÑO ULTRA PEQUEÑO */
+  height: 10px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.data-table-container .data-table-wrapper .ant-checkbox-input {
+  width: 10px !important;
+  height: 10px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.data-table-container .data-table-wrapper .ant-checkbox-checked .ant-checkbox-inner::after {
+  width: 3px !important; /* CHECK ULTRA PEQUEÑO */
+  height: 6px !important;
+  border-width: 1px !important;
+  transform: rotate(45deg) scale(0.6) translate(-50%, -50%) !important;
+}
+
+/* ===== CELDA DE CHECKBOX ULTRA COMPACTA ===== */
+.data-table-container .data-table-wrapper .ant-table-selection-column {
+  width: 25px !important; /* ANCHO FIJO ULTRA PEQUEÑO */
+  max-width: 25px !important;
+  min-width: 25px !important;
+  padding: 2px 4px !important;
+  text-align: center !important;
+  vertical-align: middle !important;
+  margin: 0 !important;
+}
+
+.data-table-container .data-table-wrapper .ant-table-tbody .ant-table-selection-column {
+  height: 18px !important; /* ALTURA FIJA ULTRA PEQUEÑA */
+  padding: 1px 2px !important;
+  margin: 0 !important;
+}
+
+/* ===== CONTENIDO DEL HEADER - PERFECTA ALINEACIÓN ===== */
+.data-table-container .header-content {
   display: flex !important;
   align-items: center !important;
   justify-content: space-between !important;
   width: 100% !important;
-  min-height: 24px !important;
+  height: 100% !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.data-table-container .header-text {
+  flex: 1 !important;
+  font-size: 9px !important;
+  font-weight: 600 !important;
+  line-height: 1.0 !important;
+  text-align: left !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  color: #ffffff !important;
+  margin: 0 !important;
   padding: 0 !important;
 }
 
-/* ===== CELDAS CON ALINEACIÓN PERFECTA ===== */
+.data-table-container .header-icons {
+  display: flex !important;
+  align-items: center !important;
+  gap: 1px !important;
+  margin-left: 2px !important;
+  flex-shrink: 0 !important;
+  padding: 0 !important;
+}
+
+.data-table-container .header-icon {
+  font-size: 8px !important;
+  color: #ffffff !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.data-table-container .filter-icon {
+  color: #ffeb3b !important; /* Amarillo para filtros activos */
+}
+
+.data-table-container .sort-icon {
+  color: #03dac6 !important; /* Cyan para ordenamiento */
+}
+
+/* ===== TBODY SIN ESPACIOS ===== */
+.data-table-container .data-table-wrapper .ant-table-tbody {
+  margin: 0 !important;
+  padding: 0 !important;
+  border-spacing: 0 !important;
+  border-collapse: collapse !important;
+}
+
+.data-table-container .data-table-wrapper .ant-table-tbody > tr {
+  margin: 0 !important;
+  padding: 0 !important;
+  height: 18px !important; /* ALTURA FIJA ULTRA PEQUEÑA */
+  border-spacing: 0 !important;
+  min-height: 0 !important; /* ELIMINAR MIN-HEIGHT */
+}
+
+/* ===== CELDAS DEL BODY ULTRA COMPACTAS ===== */
 .data-table-container .data-table-wrapper .ant-table-tbody > tr > td {
-  padding: 4px 8px !important;
-  font-size: 9px !important;
+  padding: 2px 4px !important; /* MISMO padding que headers */
+  font-size: 11px !important;
   border-bottom: 1px solid #f1f5f9 !important;
   border-right: 1px solid #f1f5f9 !important;
   color: #334155 !important;
-  line-height: 1.2 !important;
-  height: 28px !important;
+  line-height: 1.0 !important; 
+  height: 18px !important;
   vertical-align: middle !important;
   background: #ffffff !important;
-  
-  /* ===== ALINEACIÓN CORRECTA ===== */
   box-sizing: border-box !important;
   white-space: nowrap !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
+  margin: 0 !important;
+  border-top: none !important;
+  min-height: 0 !important; 
 }
 
-/* ===== CONTENIDO DE CELDAS ALINEADO ===== */
-.data-table-container .data-table-cell-content {
-  font-size: 9px !important;
-  line-height: 1.2 !important;
-  color: #334155;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  width: 100%;
-  display: block;
+
+.data-table-container .cell-content {
+  font-size: 10px !important; /*Configuración del tamaño de la letra*/
+  line-height: 1.5 !important; 
+  color: #334155 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  width: 100% !important;
+  display: block !important;
+  height: 100% !important;
+  padding: 0 !important;
+  margin: 0 !important;
 }
 
-/* ===== FORZAR ALINEACIÓN CORRECTA EN COLGROUP ===== */
-.data-table-container .data-table-wrapper .ant-table colgroup col {
-  /* Permitir que colgroup funcione correctamente con anchos fijos */
+/* ===== CLASE ESPECÍFICA PARA TABLA COMPACTA ===== */
+.data-table-container .compact-table {
+  border-spacing: 0 !important; /* ELIMINAR ESPACIADO ENTRE CELDAS */
+  border-collapse: collapse !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
-/* Celdas alternadas */
+.data-table-container .compact-table .ant-table-thead > tr > th,
+.data-table-container .compact-table .ant-table-tbody > tr > td {
+  padding: 2px 4px !important; /* FORZAR PADDING UNIFORME */
+  margin: 0 !important;
+  border-spacing: 0 !important;
+}
+
+.data-table-container .compact-table .ant-table-thead > tr > th {
+  height: 24px !important; /* ALTURA FIJA HEADERS */
+}
+
+.data-table-container .compact-table .ant-table-tbody > tr > td {
+  height: 18px !important; /* ALTURA FIJA CELDAS */
+}
+
+/* ===== ELIMINAR TODOS LOS ESPACIOS Y MÁRGENES EXTRA ===== */
+.data-table-container .data-table-wrapper .ant-table table {
+  margin: 0 !important;
+  padding: 0 !important;
+  border-spacing: 0 !important;
+  border-collapse: collapse !important;
+}
+
+.data-table-container .data-table-wrapper .ant-table-thead,
+.data-table-container .data-table-wrapper .ant-table-tbody,
+.data-table-container .data-table-wrapper .ant-table-tfoot {
+  margin: 0 !important;
+  padding: 0 !important;
+  border-spacing: 0 !important;
+}
+
+.data-table-container .data-table-wrapper .ant-table-thead > tr,
+.data-table-container .data-table-wrapper .ant-table-tbody > tr {
+  margin: 0 !important;
+  padding: 0 !important;
+  border-spacing: 0 !important;
+  min-height: 0 !important;
+}
+
+.data-table-container .data-table-wrapper .ant-table-thead > tr > th,
+.data-table-container .data-table-wrapper .ant-table-tbody > tr > td {
+  margin: 0 !important;
+  border-spacing: 0 !important;
+  min-height: 0 !important;
+}
+
+/* ===== ALTERNANCIA Y HOVER ===== */
 .data-table-container .data-table-wrapper .ant-table-tbody > tr:nth-child(even) > td {
   background-color: #f8fafc !important;
 }
@@ -172,16 +386,16 @@
   color: #1e40af !important;
 }
 
-/* Botones del toolbar */
+/* ===== BOTONES Y CONTROLES ===== */
 .data-table-container .data-table-actions .ant-btn {
-  padding: 4px 8px !important;
-  font-size: 11px !important;
+  padding: 3px 6px !important;
+  font-size: 10px !important;
   border: 1px solid #d1d5db !important;
   background: white !important;
   color: #374151 !important;
   border-radius: 3px !important;
   height: auto !important;
-  line-height: 1.2 !important;
+  line-height: 1.1 !important;
 }
 
 .data-table-container .data-table-actions .ant-btn:hover {
@@ -201,56 +415,65 @@
 
 /* Tags de estado */
 .data-table-container .data-table-status-tags .ant-tag {
-  padding: 2px 6px !important;
-  font-size: 10px !important;
-  border-radius: 3px !important;
+  padding: 1px 4px !important;
+  font-size: 9px !important;
+  border-radius: 2px !important;
   background: white !important;
   border: 1px solid #d1d5db !important;
   color: #374151 !important;
 }
 
-/* Checkbox */
-.data-table-container .data-table-wrapper .ant-checkbox {
-  transform: scale(0.8) !important;
-}
-
 /* Filtros */
 .data-table-container .data-table-filter-dropdown {
-  padding: 8px;
+  padding: 6px;
   width: 240px;
   background: white;
   border-radius: 4px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-/* Paginación */
+/* ===== PAGINACIÓN ULTRA COMPACTA ===== */
 .data-table-container .data-table-wrapper .ant-pagination {
-  padding: 6px 12px !important;
+  padding: 3px 6px !important; /* MÁS REDUCIDO */
   background: #f9fafb !important;
   border-top: 1px solid #e5e7eb !important;
   margin: 0 !important;
-  float: left;
+  font-size: 10px !important;
+  float:left;
 }
 
 .data-table-container .data-table-wrapper .ant-pagination-item {
-  font-size: 9px !important;
-  min-width: 20px !important;
-  height: 20px !important;
-  line-height: 18px !important;
+  font-size: 7px !important; 
+  min-width: 16px !important;
+  height: 16px !important;
+  line-height: 14px !important;
   border: 1px solid #d1d5db !important;
   background: white !important;
+  margin: 0 1px !important;
 }
 
 .data-table-container .data-table-wrapper .ant-pagination-item-active {
-  background: #3b82f6 !important;
-  border-color: #3b82f6 !important;
   color: white !important;
+  font-size: 10px !important;
+  background: #06e61cff !important;
+  border-color: #0d7702ff !important;
+  
 }
 
-/* Scrollbar personalizado */
+.data-table-container .data-table-wrapper .ant-pagination-prev,
+.data-table-container .data-table-wrapper .ant-pagination-next,
+.data-table-container .data-table-wrapper .ant-pagination-jump-prev,
+.data-table-container .data-table-wrapper .ant-pagination-jump-next {
+  min-width: 16px !important;
+  height: 16px !important;
+  line-height: 14px !important;
+  font-size: 7px !important;
+}
+
+/* Scrollbar personalizado ULTRA PEQUEÑO */
 .data-table-container .data-table-wrapper .ant-table-body::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 3px !important; /* MÁS REDUCIDO */
+  height: 3px !important;
 }
 
 .data-table-container .data-table-wrapper .ant-table-body::-webkit-scrollbar-track {
@@ -259,29 +482,52 @@
 
 .data-table-container .data-table-wrapper .ant-table-body::-webkit-scrollbar-thumb {
   background: #cbd5e1;
-  border-radius: 3px;
+  border-radius: 1px;
 }
 
 .data-table-container .data-table-wrapper .ant-table-body::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
 
-/* Responsive */
+/* ===== RESPONSIVE ULTRA COMPACTO ===== */
 @media (max-width: 768px) {
   .data-table-container .data-table-wrapper .ant-table-body {
-    max-height: 250px !important;
+    max-height: 200px !important;
   }
   
   .data-table-container .data-table-wrapper .ant-table-thead > tr > th {
-    padding: 3px 6px !important;
-    font-size: 8px !important;
-    height: 32px !important;
+    padding: 1px 2px !important;
+    font-size: 7px !important;
+    height: 20px !important;
   }
   
   .data-table-container .data-table-wrapper .ant-table-tbody > tr > td {
-    padding: 2px 6px !important;
-    font-size: 8px !important;
-    height: 24px !important;
+    padding: 1px 2px !important;
+    font-size: 7px !important;
+    height: 16px !important;
+  }
+  
+  .data-table-container .header-text,
+  .data-table-container .cell-content {
+    font-size: 7px !important;
+  }
+  
+  .data-table-container .header-icon {
+    font-size: 6px !important;
+  }
+
+  .data-table-container .data-table-wrapper .ant-checkbox-wrapper {
+    transform: scale(0.4) !important; /* ULTRA PEQUEÑO EN MÓVIL */
+  }
+  
+  .data-table-container .data-table-wrapper .ant-checkbox {
+    transform: scale(0.4) !important;
+  }
+
+  .data-table-container .data-table-wrapper .ant-table-selection-column {
+    width: 20px !important;
+    max-width: 20px !important;
+    min-width: 20px !important;
   }
 }
 
@@ -298,11 +544,11 @@
 
 .data-table-container .loading-content {
   background: white !important;
-  padding: 20px;
+  padding: 16px;
   border-radius: 6px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
 }
 
@@ -312,7 +558,56 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 60px 20px;
+  padding: 40px 20px;
   color: #6b7280;
   background: #ffffff !important;
+}
+
+/* ===== FORZAR ALINEACIÓN CORRECTA EN COLGROUP ===== */
+.data-table-container .data-table-wrapper .ant-table colgroup col {
+  /* Permitir que colgroup funcione correctamente con anchos fijos */
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Asegurar que no hay márgenes/padding que desalineen */
+.data-table-container .data-table-wrapper .ant-table-thead,
+.data-table-container .data-table-wrapper .ant-table-tbody {
+  width: 100% !important;
+}
+
+/* Eliminar cualquier transformación que pueda desalinear */
+.data-table-container .data-table-wrapper .ant-table-thead > tr,
+.data-table-container .data-table-wrapper .ant-table-tbody > tr {
+  display: table-row !important;
+}
+
+.data-table-container .data-table-wrapper .ant-table-thead > tr > th,
+.data-table-container .data-table-wrapper .ant-table-tbody > tr > td {
+  display: table-cell !important;
+}
+
+/* ===== ELIMINAR PSEUDO-ELEMENTOS QUE CAUSAN ESPACIOS ===== */
+.data-table-container .data-table-wrapper .ant-table::before,
+.data-table-container .data-table-wrapper .ant-table::after,
+.data-table-container .data-table-wrapper .ant-table-thead::before,
+.data-table-container .data-table-wrapper .ant-table-thead::after,
+.data-table-container .data-table-wrapper .ant-table-tbody::before,
+.data-table-container .data-table-wrapper .ant-table-tbody::after {
+  display: none !important;
+  content: none !important;
+}
+
+.data-table-container .data-table-wrapper * {
+  box-sizing: border-box !important;
+}
+
+.data-table-container .data-table-wrapper .ant-table table,
+.data-table-container .data-table-wrapper .ant-table thead,
+.data-table-container .data-table-wrapper .ant-table tbody,
+.data-table-container .data-table-wrapper .ant-table tr,
+.data-table-container .data-table-wrapper .ant-table th,
+.data-table-container .data-table-wrapper .ant-table td {
+  border-collapse: collapse !important;
+  border-spacing: 0 !important;
 }

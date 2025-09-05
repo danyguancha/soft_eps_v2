@@ -44,3 +44,12 @@ exports
 
 /technical_note
 technical_note
+
+/parquet_cache
+parquet_cache
+
+/duckdb_storage
+duckdb_storage
+
+/metadata_cache
+metadata_cache

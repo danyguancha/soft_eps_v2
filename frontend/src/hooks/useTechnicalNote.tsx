@@ -53,12 +53,6 @@ export const useTechnicalNote = () => {
       
       console.log(`✅ ${files.length} archivos técnicos disponibles`);
       
-      if (files.length > 0) {
-        message.success(`📁 ${files.length} archivos técnicos encontrados`);
-      } else {
-        message.warning('⚠️ No se encontraron archivos técnicos');
-      }
-      
     } catch (error: any) {
       message.error('❌ Error cargando lista de archivos técnicos');
       console.error('Error loading available files:', error);

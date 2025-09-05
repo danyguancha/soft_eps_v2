@@ -1,9 +1,10 @@
-// src/components/tabs/tabs/CrossTab/CrossTab.tsx
+// src/components/tabs/tabs/CrossTab/CrossTab.tsx - VERSIÓN SIN ADVERTENCIA FALSA
 import React from 'react';
 import { Card, Alert, Button, Space } from 'antd';
 import { DownloadOutlined } from '@ant-design/icons';
 import type { TabProps } from '../../../types/api.types';
 import { DataTable } from '../../dataTable/DataTable';
+
 
 export const CrossTab: React.FC<TabProps> = ({ 
   isMobile, 
@@ -11,11 +12,6 @@ export const CrossTab: React.FC<TabProps> = ({
   crossResult,
   processedCrossData,
   crossDataTotal,
-  crossTableState,
-  onCrossPaginationChange,
-  onCrossFiltersChange,
-  onCrossSortChange,
-  onCrossSearch,
   onExportCrossResult,
   onClearCrossResult,
 }) => {
@@ -23,7 +19,7 @@ export const CrossTab: React.FC<TabProps> = ({
   if (!crossResult) {
     return (
       <div className="content-container">
-        <Card title="📊 Resultado del Cruce">
+        <Card title="Resultado del Cruce">
           <Alert
             message="Sin resultado de cruce"
             description="Realiza un cruce de archivos desde la sección 'Transformar' para ver los resultados aquí."
@@ -44,10 +40,24 @@ export const CrossTab: React.FC<TabProps> = ({
     );
   }
 
+  // ✅ VERIFICACIÓN MÁS INTELIGENTE
+  const hasAllData = processedCrossData?.length === crossDataTotal;
+  const hasPartialData = processedCrossData && processedCrossData.length > 0;
+  
+  console.log('CrossTab - Análisis de datos:', {
+    processedCrossDataLength: processedCrossData?.length,
+    crossDataTotal: crossDataTotal,
+    hasAllData: hasAllData,
+    hasPartialData: hasPartialData,
+    ratio: processedCrossData?.length && crossDataTotal ? 
+      `${((processedCrossData.length / crossDataTotal) * 100).toFixed(1)}%` : '0%'
+  });
+
   return (
     <div className="content-container">
+      {/* Información del resultado del cruce */}
       <Alert
-        message="🎉 Cruce completado exitosamente"
+        message="Cruce completado exitosamente"
         description={`${crossDataTotal?.toLocaleString()} registros con ${crossResult.columns?.length} columnas`}
         type="success"
         style={{ marginBottom: 16 }}
@@ -78,22 +88,23 @@ export const CrossTab: React.FC<TabProps> = ({
         }
       >
         <DataTable
-          data={processedCrossData || []}
+          data={processedCrossData || []} 
           columns={crossResult?.columns ?? []}
+          filename={null} 
           loading={false}
           pagination={{
-            current: crossTableState?.currentPage || 1,
-            pageSize: crossTableState?.pageSize || 20,
-            total: crossDataTotal || 0,
+            current: 1, 
+            pageSize: 20,
+            total: processedCrossData?.length || 0,
             showSizeChanger: !isMobile,
             showQuickJumper: !isMobile,
             size: isMobile ? 'small' : 'default',
           }}
-          onPaginationChange={onCrossPaginationChange || (() => {})}
-          onFiltersChange={onCrossFiltersChange || (() => {})}
-          onSortChange={onCrossSortChange || (() => {})}
-          onDeleteRows={() => {}}
-          onSearch={onCrossSearch || (() => {})}
+          onPaginationChange={() => {}} 
+          onFiltersChange={() => {}} 
+          onSortChange={() => {}} 
+          onDeleteRows={() => {}} 
+          onSearch={() => {}} 
         />
       </Card>
     </div>

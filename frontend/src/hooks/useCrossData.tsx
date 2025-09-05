@@ -1,4 +1,4 @@
-// src/hooks/useCrossData.ts
+// src/hooks/useCrossData.ts - VERSIÓN CORREGIDA SIN PAGINACIÓN INTERNA
 import { useState, useCallback, useEffect } from 'react';
 import { useAlert } from '../components/alerts/AlertProvider';
 import type { FilterCondition, SortCondition, CrossTableState, UseCrossDataReturn } from '../types/api.types';
@@ -16,7 +16,7 @@ export const useCrossData = (): UseCrossDataReturn => {
   const [processedCrossData, setProcessedCrossData] = useState<any[]>([]);
   const [crossDataTotal, setCrossDataTotal] = useState(0);
 
-  // ✅ Función para procesar datos del cruce
+  // ✅ Función para procesar datos del cruce SIN PAGINACIÓN
   const processCrossData = useCallback(() => {
     if (!crossResult?.data) {
       setProcessedCrossData([]);
@@ -24,9 +24,17 @@ export const useCrossData = (): UseCrossDataReturn => {
       return;
     }
 
-    let filteredData = [...crossResult.data];
+    console.log('📊 Procesando datos de cruce:', {
+      datosOriginales: crossResult.data.length,
+      filtrosActivos: crossTableState.filters.length,
+      busquedaActiva: !!crossTableState.searchTerm,
+      ordenamientoActivo: crossTableState.sorting.length > 0
+    });
 
-    // Aplicar búsqueda
+    let filteredData = [...crossResult.data];
+    const originalLength = filteredData.length;
+
+    // ✅ Aplicar búsqueda global
     if (crossTableState.searchTerm) {
       const searchTerm = crossTableState.searchTerm.toLowerCase();
       filteredData = filteredData.filter(row =>
@@ -34,18 +42,27 @@ export const useCrossData = (): UseCrossDataReturn => {
           String(value || '').toLowerCase().includes(searchTerm)
         )
       );
+      console.log(`🔍 Después de búsqueda: ${filteredData.length} de ${originalLength}`);
     }
 
-    // Aplicar filtros
+    // ✅ Aplicar filtros por columna
     crossTableState.filters.forEach(filter => {
-      if (filter.value && filter.value.length > 0) {
+      if (filter.values && filter.values.length > 0) { // ✅ Usar filter.values para filtros estilo Excel
+        const beforeFilter = filteredData.length;
+        filteredData = filteredData.filter(row =>
+          filter.values!.includes(String(row[filter.column] || ''))
+        );
+        console.log(`🔧 Filtro ${filter.column}: ${filteredData.length} de ${beforeFilter}`);
+      } else if (filter.value && filter.value.length > 0) { // ✅ Mantener compatibilidad con filtros tradicionales
+        const beforeFilter = filteredData.length;
         filteredData = filteredData.filter(row =>
           filter.value.includes(String(row[filter.column] || ''))
         );
+        console.log(`🔧 Filtro ${filter.column}: ${filteredData.length} de ${beforeFilter}`);
       }
     });
 
-    // Aplicar ordenamiento
+    // ✅ Aplicar ordenamiento
     if (crossTableState.sorting.length > 0) {
       const sort = crossTableState.sorting[0];
       filteredData.sort((a, b) => {
@@ -68,40 +85,54 @@ export const useCrossData = (): UseCrossDataReturn => {
           return bStr.localeCompare(aStr);
         }
       });
+      console.log(`📊 Datos ordenados por ${sort.column} (${sort.direction})`);
     }
 
+    // ✅ CAMBIO PRINCIPAL: NO paginar aquí, pasar TODOS los datos procesados
     setCrossDataTotal(filteredData.length);
+    setProcessedCrossData(filteredData); // ✅ TODOS los datos filtrados/ordenados
 
-    // Aplicar paginación
-    const start = (crossTableState.currentPage - 1) * crossTableState.pageSize;
-    const end = start + crossTableState.pageSize;
-    const paginatedData = filteredData.slice(start, end);
+    console.log('✅ Procesamiento completado:', {
+      datosFinales: filteredData.length,
+      datosOriginales: originalLength,
+      porcentajeFiltrado: `${((filteredData.length / originalLength) * 100).toFixed(1)}%`
+    });
 
-    setProcessedCrossData(paginatedData);
   }, [crossResult, crossTableState]);
 
   useEffect(() => {
     processCrossData();
   }, [processCrossData]);
 
-  // ✅ Handlers para la tabla del cruce
+  // ✅ Handlers actualizados (ya no manejan paginación interna)
   const handleCrossPaginationChange = useCallback((page: number, size: number) => {
+    // ✅ CAMBIO: Ya no actualiza estado interno, el DataTable maneja su propia paginación
+    console.log(`📄 Cambio de paginación solicitado: página ${page}, tamaño ${size} (manejado por DataTable)`);
     setCrossTableState(prev => ({ ...prev, currentPage: page, pageSize: size }));
   }, []);
 
   const handleCrossFiltersChange = useCallback((filters: FilterCondition[]) => {
+    console.log('🔧 Aplicando filtros en hook:', filters);
     setCrossTableState(prev => ({ ...prev, filters, currentPage: 1 }));
   }, []);
 
   const handleCrossSortChange = useCallback((sorting: SortCondition[]) => {
+    console.log('📊 Aplicando ordenamiento en hook:', sorting);
     setCrossTableState(prev => ({ ...prev, sorting, currentPage: 1 }));
   }, []);
 
   const handleCrossSearch = useCallback((searchTerm: string) => {
+    console.log('🔍 Aplicando búsqueda en hook:', searchTerm);
     setCrossTableState(prev => ({ ...prev, searchTerm, currentPage: 1 }));
   }, []);
 
   const handleCrossComplete = useCallback(async (result: any) => {
+    console.log('🎉 Cruce completado:', {
+      totalRegistros: result.total_rows,
+      columnas: result.columns?.length,
+      datosRecibidos: result.data?.length
+    });
+
     setCrossResult(result);
     setCrossTableState({
       currentPage: 1,
@@ -113,7 +144,7 @@ export const useCrossData = (): UseCrossDataReturn => {
     
     await showAlert({
       title: '🎉 ¡Cruce Completado!',
-      message: `Se procesaron ${result.total_rows?.toLocaleString()} registros exitosamente`,
+      message: `Se procesaron ${result.total_rows?.toLocaleString()} registros exitosamente con ${result.columns?.length} columnas`,
       variant: 'success'
     });
   }, [showAlert]);
@@ -129,7 +160,10 @@ export const useCrossData = (): UseCrossDataReturn => {
     }
 
     try {
-      const exportData = crossResult.data || [];
+      // ✅ CAMBIO: Exportar datos procesados (filtrados/ordenados), no solo originales
+      const exportData = processedCrossData.length > 0 ? processedCrossData : crossResult.data || [];
+      
+      console.log(`📤 Exportando ${exportData.length} registros en formato ${format}`);
 
       if (format === 'csv') {
         const headers = crossResult.columns.join(';');
@@ -161,18 +195,20 @@ export const useCrossData = (): UseCrossDataReturn => {
 
         await showAlert({
           title: '✅ Exportación exitosa',
-          message: 'Archivo CSV exportado exitosamente',
+          message: `Archivo CSV exportado con ${exportData.length.toLocaleString()} registros`,
           variant: 'success'
         });
       }
+      // ✅ TODO: Implementar exportación Excel si es necesaria
     } catch (error) {
+      console.error('Error exportando:', error);
       await showAlert({
         title: 'Error de exportación',
         message: 'Error al exportar archivo',
         variant: 'error'
       });
     }
-  }, [crossResult, showAlert]);
+  }, [crossResult, processedCrossData, showAlert]);
 
   const handleClearCrossResult = useCallback(async () => {
     await showAlert({
@@ -189,6 +225,7 @@ export const useCrossData = (): UseCrossDataReturn => {
           label: 'Limpiar',
           type: 'primary',
           onClick: () => {
+            console.log('🗑️ Limpiando resultado del cruce');
             setCrossResult(null);
             setProcessedCrossData([]);
             setCrossDataTotal(0);
@@ -214,7 +251,7 @@ export const useCrossData = (): UseCrossDataReturn => {
     crossResult,
     crossTableState,
     processedCrossData,
-    crossDataTotal,
+    crossDataTotal,    
     handleCrossPaginationChange,
     handleCrossFiltersChange,
     handleCrossSortChange,
