@@ -109,7 +109,7 @@ class ExcelFile(AbstractFile):
             if col in df.columns:
                 try:
                     df[col] = convert_excel_dates_to_readable(df[col])
-                    print(f"✅ Columna '{col}' convertida a fecha")
+                    print(f"Columna '{col}' convertida a fecha")
                 except Exception as e:
                     print(f"⚠️ No se pudo convertir '{col}' a fecha: {e}")
         

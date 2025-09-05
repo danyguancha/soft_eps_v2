@@ -23,18 +23,14 @@ class CacheController:
                     hash_sha256.update(chunk)
             
             file_hash = hash_sha256.hexdigest()[:16]
-            print(f"🔑 Hash calculado: {file_hash} para {os.path.basename(file_path)}")
             return file_hash
             
         except Exception as e:
-            print(f"❌ Error calculando hash: {e}")
-            # Fallback: usar timestamp + tamaño de archivo
             stat = os.stat(file_path)
             fallback_hash = hashlib.sha256(
                 f"{stat.st_size}_{stat.st_mtime}_{os.path.basename(file_path)}".encode()
             ).hexdigest()[:16]
             
-            print(f"🔄 Usando hash fallback: {fallback_hash}")
             return fallback_hash
 
     def get_cache_metadata_path(self, file_hash: str) -> str:
@@ -53,9 +49,7 @@ class CacheController:
             # Limpiar columns antes de guardar
             if "columns" in metadata and isinstance(metadata["columns"], list):
                 metadata["columns"] = [str(col) if col is not None else f'col_{i}' 
-                                     for i, col in enumerate(metadata["columns"])]
-                print(f"🧹 Columns limpiadas en cache: {len(metadata['columns'])} elementos")
-            
+                                     for i, col in enumerate(metadata["columns"])]            
             # Agregar información de cache
             cache_info = {
                 **metadata,
@@ -70,7 +64,6 @@ class CacheController:
             
             # Actualizar cache en memoria
             self.file_cache[file_hash] = cache_info
-            print(f"💾 Metadata guardado con columns limpias: {file_hash}")
             
         except Exception as e:
             print(f"❌ Error guardando metadata: {e}")
@@ -131,11 +124,8 @@ class CacheController:
         parquet_path = self.get_cached_parquet_path(file_hash)
         
         if not os.path.exists(parquet_path):
-            print(f"⚠️ Cache inconsistente: metadata existe pero no el Parquet para {file_hash}")
             self._cleanup_inconsistent_cache(file_hash)
             return False, file_hash, None
-        
-        print(f"🎯 CACHE HIT: Archivo encontrado y validado en cache ({file_hash})")
         return True, file_hash, self.file_cache[file_hash]
 
     def _cleanup_inconsistent_cache(self, file_hash: str):
@@ -152,7 +142,6 @@ class CacheController:
             for path in [parquet_path, metadata_path]:
                 if os.path.exists(path):
                     os.remove(path)
-                    print(f"🗑️ Removido archivo inconsistente: {os.path.basename(path)}")
                     
         except Exception as e:
             print(f"❌ Error limpiando cache inconsistente: {e}")
@@ -226,7 +215,6 @@ class CacheController:
                     files_to_remove.append((file_hash, reason))
                     
             except Exception as e:
-                print(f"⚠️ Error evaluando {file_hash} para limpieza: {e}")
                 files_to_remove.append((file_hash, "error de evaluación"))
         
         # Remover archivos identificados
@@ -248,17 +236,11 @@ class CacheController:
                 if file_hash in self.file_cache:
                     original_name = self.file_cache[file_hash].get("original_name", file_hash[:8])
                     del self.file_cache[file_hash]
-                    print(f"🗑️ Removido del cache: {original_name} ({reason})")
                     cleaned_files += 1
                 
             except Exception as e:
                 print(f"❌ Error removiendo {file_hash}: {e}")
-        
-        print(f"🧹 Limpieza de cache completada:")
-        print(f"   📊 Archivos removidos: {cleaned_files}")
-        print(f"   💾 Espacio liberado: {total_size_cleaned/1024/1024:.1f}MB")
-        print(f"   📈 Archivos restantes en cache: {len(self.file_cache)}")
-        
+                
         return {
             "cleaned_files": cleaned_files,
             "size_cleaned_mb": round(total_size_cleaned/1024/1024, 1),

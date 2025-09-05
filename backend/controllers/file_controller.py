@@ -21,7 +21,7 @@ class FileController:
         # Inicializar el gestor de almacenamiento
         self.storage_manager = FileStorageManager()
         
-        # ✅ MODIFICADO: Inicializar handlers con capacidades de hilos
+        # MODIFICADO: Inicializar handlers con capacidades de hilos
         self.upload_handler = UploadHandler(self.storage_manager)  # Ya optimizado con hilos
         self.data_handler = DataHandler(self.storage_manager)
         self.transformation_handler = TransformationHandler(self.storage_manager)
@@ -29,19 +29,18 @@ class FileController:
         self.delete_handler = DeleteHandler(self.storage_manager)
         self.file_info_handler = FileInfoHandler(self.storage_manager)
     
-    # ✅ MODIFICADO: Operaciones de Upload con hilos automáticos
+    # MODIFICADO: Operaciones de Upload con hilos automáticos
     async def upload_file(self, file: UploadFile) -> Dict[str, Any]:
-        """✅ MODIFICADO: Procesa la carga de archivo CON HILOS AUTOMÁTICOS"""
+        """MODIFICADO: Procesa la carga de archivo CON HILOS AUTOMÁTICOS"""
         return await self.upload_handler.upload_file(file)
     
-    # ✅ MODIFICADO: Operaciones de Datos con hilos para archivos grandes
+    # MODIFICADO: Operaciones de Datos con hilos para archivos grandes
     def get_data(self, request: DataRequest) -> Dict[str, Any]:
-        """✅ MODIFICADO: Obtiene datos con filtros, ordenamiento y paginación - OPTIMIZADO"""
+        """MODIFICADO: Obtiene datos con filtros, ordenamiento y paginación - OPTIMIZADO"""
         
         # Para archivos grandes, usar hilos para el procesamiento de filtros
         file_info = self.storage_manager.get_file_info(request.file_id)
         if file_info and file_info.get('total_rows', 0) > 25000:
-            print(f"🚀 Procesando datos grandes con hilos: {file_info.get('total_rows', 0):,} filas")
             
             # Usar hilo para procesamiento de datos grandes
             data_future = thread_manager.submit_cpu_task(
@@ -56,13 +55,12 @@ class FileController:
         """Obtiene columnas específicas de un archivo y hoja - SIN CAMBIOS"""
         return self.data_handler.get_columns(file_id, sheet_name)
     
-    # ✅ MODIFICADO: Operaciones de Transformación con hilos
+    # MODIFICADO: Operaciones de Transformación con hilos
     def transform_data(self, request: TransformRequest) -> Dict[str, Any]:
-        """✅ MODIFICADO: Aplica transformación a los datos CON HILOS"""
+        """MODIFICADO: Aplica transformación a los datos CON HILOS"""
         
         file_info = self.storage_manager.get_file_info(request.file_id)
         if file_info and file_info.get('total_rows', 0) > 15000:
-            print(f"🚀 Transformación con hilos para archivo grande")
             
             # Usar hilo para transformaciones de archivos grandes
             transform_future = thread_manager.submit_cpu_task(
@@ -72,9 +70,9 @@ class FileController:
         else:
             return self.transformation_handler.transform_data(request)
     
-    # ✅ MODIFICADO: Operaciones de Exportación con hilos
+    # MODIFICADO: Operaciones de Exportación con hilos
     def export_processed_data(self, request: ExportRequest) -> Dict[str, Any]:
-        """✅ MODIFICADO: Exporta datos procesados CON HILOS"""
+        """MODIFICADO: Exporta datos procesados CON HILOS"""
         
         file_info = self.storage_manager.get_file_info(request.file_id)
         if file_info and file_info.get('total_rows', 0) > 20000:
@@ -96,7 +94,7 @@ class FileController:
         """Limpia archivos de exportación antiguos - SIN CAMBIOS"""
         return self.export_handler.cleanup_exports(days_old)
     
-    # ✅ MANTENER OPERACIONES DE ELIMINACIÓN SIN CAMBIOS
+    # MANTENER OPERACIONES DE ELIMINACIÓN SIN CAMBIOS
     def delete_specific_rows(self, request: DeleteRowsRequest) -> Dict[str, Any]:
         """Elimina filas específicas por índices"""
         return self.delete_handler.delete_specific_rows(request)
@@ -117,7 +115,7 @@ class FileController:
         """Elimina filas duplicadas"""
         return self.delete_handler.delete_duplicates(file_id, columns, keep, sheet_name)
     
-    # ✅ MANTENER OPERACIONES DE INFORMACIÓN SIN CAMBIOS
+    # MANTENER OPERACIONES DE INFORMACIÓN SIN CAMBIOS
     def get_file_info(self, file_id: str) -> Dict[str, Any]:
         """Obtiene información básica del archivo"""
         return self.file_info_handler.get_file_info(file_id)
@@ -131,10 +129,10 @@ class FileController:
         return self.file_info_handler.delete_file(file_id)
 
 
-# ✅ INSTANCIA GLOBAL DEL CONTROLADOR (AHORA CON HILOS)
+# INSTANCIA GLOBAL DEL CONTROLADOR (AHORA CON HILOS)
 file_controller = FileController()
 
-# ✅ MANTENER FUNCIONES DE COMPATIBILIDAD
+# MANTENER FUNCIONES DE COMPATIBILIDAD
 async def upload_file(file: UploadFile):
     return await file_controller.upload_file(file)
 

@@ -23,7 +23,7 @@ class UploadHandler:
         }
 
     async def upload_file(self, file: UploadFile) -> Dict[str, Any]:
-        """✅ UPLOAD ULTRA-OPTIMIZADO que SIEMPRE devuelve hojas Excel"""
+        """UPLOAD ULTRA-OPTIMIZADO que SIEMPRE devuelve hojas Excel"""
         if not file.filename:
             raise HTTPException(status_code=400, detail="Nombre de archivo requerido")
             
@@ -42,15 +42,12 @@ class UploadHandler:
             # Guardar archivo
             await self._save_file_streaming(file, file_path)
             
-            print(f"🚀 UPLOAD con detección de hojas iniciado: {file.filename}")
-            
-            # ✅ OBTENER HOJAS PARA ARCHIVOS EXCEL (SIEMPRE)
+            # OBTENER HOJAS PARA ARCHIVOS EXCEL (SIEMPRE)
             sheets = []
             default_sheet = None
             sheet_detection_time = 0
             
             if ext in ['xlsx', 'xls']:
-                print(f"📋 Detectando hojas de Excel para: {file.filename}")
                 sheet_start = time.time()
                 
                 try:
@@ -60,18 +57,11 @@ class UploadHandler:
                     if sheet_info["success"]:
                         sheets = sheet_info["sheets"]
                         default_sheet = sheet_info["default_sheet"]
-                        
-                        print(f"✅ Hojas detectadas en {sheet_detection_time:.3f}s:")
-                        print(f"   📊 Total: {len(sheets)} hojas")
-                        print(f"   📋 Hojas: {sheets}")
-                        print(f"   🎯 Por defecto: '{default_sheet}'")
                     else:
-                        print(f"⚠️ Error obteniendo hojas: {sheet_info.get('error', 'Error desconocido')}")
                         sheets = ["Sheet1"]  # Fallback
                         default_sheet = "Sheet1"
                         
                 except Exception as e:
-                    print(f"❌ Error crítico detectando hojas: {e}")
                     sheets = ["Sheet1"]  # Fallback de emergencia
                     default_sheet = "Sheet1"
                     sheet_detection_time = 0.001
@@ -80,8 +70,7 @@ class UploadHandler:
                 sheets = []
                 default_sheet = None
         
-            # ✅ CONVERSIÓN OPTIMIZADA
-            print(f"🔄 Iniciando conversión con hoja por defecto: '{default_sheet}'")
+            # CONVERSIÓN OPTIMIZADA
             parquet_result = duckdb_service.convert_file_to_parquet(
                 file_path, file_id, file.filename, ext
             )
@@ -93,20 +82,20 @@ class UploadHandler:
                 else:
                     raise HTTPException(status_code=500, detail=error_msg)
             
-            # ✅ CARGA LAZY INSTANTÁNEA
+            # CARGA LAZY INSTANTÁNEA
             table_name = duckdb_service.load_parquet_lazy(
                 file_id, parquet_result["parquet_path"]
             )
             
-            # ✅ INFORMACIÓN COMPLETA CON HOJAS GARANTIZADAS
+            # INFORMACIÓN COMPLETA CON HOJAS GARANTIZADAS
             file_info = {
                 "path": file_path,
                 "parquet_path": parquet_result["parquet_path"],
                 "table_name": table_name,
                 "ext": ext,
                 "original_name": file.filename,
-                "sheets": sheets,  # ✅ SIEMPRE incluir hojas
-                "default_sheet": default_sheet,  # ✅ SIEMPRE incluir hoja por defecto
+                "sheets": sheets,  # SIEMPRE incluir hojas
+                "default_sheet": default_sheet,  # SIEMPRE incluir hoja por defecto
                 "columns": parquet_result["columns"],
                 "total_rows": parquet_result["total_rows"],
                 "strategy": "ULTRA_OPTIMIZED_WITH_SHEETS",
@@ -124,12 +113,12 @@ class UploadHandler:
             
             self.storage_manager.store_file_info(file_id, file_info)
             
-            # ✅ RESPUESTA GARANTIZADA CON HOJAS
+            # RESPUESTA GARANTIZADA CON HOJAS
             response = {
                 "file_id": file_id,
                 "columns": parquet_result["columns"],
-                "sheets": sheets,  # ✅ SIEMPRE devolver hojas
-                "default_sheet": default_sheet,  # ✅ SIEMPRE devolver hoja por defecto
+                "sheets": sheets,  # SIEMPRE devolver hojas
+                "default_sheet": default_sheet,  # SIEMPRE devolver hoja por defecto
                 "total_rows": parquet_result["total_rows"],
                 "ultra_fast": True,
                 "engine": "DuckDB + Direct Parquet + Sheet Detection",
@@ -142,21 +131,14 @@ class UploadHandler:
                 "file_hash": parquet_result.get("file_hash"),
                 "load_type": "lazy",
                 "ultra_optimized": True,
-                "has_sheets": len(sheets) > 1,  # ✅ Indicar si tiene múltiples hojas
-                "sheet_count": len(sheets),  # ✅ Número total de hojas
+                "has_sheets": len(sheets) > 1,  # Indicar si tiene múltiples hojas
+                "sheet_count": len(sheets),  # Número total de hojas
                 "sheet_detection_time": sheet_detection_time,
-                "is_excel": ext in ['xlsx', 'xls']  # ✅ Indicador de Excel
-            }
-            
-            print(f"✅ RESPUESTA COMPLETA PREPARADA:")
-            print(f"   📋 Hojas: {sheets}")
-            print(f"   📊 Total columnas: {len(parquet_result['columns'])}")
-            print(f"   📈 Total filas: {parquet_result['total_rows']:,}")
-            
+                "is_excel": ext in ['xlsx', 'xls']  # Indicador de Excel
+            }            
             return response
                 
         except Exception as e:
-            print(f"❌ ERROR EN UPLOAD: {str(e)}")
             # Limpiar archivos en caso de error
             if os.path.exists(file_path):
                 try:
@@ -200,7 +182,7 @@ class UploadHandler:
                     detail="ERROR: Archivo no se guardó correctamente"
                 )
             
-            print(f"✅ Archivo guardado exitosamente: {total_size/1024/1024:.1f}MB")
+            print(f"Archivo guardado exitosamente: {total_size/1024/1024:.1f}MB")
             
         except Exception as e:
             if os.path.exists(file_path):
@@ -221,7 +203,7 @@ class UploadHandler:
         page_size: int = 1000,
         selected_columns: Optional[List[str]] = None
     ) -> Dict[str, Any]:
-        """✅ ULTRA-OPTIMIZADO: Consulta directa usando lazy load"""
+        """ULTRA-OPTIMIZADO: Consulta directa usando lazy load"""
         
         return duckdb_service.query_data_ultra_fast(
             file_id=file_id,

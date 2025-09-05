@@ -53,7 +53,7 @@ def try_common_encodings(file_path: str) -> str:
                 for i, line in enumerate(f):
                     if i >= 3:
                         break
-                print(f"✅ Encoding funcional encontrado: {encoding}")
+                print(f"Encoding funcional encontrado: {encoding}")
                 return encoding
         except (UnicodeDecodeError, UnicodeError):
             continue
@@ -214,7 +214,7 @@ class CSVFile(AbstractFile):
             
             df_header = pd.read_csv(self.file_path, **read_params)
             self._columns_cache = df_header.columns.tolist()
-            print(f"✅ Columnas detectadas: {len(self._columns_cache)} (engine: {engine_params['engine']})")
+            print(f"Columnas detectadas: {len(self._columns_cache)} (engine: {engine_params['engine']})")
             return self._columns_cache
         except Exception as e:
             print(f"❌ Error obteniendo columnas: {e}")
@@ -241,7 +241,7 @@ class CSVFile(AbstractFile):
             if col in df.columns:
                 try:
                     df[col] = convert_excel_dates_to_readable(df[col])
-                    print(f"✅ Columna '{col}' convertida a fecha")
+                    print(f"Columna '{col}' convertida a fecha")
                 except Exception as e:
                     print(f"⚠️ No se pudo convertir '{col}' a fecha: {e}")
         

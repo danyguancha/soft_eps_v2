@@ -6,7 +6,7 @@ from services.duckdb_service import duckdb_service
 
 
 class TechnicalNoteController:
-    """✅ Controlador ULTRA-RÁPIDO usando DuckDB para archivos técnicos"""
+    """Controlador ULTRA-RÁPIDO usando DuckDB para archivos técnicos"""
     
     def __init__(self, storage_manager):
         self.storage_manager = storage_manager
@@ -24,19 +24,17 @@ class TechnicalNoteController:
         sort_by: Optional[str] = None,
         sort_order: Optional[str] = None
     ) -> Dict[str, Any]:
-        """✅ PAGINACIÓN ULTRA-RÁPIDA con DuckDB"""
+        """PAGINACIÓN ULTRA-RÁPIDA con DuckDB"""
         try:
             file_path = os.path.join(self.static_files_dir, filename)
             
             if not os.path.exists(file_path):
                 raise HTTPException(status_code=404, detail=f"Archivo no encontrado: {filename}")
             
-            # ✅ CARGAR A DUCKDB si no está cargado
+            # CARGAR A DUCKDB si no está cargado
             file_key = f"technical_{filename}"
             
-            if file_key not in self.loaded_technical_files:
-                print(f"🚀 Cargando archivo técnico a DuckDB: {filename}")
-                
+            if file_key not in self.loaded_technical_files:                
                 # Convertir a Parquet y cargar a DuckDB
                 _, ext = os.path.splitext(filename)
                 parquet_result = duckdb_service.convert_file_to_parquet(
@@ -56,7 +54,7 @@ class TechnicalNoteController:
                 else:
                     raise HTTPException(status_code=500, detail="Error cargando archivo técnico")
             
-            # ✅ CONSULTA ULTRA-RÁPIDA
+            # CONSULTA ULTRA-RÁPIDA
             result = duckdb_service.query_data_ultra_fast(
                 file_id=file_key,
                 filters=filters,
@@ -92,7 +90,6 @@ class TechnicalNoteController:
         except HTTPException:
             raise
         except Exception as e:
-            print(f"❌ Error en consulta ultra-rápida: {e}")
             raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
     def get_column_unique_values(
@@ -102,7 +99,7 @@ class TechnicalNoteController:
         sheet_name: Optional[str] = None,
         limit: int = 1000
     ) -> Dict[str, Any]:
-        """✅ VALORES ÚNICOS ULTRA-RÁPIDOS con DuckDB"""
+        """VALORES ÚNICOS ULTRA-RÁPIDOS con DuckDB"""
         try:
             # Asegurarse de que el archivo esté cargado
             file_key = f"technical_{filename}"
@@ -111,7 +108,7 @@ class TechnicalNoteController:
                 # Cargar archivo si no está en memoria
                 self.read_technical_file_data_paginated(filename, page=1, page_size=1)
             
-            # ✅ OBTENER VALORES ÚNICOS ULTRA-RÁPIDO
+            # OBTENER VALORES ÚNICOS ULTRA-RÁPIDO
             unique_values = duckdb_service.get_unique_values_ultra_fast(
                 file_key, column_name, limit
             )
@@ -128,7 +125,6 @@ class TechnicalNoteController:
             }
             
         except Exception as e:
-            print(f"❌ Error obteniendo valores únicos ultra-rápidos: {e}")
             raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
     def get_available_static_files(self) -> List[Dict[str, Any]]:

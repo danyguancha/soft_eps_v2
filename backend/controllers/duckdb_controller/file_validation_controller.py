@@ -13,9 +13,8 @@ class FileValidationController:
         self.retry_delay = 1
 
     def get_file_columns_for_cross(self, file_id: str, sheet_name: str, loaded_tables: Dict) -> Dict[str, Any]:
-        """✅ ULTRA-ROBUSTO: Previene crashes con validación exhaustiva"""
+        """ ULTRA-ROBUSTO: Previene crashes con validación exhaustiva"""
         try:
-            print(f"🔍 [SEGURO] Obteniendo columnas para cruce: {file_id}")
             
             if file_id not in loaded_tables:
                 return {
@@ -33,29 +32,24 @@ class FileValidationController:
                     "error": f"Archivo Parquet no encontrado: {parquet_path}",
                     "requires_regeneration": True
                 }
-
-            print(f"📋 Consultando Parquet: {parquet_path}")
             
-            # ✅ VALIDACIÓN EXHAUSTIVA ANTI-CRASH
+            #  VALIDACIÓN EXHAUSTIVA ANTI-CRASH
             file_size = os.path.getsize(parquet_path)
             if file_size < 100:
-                print(f"❌ Archivo muy pequeño: {file_size} bytes")
                 return {
                     "success": False,
                     "error": f"Archivo corrupto (muy pequeño: {file_size} bytes)",
                     "requires_regeneration": True
                 }
             
-            # ✅ ESTRATEGIA MÚLTIPLE CON TIMEOUT Y RETRY
+            #  ESTRATEGIA MÚLTIPLE CON TIMEOUT Y RETRY
             for attempt in range(self.max_retries):
                 try:
-                    print(f"🔄 Intento {attempt + 1}/{self.max_retries}")
                     
                     # Método 1: DuckDB con timeout
                     columns = self._get_columns_with_timeout_and_retry(parquet_path, timeout_seconds=15)
                     
                     if columns:
-                        print(f"✅ Columnas obtenidas exitosamente: {len(columns)} columnas")
                         return {
                             "success": True,
                             "file_id": file_id,
@@ -65,7 +59,6 @@ class FileValidationController:
                         }
                     
                 except Exception as e:
-                    print(f"⚠️ Intento {attempt + 1} falló: {str(e)}")
                     
                     if attempt < self.max_retries - 1:
                         print(f"🔄 Esperando {self.retry_delay}s antes del siguiente intento...")
@@ -77,12 +70,9 @@ class FileValidationController:
                         except:
                             pass
             
-            # Si todos los intentos fallan, usar fallback
-            print("⚠️ Todos los intentos DuckDB fallaron, usando fallback pandas...")
             return self._fallback_pandas_columns(parquet_path, file_id)
             
         except Exception as e:
-            print(f"❌ Error crítico obteniendo columnas: {e}")
             return self._handle_critical_error(file_id, str(e))
 
     def _get_columns_with_timeout_and_retry(self, parquet_path: str, timeout_seconds: int = 15) -> List[str]:
@@ -93,12 +83,10 @@ class FileValidationController:
         
         def get_columns_safe():
             try:
-                # ✅ PROTECCIÓN: Normalizar ruta para Windows
+                #  PROTECCIÓN: Normalizar ruta para Windows
                 safe_path = parquet_path.replace('\\', '/')
                 
-                print(f"🔍 Ejecutando SQL: DESCRIBE SELECT * FROM read_parquet('{safe_path}')")
-                
-                # ✅ CONSULTA SEGURA CON VALIDACIÓN PREVIA
+                #  CONSULTA SEGURA CON VALIDACIÓN PREVIA
                 describe_sql = f"DESCRIBE SELECT * FROM read_parquet('{safe_path}')"
                 
                 # Verificar conexión antes de ejecutar
@@ -110,22 +98,19 @@ class FileValidationController:
                 if result:
                     columns.extend([str(row[0]) for row in result if row[0] is not None])
                     success_container[0] = True
-                    print(f"✅ DuckDB DESCRIBE exitoso: {len(columns)} columnas")
                 else:
                     raise Exception("Consulta DESCRIBE no retornó resultados")
                     
             except Exception as e:
                 exception_container[0] = e
-                print(f"❌ Error en consulta DuckDB: {str(e)}")
         
-        # ✅ EJECUTAR CON TIMEOUT USANDO THREADING
+        #  EJECUTAR CON TIMEOUT USANDO THREADING
         thread = threading.Thread(target=get_columns_safe)
         thread.daemon = True
         thread.start()
         thread.join(timeout_seconds)
         
         if thread.is_alive():
-            print(f"⏱️ TIMEOUT: Consulta DuckDB tomó más de {timeout_seconds}s")
             # El thread sigue ejecutándose pero lo ignoramos
             return []
         
@@ -148,9 +133,7 @@ class FileValidationController:
 
     def _safe_reconnect_duckdb(self):
         """Intenta reconectar DuckDB de forma segura"""
-        try:
-            print("🔄 Intentando reconectar DuckDB...")
-            
+        try:            
             # Cerrar conexión actual si existe
             if hasattr(self, 'conn') and self.conn:
                 try:
@@ -166,22 +149,15 @@ class FileValidationController:
             self.conn.execute("PRAGMA threads=2")
             self.conn.execute("PRAGMA memory_limit='4GB'")
             
-            print("✅ DuckDB reconectado exitosamente")
-            
         except Exception as e:
-            print(f"❌ Error reconectando DuckDB: {e}")
             raise e
 
     def _fallback_pandas_columns(self, parquet_path: str, file_id: str) -> Dict[str, Any]:
         """Método de fallback usando pandas"""
-        try:
-            print("🔄 Usando método de fallback con pandas...")
-            
+        try:            
             # Leer solo metadata del Parquet
             df = pd.read_parquet(parquet_path, engine='pyarrow')
             columns = [str(col) for col in df.columns]
-            
-            print(f"✅ Pandas fallback exitoso: {len(columns)} columnas")
             
             return {
                 "success": True,
@@ -192,7 +168,6 @@ class FileValidationController:
             }
             
         except Exception as e:
-            print(f"❌ Fallback pandas también falló: {e}")
             return {
                 "success": False,
                 "error": f"Tanto DuckDB como pandas fallaron. Error pandas: {str(e)}",
@@ -201,7 +176,6 @@ class FileValidationController:
 
     def _handle_critical_error(self, file_id: str, error_msg: str) -> Dict[str, Any]:
         """Maneja errores críticos sin causar crash"""
-        print(f"🚨 ERROR CRÍTICO MANEJADO para {file_id}: {error_msg}")
         
         return {
             "success": False,
@@ -214,7 +188,7 @@ class FileValidationController:
         }
 
     def validate_parquet_file(self, parquet_path: str) -> Dict[str, Any]:
-        """✅ VALIDACIÓN MEJORADA SIN CRASH"""
+        """ VALIDACIÓN MEJORADA SIN CRASH"""
         try:
             if not os.path.exists(parquet_path):
                 return {"valid": False, "error": "Archivo no existe"}

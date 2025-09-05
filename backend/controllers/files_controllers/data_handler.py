@@ -11,7 +11,7 @@ class DataHandler:
         self.storage_manager = storage_manager
     
     def get_data(self, request: DataRequest) -> Dict[str, Any]:
-        """✅ OBTIENE DATOS ULTRA-RÁPIDO usando DuckDB"""
+        """OBTIENE DATOS ULTRA-RÁPIDO usando DuckDB"""
         file_info = self.storage_manager.get_file_info(request.file_id)
         if not file_info:
             raise ValueError("Archivo no encontrado")
@@ -35,7 +35,7 @@ class DataHandler:
             sort_by = request.sort[0].column
             sort_order = request.sort[0].direction.value.upper()
         
-        # ✅ CONSULTA ULTRA-RÁPIDA con DuckDB
+        # CONSULTA ULTRA-RÁPIDA con DuckDB
         return duckdb_service.query_data_ultra_fast(
             file_id=request.file_id,
             filters=filters,

@@ -38,14 +38,10 @@ class CrossFilesController:
             table2_ref = f"read_parquet('{table2_info['parquet_path']}')"
         else:
             table2_ref = table2_info["table_name"]
-
-        print(f"🔍 VLOOKUP/BUSCARX EXCEL: {table1_ref} 🔍 {table2_ref}")
         start_time = time.time()
 
         try:
-            # PASO 1: OBTENER COLUMNAS REALES
-            print("🔍 Obteniendo columnas reales de los archivos...")
-            
+            # PASO 1: OBTENER COLUMNAS REALES            
             real_cols_file1 = self._get_table_columns(table1_info)
             real_cols_file2 = self._get_table_columns(table2_info)
 
@@ -53,9 +49,6 @@ class CrossFilesController:
             base_count_sql = f"SELECT COUNT(*) FROM {table1_ref}"
             expected_rows = self.conn.execute(base_count_sql).fetchone()[0]
             
-            print(f"📊 Archivo base: {expected_rows} registros")
-            print(f"📋 Archivo búsqueda: disponible para lookup")
-
             # PASO 3: MAPEAR COLUMNAS Y CLAVES
             mapped_key1 = self._map_column_to_real(key_column_file1, real_cols_file1)
             mapped_key2 = self._map_column_to_real(key_column_file2, real_cols_file2)
@@ -63,20 +56,12 @@ class CrossFilesController:
             if not mapped_key1 or not mapped_key2:
                 raise ValueError("No se pudieron mapear las claves de join")
 
-            print(f"🔑 Claves VLOOKUP:")
-            print(f"   Buscar en: '{mapped_key1}' (archivo base)")
-            print(f"   Encontrar: '{mapped_key2}' (archivo búsqueda)")
-
             # PASO 4: CONSTRUCCIÓN DEL SELECT
             select_parts = []
             
             if columns_to_include:
                 file1_cols = columns_to_include.get("file1_columns", [])
                 file2_cols = columns_to_include.get("file2_columns", [])
-                
-                print(f"📋 Columnas VLOOKUP:")
-                print(f"   Base: {len(file1_cols)} columnas (se mantienen todas)")
-                print(f"   Búsqueda: {len(file2_cols)} columnas (primera coincidencia)")
 
                 # TODAS LAS COLUMNAS DEL ARCHIVO BASE
                 if file1_cols:
@@ -121,24 +106,14 @@ class CrossFilesController:
             ) lookup ON CAST(base.{esc_key1} AS VARCHAR) = CAST(lookup.{esc_key2} AS VARCHAR)
             """
 
-            print(f"🔍 VLOOKUP SQL construido:")
-            print(f"   ✅ Base: TODOS los {expected_rows} registros se preservan")
-            print(f"   🎯 Búsqueda: Solo PRIMERA coincidencia por clave")
-            print(f"   💡 Sin match: NULL en columnas de búsqueda")
-
             # VALIDACIÓN CON EXPLAIN
             try:
                 explain_sql = f"EXPLAIN {vlookup_sql}"
                 self.conn.execute(explain_sql).fetchall()
-                print("✅ VLOOKUP SQL validado exitosamente")
             except Exception as explain_error:
-                print(f"❌ Error en VLOOKUP SQL: {explain_error}")
-                print(f"🔍 SQL problemático:")
-                print(vlookup_sql)
                 raise Exception(f"VLOOKUP SQL inválido: {explain_error}")
 
             # EJECUTAR VLOOKUP
-            print("🔍 Ejecutando VLOOKUP como Excel...")
             result_df = self.conn.execute(vlookup_sql).fetchdf()
             cross_time = time.time() - start_time
             total_rows = len(result_df)
@@ -151,13 +126,6 @@ class CrossFilesController:
 
             # Contar matches y no-matches
             matches, no_matches = self._count_matches(result_df, mapped_file2_cols if 'mapped_file2_cols' in locals() else [])
-
-            print(f"📊 Resultado VLOOKUP:")
-            print(f"   ⏱️ Tiempo: {cross_time:.2f}s")
-            print(f"   📈 Total registros: {total_rows:,}")
-            print(f"   ✅ Con coincidencia: {matches:,}")
-            print(f"   ⭕ Sin coincidencia: {no_matches:,}")
-            print(f"   🎯 Comportamiento: IDÉNTICO a Excel VLOOKUP/BUSCARX")
 
             return {
                 "success": True,
@@ -185,9 +153,6 @@ class CrossFilesController:
             }
 
         except Exception as e:
-            print(f"❌ Error en VLOOKUP:")
-            print(f"   🔍 Archivo base: {file1_id}")
-            print(f"   🔍 Archivo búsqueda: {file2_id}")
             print(f"   ❌ Error: {str(e)}")
             
             if 'vlookup_sql' in locals():

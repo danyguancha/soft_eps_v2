@@ -14,7 +14,7 @@ class ExcelSheetService:
     @staticmethod
     def get_sheet_names_ultra_fast(file_path: str) -> Dict[str, Any]:
         """
-        ✅ ULTRA-RÁPIDO: Obtiene nombres de hojas sin cargar el archivo completo
+        ULTRA-RÁPIDO: Obtiene nombres de hojas sin cargar el archivo completo
         Usa múltiples estrategias para archivos grandes
         """
         print(f"🔍 Obteniendo hojas de: {os.path.basename(file_path)}")
@@ -41,7 +41,7 @@ class ExcelSheetService:
     
     @staticmethod
     def _get_sheets_zipfile_method(file_path: str, start_time: float) -> Dict[str, Any]:
-        """✅ ESTRATEGIA 1: Método ZIP ultra-rápido para archivos gigantes (>50MB)"""
+        """ESTRATEGIA 1: Método ZIP ultra-rápido para archivos gigantes (>50MB)"""
         try:
             print("🚀 Estrategia ULTRA-RÁPIDA: Método ZIP directo")
             
@@ -74,7 +74,7 @@ class ExcelSheetService:
             
             processing_time = time.time() - start_time
             
-            print(f"✅ Método ZIP completado en {processing_time:.3f}s:")
+            print(f"Método ZIP completado en {processing_time:.3f}s:")
             print(f"   📋 {len(valid_sheets)} hojas encontradas: {valid_sheets}")
             
             return {
@@ -93,14 +93,14 @@ class ExcelSheetService:
     
     @staticmethod
     def _get_sheets_openpyxl_readonly(file_path: str, start_time: float) -> Dict[str, Any]:
-        """✅ ESTRATEGIA 2: OpenPyXL modo solo-lectura para archivos grandes (20-50MB)"""
+        """ESTRATEGIA 2: OpenPyXL modo solo-lectura para archivos grandes (20-50MB)"""
         try:
             print("🔄 Estrategia RÁPIDA: OpenPyXL read-only")
             
             # Cargar en modo solo lectura (mucho más rápido)
             workbook = load_workbook(
                 filename=file_path, 
-                read_only=True,      # ✅ CRÍTICO: No carga datos, solo metadata
+                read_only=True,      # CRÍTICO: No carga datos, solo metadata
                 keep_vba=False,      # No cargar macros
                 data_only=True       # Solo valores, no fórmulas
             )
@@ -110,7 +110,7 @@ class ExcelSheetService:
             
             processing_time = time.time() - start_time
             
-            print(f"✅ OpenPyXL read-only completado en {processing_time:.3f}s:")
+            print(f"OpenPyXL read-only completado en {processing_time:.3f}s:")
             print(f"   📋 {len(sheet_names)} hojas: {sheet_names}")
             
             return {
@@ -129,7 +129,7 @@ class ExcelSheetService:
     
     @staticmethod
     def _get_sheets_standard_method(file_path: str, start_time: float) -> Dict[str, Any]:
-        """✅ ESTRATEGIA 3: Método estándar para archivos pequeños (<20MB)"""
+        """ESTRATEGIA 3: Método estándar para archivos pequeños (<20MB)"""
         try:
             print("📄 Estrategia ESTÁNDAR: Pandas ExcelFile")
             
@@ -140,7 +140,7 @@ class ExcelSheetService:
             
             processing_time = time.time() - start_time
             
-            print(f"✅ Método estándar completado en {processing_time:.3f}s:")
+            print(f"Método estándar completado en {processing_time:.3f}s:")
             print(f"   📋 {len(sheet_names)} hojas: {sheet_names}")
             
             return {

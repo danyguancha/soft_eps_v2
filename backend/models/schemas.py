@@ -20,11 +20,11 @@ class FileUploadResponse(BaseModel):
     sheets: Optional[List[str]] = None
     total_rows: int
 
-    sheets: List[str] = []  # ✅ NUEVO: Lista de hojas
-    default_sheet: Optional[str] = None  # ✅ NUEVO: Hoja por defecto
+    sheets: List[str] = []  # NUEVO: Lista de hojas
+    default_sheet: Optional[str] = None  # NUEVO: Hoja por defecto
     total_rows: int
     
-    # ✅ NUEVOS CAMPOS PARA EXCEL
+    # NUEVOS CAMPOS PARA EXCEL
     is_excel: bool = False  
     has_sheets: bool = False
     sheet_count: int = 0
@@ -119,7 +119,7 @@ class CrossPreviewRequest(BaseModel):
     file2_sheet: Optional[str] = None
     key_column_file1: str
     key_column_file2: str
-    cross_type: str = "left"  # ✅ Mantener consistente
+    cross_type: str = "left"  # Mantener consistente
     columns_to_include: Optional[Dict[str, List[str]]] = None
     limit: Optional[int] = 50
     

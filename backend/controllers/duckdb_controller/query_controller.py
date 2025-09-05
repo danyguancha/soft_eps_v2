@@ -20,8 +20,6 @@ class QueryController:
             table_name = safe_file_id
         else:
             table_name = self.sql_utils.sanitize_table_name(table_name)
-        
-        print(f"🚀 Registro lazy (instantáneo): {table_name}")
         start_time = time.time()
         
         # Solo registrar la información, no cargar datos
@@ -34,7 +32,6 @@ class QueryController:
         }
         
         load_time = time.time() - start_time
-        print(f"✅ Registro lazy completado en {load_time:.3f}s")
         return table_name
 
     def load_parquet_to_view(self, file_id: str, parquet_path: str, table_name: Optional[str], loaded_tables: Dict) -> str:
@@ -45,8 +42,6 @@ class QueryController:
             table_name = safe_file_id
         else:
             table_name = self.sql_utils.sanitize_table_name(table_name)
-        
-        print(f"🔄 Creando vista DuckDB (sin materialización): {table_name}")
         start_time = time.time()
         
         try:
@@ -68,12 +63,10 @@ class QueryController:
             }
             
             load_time = time.time() - start_time
-            print(f"✅ Vista {table_name} creada en {load_time:.3f}s")
             
             return table_name
             
         except Exception as e:
-            print(f"❌ Error creando vista: {e}")
             raise e
 
     def query_data_ultra_fast(
@@ -123,8 +116,6 @@ class QueryController:
             raise ValueError("Archivo no registrado")
         
         parquet_path = self.loaded_tables[file_id]["parquet_path"]
-        
-        print(f"⚡ Consulta directa a Parquet: {os.path.basename(parquet_path)}")
         start_time = time.time()
         
         # Selección de columnas
@@ -198,8 +189,6 @@ class QueryController:
             data_records = data_result.to_dict(orient='records')
             total_pages = (total_result + page_size - 1) // page_size if total_result > 0 else 1
             
-            print(f"⚡ Consulta directa ejecutada en {query_time:.3f}s - {len(data_records)} registros")
-            
             return {
                 "data": data_records,
                 "pagination": {
@@ -218,7 +207,6 @@ class QueryController:
             }
             
         except Exception as e:
-            print(f"❌ Error en consulta directa: {e}")
             raise e
 
     def _query_table_or_view(
@@ -235,8 +223,6 @@ class QueryController:
         """Consulta normal a tabla o vista DuckDB"""
         
         table_name = self.loaded_tables[file_id]["table_name"]
-        
-        print(f"⚡ Consulta a tabla/vista: {table_name}")
         start_time = time.time()
         
         # Selección de columnas con escape
@@ -312,8 +298,6 @@ class QueryController:
             # Metadatos de paginación
             total_pages = (total_result + page_size - 1) // page_size if total_result > 0 else 1
             
-            print(f"⚡ Consulta ejecutada en {query_time:.3f}s - {len(data_records)} registros")
-            
             return {
                 "data": data_records,
                 "pagination": {
@@ -331,7 +315,6 @@ class QueryController:
             }
             
         except Exception as e:
-            print(f"❌ Error en consulta ultra-rápida: {e}")
             raise e
 
     def get_unique_values_ultra_fast(self, file_id: str, column_name: str, limit: int = 1000) -> List[str]:
@@ -342,8 +325,6 @@ class QueryController:
         
         table_info = self.loaded_tables[file_id]
         table_type = table_info.get("type", "table")
-        
-        print(f"⚡ Valores únicos ultra-rápidos: {column_name}")
         start_time = time.time()
         
         escaped_column = self.sql_utils.escape_identifier(column_name)
@@ -380,7 +361,6 @@ class QueryController:
             return unique_values
             
         except Exception as e:
-            print(f"❌ Error obteniendo valores únicos: {e}")
             return []
 
     def get_file_stats(self, file_id: str) -> Dict[str, Any]:

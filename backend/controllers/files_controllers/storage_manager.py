@@ -9,11 +9,11 @@ class FileStorageManager:
     def __init__(self):
         self.data_cache: Dict[str, pd.DataFrame] = {}
         
-        # ✅ USAR RUTA ABSOLUTA
+        # USAR RUTA ABSOLUTA
         self.upload_dir = os.path.abspath("uploads")
         self.storage_file = os.path.join(self.upload_dir, "files_info.json")
                 
-        # ✅ CARGAR Y SINCRONIZAR AL INICIALIZAR
+        # CARGAR Y SINCRONIZAR AL INICIALIZAR
         self._load_and_sync_storage()
     
     def _get_existing_files(self):
@@ -43,15 +43,15 @@ class FileStorageManager:
     def _load_and_sync_storage(self):
         """Carga y sincroniza el storage con archivos físicos"""
         try:
-            # ✅ OBTENER ARCHIVOS REALES
+            # OBTENER ARCHIVOS REALES
             existing_file_ids = self._get_existing_files()
             
-            # ✅ CARGAR JSON SI EXISTE
+            # CARGAR JSON SI EXISTE
             if os.path.exists(self.storage_file):
                 with open(self.storage_file, 'r', encoding='utf-8') as f:
                     json_data = json.load(f)
                 
-                # ✅ SINCRONIZAR: Solo mantener archivos que existen físicamente
+                # SINCRONIZAR: Solo mantener archivos que existen físicamente
                 synced_storage = {}
                 for file_id, file_info in json_data.items():
                     if file_id in existing_file_ids:
@@ -66,7 +66,7 @@ class FileStorageManager:
                 
                 self.storage = synced_storage
                 
-                # ✅ GUARDAR JSON SINCRONIZADO
+                # GUARDAR JSON SINCRONIZADO
                 if len(synced_storage) != len(json_data):
                     self._save_storage()
                 
@@ -105,7 +105,7 @@ class FileStorageManager:
     def get_file_info(self, file_id: str) -> Optional[Dict[str, Any]]:
         """Obtiene información del archivo con auto-sincronización"""
         
-        # ✅ RECARGAR Y SINCRONIZAR SI STORAGE ESTÁ VACÍO
+        # RECARGAR Y SINCRONIZAR SI STORAGE ESTÁ VACÍO
         if not self.storage:
             self._load_and_sync_storage()
         
@@ -118,7 +118,7 @@ class FileStorageManager:
         info = self.storage[file_id]
         file_path = info.get("path", "")
         
-        # ✅ VERIFICACIÓN FINAL DE EXISTENCIA FÍSICA
+        # VERIFICACIÓN FINAL DE EXISTENCIA FÍSICA
         if file_path and os.path.exists(file_path):
             return info
         else:
@@ -140,7 +140,7 @@ class FileStorageManager:
     
     def remove_file(self, file_id: str) -> bool:
         """Remueve archivo del almacenamiento, cache Y archivo físico"""
-        # ✅ CARGAR STORAGE SI ESTÁ VACÍO
+        # CARGAR STORAGE SI ESTÁ VACÍO
         if not self.storage:
             self._load_and_sync_storage()
             
@@ -150,20 +150,20 @@ class FileStorageManager:
         file_info = self.storage[file_id]
         file_path = file_info.get("path", "")
         
-        # ✅ ELIMINAR ARCHIVO FÍSICO
+        # ELIMINAR ARCHIVO FÍSICO
         try:
             if file_path and os.path.exists(file_path):
                 os.remove(file_path)
         except Exception as e:
             print(f"⚠️ Error eliminando archivo físico: {e}")
         
-        # ✅ LIMPIAR CACHE EN MEMORIA
+        # LIMPIAR CACHE EN MEMORIA
         cache_keys_to_remove = [key for key in self.data_cache.keys() 
                                if key.startswith(file_id)]
         for key in cache_keys_to_remove:
             del self.data_cache[key]
         
-        # ✅ ELIMINAR DEL STORAGE Y GUARDAR JSON
+        # ELIMINAR DEL STORAGE Y GUARDAR JSON
         del self.storage[file_id]
         self._save_storage()        
         return True

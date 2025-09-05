@@ -7,13 +7,13 @@ from services.duckdb_service import duckdb_service
 
 
 class CrossHandler:
-    """✅ CrossHandler ULTRA-RÁPIDO usando DuckDB para cruces"""
+    """CrossHandler ULTRA-RÁPIDO usando DuckDB para cruces"""
     
     def __init__(self, storage_manager: FileStorageManager):
         self.storage_manager = storage_manager
 
     def perform_cross(self, request) -> Dict[str, Any]:
-        """✅ CRUCE ULTRA-RÁPIDO usando JOIN optimizado en DuckDB"""
+        """CRUCE ULTRA-RÁPIDO usando JOIN optimizado en DuckDB"""
         try:
             file1_info = self.storage_manager.get_file_info(request.file1_key)
             file2_info = self.storage_manager.get_file_info(request.file2_key)
@@ -23,11 +23,7 @@ class CrossHandler:
             
             total_rows = (file1_info.get('total_rows', 0) + file2_info.get('total_rows', 0))
             
-            print(f"🚀 CRUCE ULTRA-RÁPIDO DuckDB iniciado:")
-            print(f"📊 Archivo 1: {file1_info['original_name']} ({file1_info.get('total_rows', 0):,} filas)")
-            print(f"📊 Archivo 2: {file2_info['original_name']} ({file2_info.get('total_rows', 0):,} filas)")
-            
-            # ✅ USAR DUCKDB para cruce ultra-rápido
+            # USAR DUCKDB para cruce ultra-rápido
             result = duckdb_service.cross_files_ultra_fast(
                 file1_id=request.file1_key,
                 file2_id=request.file2_key,
@@ -61,7 +57,7 @@ class CrossHandler:
                             "left_column": col1,
                             "right_column": col2,
                             "combined_score": 1.0,
-                            "recommendation": "✅ Nombres idénticos - Altamente recomendado"
+                            "recommendation": "Nombres idénticos - Altamente recomendado"
                         })
             
             return {

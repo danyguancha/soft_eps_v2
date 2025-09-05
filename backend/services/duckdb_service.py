@@ -1,6 +1,9 @@
 import duckdb
 import os
 import shutil
+import json
+import re
+import time
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 from controllers.duckdb_controller.file_validation_controller import FileValidationController
@@ -11,7 +14,7 @@ from controllers.duckdb_controller.query_controller import QueryController
 from controllers.duckdb_controller.cross_files_controller import CrossFilesController
 
 class DuckDBService:
-    """Servicio principal para DuckDB - Con manejo robusto de errores de encoding"""
+    """Servicio principal para DuckDB - Con manejo robusto de errores y auto-recuperación"""
     
     _instance = None
     _initialized = False
@@ -47,6 +50,10 @@ class DuckDBService:
         if self.conn:
             self._initialize_controllers()
             self._initialized = True
+            
+            print(f"✅ DuckDB inicializado: {self.db_path}")
+            print(f"📁 Parquet cache: {self.parquet_dir}")
+            print(f"📋 Metadata cache: {self.metadata_dir}")
         else:
             print("❌ DuckDB no se pudo inicializar - Funcionando en modo fallback")
 
@@ -122,7 +129,7 @@ class DuckDBService:
             print(f"❌ Error limpiando base de datos corrupta: {cleanup_error}")
 
     def _initialize_controllers(self):
-        """Inicializa todos los controladores solo si DuckDB está funcionando"""
+        """Inicializa todos los controladores y ejecuta auto-recuperación"""
         try:
             self.file_validation = FileValidationController(self.conn)
             self.cache = CacheController(self.parquet_dir, self.metadata_dir)
@@ -130,9 +137,202 @@ class DuckDBService:
             self.excel_sheets = ExcelSheetsController()
             self.query = QueryController(self.conn, self.loaded_tables)
             self.cross_files = CrossFilesController(self.conn, self.loaded_tables)
+            
             print("✅ Controladores DuckDB inicializados")
+            
+            # ✅ NUEVO: Auto-recuperación después de inicializar controladores
+            self._auto_recover_cached_files()
+            
         except Exception as e:
             print(f"❌ Error inicializando controladores: {e}")
+
+    def _auto_recover_cached_files(self):
+        """Auto-recupera archivos desde cache al reiniciar"""
+        try:
+            print("🔄 Iniciando auto-recuperación de archivos desde cache...")
+            
+            recovered_count = 0
+            
+            # Obtener todos los archivos de metadata
+            if not os.path.exists(self.metadata_dir):
+                print("📁 No hay metadata cache para recuperar")
+                return
+            
+            # Buscar archivos de metadata
+            for metadata_file in os.listdir(self.metadata_dir):
+                if not metadata_file.endswith('_metadata.json'):
+                    continue
+                    
+                try:
+                    # Leer metadata
+                    metadata_path = os.path.join(self.metadata_dir, metadata_file)
+                    
+                    with open(metadata_path, 'r', encoding='utf-8') as f:
+                        metadata = json.load(f)
+                    
+                    file_hash = metadata.get('file_hash')
+                    if not file_hash:
+                        continue
+                        
+                    parquet_path = self.cache.get_cached_parquet_path(file_hash)
+                    
+                    # Verificar que el Parquet existe
+                    if not os.path.exists(parquet_path):
+                        print(f"⚠️ Parquet no encontrado para hash {file_hash}: {parquet_path}")
+                        continue
+                    
+                    # Buscar file_id correspondiente en el file_controller
+                    file_id = self._find_file_id_for_metadata(metadata)
+                    
+                    if file_id:
+                        # Recargar en DuckDB
+                        self._recover_single_file(file_id, parquet_path, metadata)
+                        recovered_count += 1
+                        print(f"✅ Recuperado: {metadata.get('original_name')} ({file_id})")
+                    else:
+                        print(f"⚠️ No se encontró file_id para {metadata.get('original_name')}")
+                        
+                except Exception as e:
+                    print(f"❌ Error recuperando {metadata_file}: {e}")
+                    continue
+            
+            if recovered_count > 0:
+                print(f"🎯 Auto-recuperación completada: {recovered_count} archivos restaurados")
+                print(f"📊 Archivos cargados en DuckDB: {list(self.loaded_tables.keys())}")
+            else:
+                print("📋 No hay archivos para auto-recuperar")
+                
+        except Exception as e:
+            print(f"❌ Error en auto-recuperación: {e}")
+
+    def _find_file_id_for_metadata(self, metadata: Dict[str, Any]) -> Optional[str]:
+        """Busca el file_id correspondiente para una metadata"""
+        try:
+            # Importar file_controller de forma segura
+            from controllers import file_controller
+            
+            # Obtener todos los archivos del file_controller
+            all_files_info = file_controller.list_all_files()
+            
+            if not all_files_info or not all_files_info.get("files"):
+                return None
+            
+            original_name = metadata.get('original_name', '')
+            file_size = metadata.get('original_size_mb', 0) * 1024 * 1024  # Convertir a bytes
+            
+            # Buscar por coincidencia de nombre y tamaño
+            for file_info in all_files_info.get("files", []):
+                # Comparar por nombre original
+                if file_info.get("original_name") == original_name:
+                    # Si también coincide el tamaño (aproximadamente), es muy probable que sea el mismo
+                    info_size = file_info.get("size_mb", 0) * 1024 * 1024 if file_info.get("size_mb") else 0
+                    
+                    if abs(file_size - info_size) < 1024:  # Diferencia menor a 1KB
+                        return file_info.get("file_id")
+                    else:
+                        # Si el nombre coincide pero no el tamaño, aún puede ser válido
+                        return file_info.get("file_id")
+            
+            return None
+            
+        except Exception as e:
+            print(f"❌ Error buscando file_id: {e}")
+            return None
+
+    def _recover_single_file(self, file_id: str, parquet_path: str, metadata: Dict[str, Any]):
+        """Recupera un archivo individual en DuckDB"""
+        try:
+            # Registrar en loaded_tables
+            table_name = self._sanitize_table_name(f"table_{file_id}")
+            
+            self.loaded_tables[file_id] = {
+                "table_name": table_name,
+                "parquet_path": parquet_path,
+                "loaded_at": datetime.now().isoformat(),
+                "load_time": 0.001,  # Recovered, no load time
+                "type": "lazy",
+                "recovered": True,
+                "original_metadata": metadata
+            }
+            
+            print(f"📋 Archivo recuperado en loaded_tables: {file_id} → {table_name}")
+            
+        except Exception as e:
+            print(f"❌ Error recuperando archivo individual {file_id}: {e}")
+
+    def _load_file_on_demand(self, file_id: str) -> bool:
+        """Carga un archivo bajo demanda si existe en cache"""
+        try:
+            print(f"🔍 Buscando archivo {file_id} en cache para carga bajo demanda...")
+            
+            # Buscar en metadata cache por file_id o nombre
+            if not os.path.exists(self.metadata_dir):
+                return False
+            
+            # Buscar archivo en file_controller
+            from controllers import file_controller
+            
+            try:
+                file_info = file_controller.get_file_info(file_id)
+                file_path = file_info.get("path")
+                original_name = file_info.get("original_name")
+                extension = file_info.get("extension", "xlsx")
+            except:
+                print(f"❌ No se pudo obtener info del archivo {file_id}")
+                return False
+            
+            # Buscar Parquet existente por nombre
+            parquet_found = None
+            metadata_found = None
+            
+            for metadata_file in os.listdir(self.metadata_dir):
+                if not metadata_file.endswith('_metadata.json'):
+                    continue
+                    
+                try:
+                    metadata_path = os.path.join(self.metadata_dir, metadata_file)
+                    
+                    with open(metadata_path, 'r', encoding='utf-8') as f:
+                        metadata = json.load(f)
+                    
+                    # Verificar si coincide el nombre original
+                    if metadata.get('original_name') == original_name:
+                        file_hash = metadata.get('file_hash')
+                        parquet_path = self.cache.get_cached_parquet_path(file_hash)
+                        
+                        if os.path.exists(parquet_path):
+                            parquet_found = parquet_path
+                            metadata_found = metadata
+                            break
+                            
+                except Exception as e:
+                    continue
+            
+            if parquet_found:
+                # Cargar desde cache existente
+                self._recover_single_file(file_id, parquet_found, metadata_found)
+                return True
+            else:
+                # No hay cache, convertir desde archivo original
+                if file_path and os.path.exists(file_path):
+                    print(f"🔄 Convirtiendo archivo {file_id} desde cero...")
+                    
+                    result = self.convert_file_to_parquet(
+                        file_path=file_path,
+                        file_id=file_id,
+                        original_name=original_name,
+                        ext=extension
+                    )
+                    
+                    if result.get("success"):
+                        self.load_parquet_lazy(file_id, result["parquet_path"])
+                        return True
+            
+            return False
+            
+        except Exception as e:
+            print(f"❌ Error en carga bajo demanda para {file_id}: {e}")
+            return False
 
     def is_available(self) -> bool:
         """Verifica si DuckDB está disponible y funcionando"""
@@ -223,7 +423,7 @@ class DuckDBService:
             return {"loaded": False, "error": "DuckDB no disponible"}
         return self.query.get_file_stats(file_id)
 
-    # ========== MÉTODOS DELEGADOS FALTANTES ==========
+    # ========== MÉTODOS DELEGADOS CON CARGA BAJO DEMANDA ==========
 
     def cross_files_ultra_fast(
         self,
@@ -234,13 +434,28 @@ class DuckDBService:
         join_type: str = "LEFT",
         columns_to_include: Optional[Dict[str, List[str]]] = None
     ) -> Dict[str, Any]:
-        """Delega cruce de archivos ultra-rápido"""
+        """Delega cruce de archivos ultra-rápido con carga bajo demanda"""
         if not self.is_available():
             return {
                 "success": False,
                 "error": "DuckDB no disponible para cruce de archivos",
                 "requires_fallback": True
             }
+        
+        # ✅ VERIFICAR Y CARGAR ARCHIVOS BAJO DEMANDA
+        for file_id in [file1_id, file2_id]:
+            if file_id not in self.loaded_tables:
+                print(f"🔄 Archivo {file_id} no cargado, intentando carga bajo demanda...")
+                
+                if self._load_file_on_demand(file_id):
+                    print(f"✅ Archivo {file_id} cargado bajo demanda")
+                else:
+                    print(f"❌ No se pudo cargar archivo {file_id} bajo demanda")
+                    return {
+                        "success": False,
+                        "error": f"Archivo {file_id} no se puede cargar en DuckDB",
+                        "requires_fallback": True
+                    }
         
         # ✅ DELEGACIÓN CORRECTA al CrossFilesController
         return self.cross_files.cross_files_ultra_fast(
@@ -258,7 +473,7 @@ class DuckDBService:
         page_size: int = 1000,
         selected_columns: Optional[List[str]] = None
     ) -> Dict[str, Any]:
-        """Delega consultas ultra-rápidas"""
+        """Delega consultas ultra-rápidas con carga bajo demanda"""
         if not self.is_available():
             return {
                 "success": False,
@@ -266,15 +481,30 @@ class DuckDBService:
                 "requires_fallback": True
             }
         
+        # ✅ VERIFICAR Y CARGAR ARCHIVO BAJO DEMANDA
+        if file_id not in self.loaded_tables:
+            print(f"🔄 Archivo {file_id} no cargado, intentando carga bajo demanda...")
+            if not self._load_file_on_demand(file_id):
+                return {
+                    "success": False,
+                    "error": f"Archivo {file_id} no disponible en DuckDB",
+                    "requires_fallback": True
+                }
+        
         # ✅ DELEGACIÓN al QueryController
         return self.query.query_data_ultra_fast(
             file_id, filters, search, sort_by, sort_order, page, page_size, selected_columns
         )
 
     def get_unique_values_ultra_fast(self, file_id: str, column_name: str, limit: int = 1000) -> List[str]:
-        """Delega valores únicos ultra-rápidos"""
+        """Delega valores únicos ultra-rápidos con carga bajo demanda"""
         if not self.is_available():
             return []
+        
+        # ✅ VERIFICAR Y CARGAR ARCHIVO BAJO DEMANDA
+        if file_id not in self.loaded_tables:
+            if not self._load_file_on_demand(file_id):
+                return []
         
         return self.query.get_unique_values_ultra_fast(file_id, column_name, limit)
 
@@ -487,9 +717,6 @@ class DuckDBService:
 
     def _sanitize_table_name(self, table_name: str) -> str:
         """Convierte nombres de tabla a formato seguro para DuckDB"""
-        import re
-        import time
-        
         # Reemplazar guiones con guiones bajos y otros caracteres problemáticos
         sanitized = table_name.replace('-', '_')
         sanitized = re.sub(r'[^a-zA-Z0-9_]', '_', sanitized)
@@ -523,11 +750,46 @@ class DuckDBService:
         escaped = identifier.replace('"', '""')  # Escapar comillas internas
         return f'"{escaped}"'
 
+    # ========== MÉTODOS DE ADMINISTRACIÓN ==========
+
+    def manual_reload_files(self):
+        """Recarga manual de archivos (útil para debugging)"""
+        print("🔄 Recarga manual de archivos solicitada...")
+        try:
+            self.loaded_tables.clear()
+            self._auto_recover_cached_files()
+            return {
+                "success": True,
+                "loaded_count": len(self.loaded_tables),
+                "loaded_files": list(self.loaded_tables.keys())
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e)
+            }
+
+    def get_loaded_files_info(self) -> Dict[str, Any]:
+        """Información detallada de archivos cargados"""
+        return {
+            "total_loaded": len(self.loaded_tables),
+            "files": {
+                file_id: {
+                    "table_name": info.get("table_name"),
+                    "type": info.get("type"),
+                    "loaded_at": info.get("loaded_at"),
+                    "recovered": info.get("recovered", False)
+                }
+                for file_id, info in self.loaded_tables.items()
+            }
+        }
+
     def close(self):
         """Cierra conexión DuckDB de forma segura"""
         try:
             if self.conn:
                 self.conn.close()
+                print("✅ Conexión DuckDB cerrada")
         except Exception as e:
             print(f"⚠️ Error cerrando DuckDB: {e}")
 
@@ -539,6 +801,7 @@ def get_duckdb_service():
 # Crear instancia global de forma segura
 try:
     duckdb_service = get_duckdb_service()
+    print("✅ DuckDB Service global inicializado")
 except Exception as e:
     print(f"❌ Error inicializando DuckDB Service global: {e}")
     duckdb_service = None

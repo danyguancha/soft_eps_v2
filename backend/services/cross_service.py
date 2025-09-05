@@ -12,22 +12,19 @@ class CrossService:
         - df2: Archivo de búsqueda (solo PRIMERA coincidencia por clave)
         - Hasta 10x más rápido que merge tradicional en archivos grandes
         """
-        print(f"🚀 Cruce eficiente iniciado - DF1: {len(df1):,}, DF2: {len(df2):,}")
         
         df1_copy = df1.copy()
         df2_copy = df2.copy()
         
-        # ✅ Normalizar tipos de columnas clave
+        # Normalizar tipos de columnas clave
         df1_copy[key1] = df1_copy[key1].astype(str).str.strip()
         df2_copy[key2] = df2_copy[key2].astype(str).str.strip()
         
-        # ✅ CLAVE: Eliminar duplicados del archivo de búsqueda (solo primer match)
+        # CLAVE: Eliminar duplicados del archivo de búsqueda (solo primer match)
         df2_lookup = df2_copy.drop_duplicates(subset=[key2], keep='first')
         duplicates_removed = len(df2_copy) - len(df2_lookup)
-        
-        print(f"🔍 DF2 deduplicado: {len(df2_copy):,} → {len(df2_lookup):,} (eliminados: {duplicates_removed:,})")
-        
-        # ✅ ESTRATEGIA HÍBRIDA: usar map() para archivos grandes, merge() para medianos
+                
+        # ESTRATEGIA HÍBRIDA: usar map() para archivos grandes, merge() para medianos
         if len(df1) > 100000:  # Archivos grandes: usar map (más eficiente)
             result_df = CrossService._cross_with_map(df1_copy, df2_lookup, key1, key2)
         else:  # Archivos medianos: usar merge tradicional
@@ -38,14 +35,11 @@ class CrossService:
                 suffixes=('', '_cruce')
             )
         
-        print(f"✅ Resultado VLOOKUP: {len(result_df):,} registros (= tamaño archivo base)")
-        
         return result_df
 
     @staticmethod
     def _cross_with_map(df1: pd.DataFrame, df2: pd.DataFrame, key1: str, key2: str):
         """Método ultra-eficiente usando map() - ideal para archivos grandes"""
-        print(f"🎯 Usando método map() optimizado...")
         
         # Obtener columnas a mapear (excluyendo la clave)
         cols_to_map = [col for col in df2.columns if col != key2]
@@ -53,12 +47,12 @@ class CrossService:
         # Crear resultado basado en df1
         result_df = df1.copy()
         
-        # ✅ TÉCNICA ULTRA-EFICIENTE: map() es 10x más rápido que merge para lookups
+        # TÉCNICA ULTRA-EFICIENTE: map() es 10x más rápido que merge para lookups
         for col in cols_to_map:
             lookup_dict = df2.set_index(key2)[col].to_dict()
             result_df[col] = result_df[key1].map(lookup_dict)
         
-        # ✅ Agregar columna indicadora para compatibilidad
+        # Agregar columna indicadora para compatibilidad
         result_df['_merge'] = result_df[cols_to_map[0]].apply(
             lambda x: 'both' if pd.notna(x) else 'left_only'
         ) if cols_to_map else 'left_only'
@@ -66,7 +60,7 @@ class CrossService:
         matches = (result_df['_merge'] == 'both').sum()
         no_matches = (result_df['_merge'] == 'left_only').sum()
         
-        print(f"📈 Map resultado: {matches:,} coincidencias, {no_matches:,} sin coincidencias")
+        print(f"Map resultado: {matches:,} coincidencias, {no_matches:,} sin coincidencias")
         
         return result_df
 
@@ -103,9 +97,8 @@ class CrossService:
         - Procesa en chunks para mínimo uso de memoria
         - Devuelve CSV descargable directamente
         """
-        print(f"🚀 Cruce streaming iniciado - DF1: {len(df1):,}, DF2: {len(df2):,}")
         
-        # ✅ Preparar DataFrames
+        # Preparar DataFrames
         df1_copy = df1.copy()
         df2_copy = df2.copy()
         
@@ -115,9 +108,8 @@ class CrossService:
         
         # Eliminar duplicados del archivo de búsqueda
         df2_lookup = df2_copy.drop_duplicates(subset=[key2], keep='first')
-        print(f"🔍 DF2 deduplicado: {len(df2_copy):,} → {len(df2_lookup):,}")
         
-        # ✅ USAR MAP PARA MÁXIMA EFICIENCIA
+        # USAR MAP PARA MÁXIMA EFICIENCIA
         cols_to_map = [col for col in df2_lookup.columns if col != key2]
         result_df = df1_copy.copy()
         
@@ -125,7 +117,7 @@ class CrossService:
             lookup_dict = df2_lookup.set_index(key2)[col].to_dict()
             result_df[col] = result_df[key1].map(lookup_dict)
         
-        # ✅ GENERAR STREAMING RESPONSE
+        # GENERAR STREAMING RESPONSE
         def generate_csv():
             # Crear buffer en memoria
             buffer = io.StringIO()
@@ -137,7 +129,7 @@ class CrossService:
             buffer.seek(0)
             buffer.truncate(0)
             
-            # ✅ ESCRIBIR DATOS EN CHUNKS PARA EFICIENCIA
+            # ESCRIBIR DATOS EN CHUNKS PARA EFICIENCIA
             chunk_size = 1000  # 1000 filas por chunk
             total_chunks = len(result_df) // chunk_size + 1
             
@@ -154,7 +146,7 @@ class CrossService:
                     progress = (i + 1) / total_chunks * 100
                     print(f"📤 Progreso streaming: {progress:.1f}%")
         
-        # ✅ RETORNAR STREAMING RESPONSE
+        # RETORNAR STREAMING RESPONSE
         headers = {
             'Content-Disposition': f'attachment; filename="{filename}"',
             'Content-Type': 'text/csv; charset=utf-8'

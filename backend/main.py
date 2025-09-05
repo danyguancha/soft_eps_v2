@@ -48,31 +48,28 @@ class Config:
 # ========== MANEJO DE SEÑALES PARA SHUTDOWN LIMPIO ==========
 
 def signal_handler(sig, frame):
-    """Maneja señales del sistema para shutdown limpio"""
-    print(f"\n🛑 Recibida señal {sig}, cerrando aplicación...")
-    
+    """Maneja señales del sistema para shutdown limpio"""    
     # Cerrar DuckDB de forma limpia
     try:
         from services.duckdb_service_wrapper import safe_duckdb_service
         if hasattr(safe_duckdb_service, '_service') and safe_duckdb_service._service:
             safe_duckdb_service._service.close()
-            print("✅ DuckDB cerrado limpiamente")
     except Exception as e:
-        print(f"⚠️ Error cerrando DuckDB: {e}")
+        print(f"Error cerrando DuckDB: {e}")
     
     # Cerrar otros recursos si existen
     try:
         # Cerrar conexiones de base de datos, archivos abiertos, etc.
-        print("✅ Recursos del sistema liberados")
+        print("Recursos del sistema liberados")
     except Exception as e:
-        print(f"⚠️ Error liberando recursos: {e}")
+        print(f"Error liberando recursos: {e}")
     
-    print("👋 Aplicación cerrada correctamente")
+    print("Aplicación cerrada correctamente")
     sys.exit(0)
 
 # Registrar manejadores de señales
-signal.signal(signal.SIGINT, signal_handler)   # Ctrl+C
-signal.signal(signal.SIGTERM, signal_handler)  # Terminación del sistema
+signal.signal(signal.SIGINT, signal_handler)   
+signal.signal(signal.SIGTERM, signal_handler) 
 
 # En Windows, también manejar SIGBREAK
 if hasattr(signal, 'SIGBREAK'):
@@ -83,8 +80,6 @@ if hasattr(signal, 'SIGBREAK'):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manejo del ciclo de vida de la aplicación"""
-    # Startup
-    print("🚀 Iniciando Sistema de Procesamiento de Archivos...")
     
     # Verificar e inicializar servicios
     try:
@@ -96,19 +91,13 @@ async def lifespan(app: FastAPI):
     # Crear directorios necesarios
     os.makedirs(Config.UPLOAD_DIR, exist_ok=True)
     os.makedirs(Config.EXPORTS_DIR, exist_ok=True)
-    print(f"📁 Directorios verificados: {Config.UPLOAD_DIR}, {Config.EXPORTS_DIR}")
     
-    yield
-    
-    # Shutdown
-    print("🛑 Cerrando aplicación...")
-    
+    yield    
     # Limpiar recursos
     try:
         from services.duckdb_service_wrapper import safe_duckdb_service
         if hasattr(safe_duckdb_service, '_service'):
             safe_duckdb_service._service.close()
-            print("✅ DuckDB cerrado en shutdown")
     except:
         pass
 
@@ -134,8 +123,8 @@ class LargeFileLoggingMiddleware(BaseHTTPMiddleware):
             content_length = request.headers.get("content-length")
             if content_length:
                 size_mb = int(content_length) / 1024 / 1024
-                if size_mb > 100:  # Log si es mayor a 100MB
-                    print(f"📤 Upload de archivo grande detectado: {size_mb:.1f}MB")
+                if size_mb > 100: 
+                    print(f"Upload de archivo grande detectado: {size_mb:.1f}MB")
                 
                 # Almacenar start time para logging posterior
                 request.state.start_time = start_time
@@ -146,7 +135,7 @@ class LargeFileLoggingMiddleware(BaseHTTPMiddleware):
             # Log tiempo de respuesta para uploads
             if "/upload" in str(request.url):
                 process_time = time.time() - start_time
-                print(f"⏱️  Upload procesado en {process_time:.2f}s")
+                print(f"Upload procesado en {process_time:.2f}s")
             
             return response
             
@@ -174,8 +163,6 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     """Manejador mejorado de errores de validación"""
-    print(f"❌ ERROR 422 DETALLADO:")
-    print(f"   - URL: {request.method} {request.url}")
     
     try:
         body = await request.body()
@@ -219,7 +206,6 @@ async def request_entity_too_large_handler(request: Request, exc):
 @app.exception_handler(MemoryError)
 async def memory_error_handler(request: Request, exc):
     """Manejador de errores de memoria"""
-    print(f"🚨 ERROR DE MEMORIA en {request.url}")
     
     return JSONResponse(
         status_code=507,
@@ -236,9 +222,7 @@ async def memory_error_handler(request: Request, exc):
 
 @app.exception_handler(TimeoutError)
 async def timeout_error_handler(request: Request, exc):
-    """Manejador de errores de timeout"""
-    print(f"⏱️ TIMEOUT en {request.url}: {exc}")
-    
+    """Manejador de errores de timeout"""    
     return JSONResponse(
         status_code=408,
         content={

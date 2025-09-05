@@ -14,7 +14,7 @@ class SafeDuckDBService:
         """Inicializa el servicio con manejo de errores"""
         try:
             self._service = DuckDBService()
-            print("✅ DuckDB Service inicializado de forma segura")
+            print("DuckDB Service inicializado de forma segura")
         except Exception as e:
             print(f"❌ Error inicializando DuckDB Service: {e}")
             self._service = None

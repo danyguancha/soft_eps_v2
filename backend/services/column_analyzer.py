@@ -169,12 +169,7 @@ class ColumnAnalyzer:
         """
         Encuentra las mejores correspondencias entre columnas de dos DataFrames
         combinando análisis de patrones con solapamiento de valores reales
-        """
-        
-        print(f"🔍 Analizando compatibilidad entre DataFrames...")
-        print(f"   - DF1: {len(df1)} filas, {len(df1.columns)} columnas")
-        print(f"   - DF2: {len(df2)} filas, {len(df2.columns)} columnas")
-        
+        """        
         suggestions = []
         
         for col1, col2 in itertools.product(df1.columns, df2.columns):
@@ -211,10 +206,7 @@ class ColumnAnalyzer:
                 }
                 
                 suggestions.append(suggestion)
-                
-                print(f"   {'✅' if suggestion['compatible'] else '⚠️'} {col1} <-> {col2}: "
-                      f"Score={combined_score:.3f} (patrones={pattern_score:.3f}, solapamiento={overlap_score:.3f})")
-        
+                        
         # Ordenar por score combinado descendente
         suggestions.sort(key=lambda x: x["combined_score"], reverse=True)
         

@@ -62,7 +62,7 @@ export class CrossService {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
       
-      console.log('✅ Descarga completada:', filename);
+      console.log('Descarga completada:', filename);
       
     } catch (error: any) {
       console.error('❌ Error en descarga:', error);
