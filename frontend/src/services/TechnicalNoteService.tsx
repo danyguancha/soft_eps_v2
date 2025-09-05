@@ -116,7 +116,7 @@ export class TechnicalNoteService {
         })
       });
       
-      console.log(`🌐 API Request con filtros estilo Excel: GET /technical-note/data/${filename}?${params}`);
+      console.log(`🌐 API Request con filtros estilo Excel: GET /technical-note/${filename}?${params}`);
       
       const response = await api.get(`/technical-note/data/${filename}?${params}`, {
         timeout: 45000
