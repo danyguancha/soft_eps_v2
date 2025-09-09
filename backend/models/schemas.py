@@ -175,3 +175,18 @@ class DeleteResponse(BaseModel):
     message: str
     rows_deleted: int
     remaining_rows: int
+
+class KeywordAgeItem(BaseModel):
+    column: str
+    keyword: str
+    age_range: str
+    count: int
+
+class KeywordAgeReport(BaseModel):
+    success: bool = True
+    filename: str
+    rules: Dict[str, List[str]]
+    items: List[KeywordAgeItem]
+    totals_by_keyword: Dict[str, int]
+    ultra_fast: bool = True
+    engine: str = "DuckDB"

@@ -1,4 +1,4 @@
-// services/TechnicalNoteService.tsx
+// services/TechnicalNoteService.tsx - ✅ CON FILTROS GEOGRÁFICOS COMPLETOS
 import api from '../Api';
 import type { FilterCondition } from '../types/api.types';
 
@@ -67,7 +67,6 @@ export interface TechnicalFileMetadata {
   recommended_page_size: number;
 }
 
-// ✅ NUEVA INTERFAZ PARA VALORES ÚNICOS ESTILO EXCEL
 export interface ColumnUniqueValues {
   filename: string;
   column_name: string;
@@ -75,6 +74,65 @@ export interface ColumnUniqueValues {
   total_unique: number;
   limited: boolean;
   limit_applied: number;
+}
+
+// ✅ INTERFACES PARA REPORTE PALABRA CLAVE + EDAD
+export interface KeywordAgeItem {
+  column: string;
+  keyword: string;
+  age_range: string;
+  count: number;
+}
+
+export interface TemporalMonth {
+  month: number;
+  month_name: string;
+  count: number;
+}
+
+export interface TemporalYear {
+  year: number;
+  total: number;
+  months: Record<string, TemporalMonth>;
+}
+
+export interface TemporalColumnData {
+  column: string;
+  keyword: string;
+  age_range: string;
+  years: Record<string, TemporalYear>;
+}
+
+// ✅ NUEVAS INTERFACES PARA FILTROS GEOGRÁFICOS
+export interface GeographicFilters {
+  departamento?: string | null;
+  municipio?: string | null;
+  ips?: string | null;
+}
+
+export interface GeographicValuesResponse {
+  success: boolean;
+  filename: string;
+  geo_type: string;
+  values: string[];
+  total_values: number;
+  filters_applied: Record<string, string>;
+  engine: string;
+}
+
+export interface KeywordAgeReport {
+  success: boolean;
+  filename: string;
+  rules: {
+    keywords: string[];
+  };
+  geographic_filters?: GeographicFilters; // ✅ NUEVO
+  items: KeywordAgeItem[];
+  totals_by_keyword: Record<string, number>;
+  temporal_data: Record<string, TemporalColumnData>;
+  ultra_fast: boolean;
+  engine: string;
+  temporal_columns?: number;
 }
 
 export class TechnicalNoteService {
@@ -137,7 +195,6 @@ export class TechnicalNoteService {
     }
   }
 
-  // ✅ NUEVO: Obtener valores únicos de una columna (estilo Excel)
   static async getColumnUniqueValues(
     filename: string,
     columnName: string,
@@ -164,6 +221,83 @@ export class TechnicalNoteService {
       return response.data;
     } catch (error) {
       console.error(`❌ Error obteniendo valores únicos de ${columnName}:`, error);
+      throw error;
+    }
+  }
+
+  // ✅ NUEVOS MÉTODOS PARA FILTROS GEOGRÁFICOS
+  static async getGeographicValues(
+    filename: string, 
+    geoType: 'departamentos' | 'municipios' | 'ips',
+    filters: GeographicFilters = {}
+  ): Promise<GeographicValuesResponse> {
+    try {
+      const params = new URLSearchParams();
+      
+      if (filters.departamento) {
+        params.append('departamento', filters.departamento);
+      }
+      if (filters.municipio) {
+        params.append('municipio', filters.municipio);
+      }
+
+      const url = `/technical-note/geographic/${filename}/${geoType}${params.toString() ? `?${params}` : ''}`;
+      
+      console.log(`🗺️ Obteniendo ${geoType}: GET ${url}`);
+      
+      const response = await api.get(url, {
+        timeout: 15000
+      });
+      
+      console.log(`✅ ${geoType} obtenidos: ${response.data?.values?.length || 0} valores`);
+      
+      return response.data;
+    } catch (error) {
+      console.error(`❌ Error obteniendo ${geoType}:`, error);
+      throw error;
+    }
+  }
+
+  // ✅ MÉTODO ACTUALIZADO: Reporte con filtros geográficos
+  static async getKeywordAgeReport(
+    filename: string,
+    keywords?: string[],
+    minCount: number = 0,
+    includeTemporal: boolean = true,
+    geographicFilters: GeographicFilters = {}
+  ): Promise<KeywordAgeReport> {
+    try {
+      const params = new URLSearchParams({
+        ...(keywords && keywords.length > 0 && { keywords: keywords.join(',') }),
+        min_count: minCount.toString(),
+        include_temporal: includeTemporal.toString()
+      });
+      
+      // ✅ AGREGAR FILTROS GEOGRÁFICOS
+      if (geographicFilters.departamento) {
+        params.append('departamento', geographicFilters.departamento);
+      }
+      if (geographicFilters.municipio) {
+        params.append('municipio', geographicFilters.municipio);
+      }
+      if (geographicFilters.ips) {
+        params.append('ips', geographicFilters.ips);
+      }
+      
+      const response = await api.get(
+        `/technical-note/report/${filename}?${params}`,
+        {
+          timeout: 45000
+        }
+      );
+      
+      const itemsCount = response.data.items?.length || 0;
+      const temporalCount = response.data.temporal_columns || 0;
+      console.log(`✅ Reporte geográfico obtenido: ${itemsCount} elementos, ${temporalCount} con datos temporales`);
+      
+      return response.data;
+    } catch (error) {
+      console.error(`❌ Error obteniendo reporte geográfico de ${filename}:`, error);
       throw error;
     }
   }
@@ -202,6 +336,37 @@ export class TechnicalNoteService {
     } catch (error) {
       console.error(`Error obteniendo columnas de ${filename}:`, error);
       throw error;
+    }
+  }
+
+  // ✅ NUEVOS MÉTODOS DE CONVENIENCIA PARA FILTROS GEOGRÁFICOS
+  static async getDepartamentos(filename: string): Promise<string[]> {
+    try {
+      const result = await this.getGeographicValues(filename, 'departamentos');
+      return result.success ? result.values : [];
+    } catch (error) {
+      console.error('Error obteniendo departamentos:', error);
+      return [];
+    }
+  }
+
+  static async getMunicipios(filename: string, departamento: string): Promise<string[]> {
+    try {
+      const result = await this.getGeographicValues(filename, 'municipios', { departamento });
+      return result.success ? result.values : [];
+    } catch (error) {
+      console.error('Error obteniendo municipios:', error);
+      return [];
+    }
+  }
+
+  static async getIps(filename: string, departamento: string, municipio: string): Promise<string[]> {
+    try {
+      const result = await this.getGeographicValues(filename, 'ips', { departamento, municipio });
+      return result.success ? result.values : [];
+    } catch (error) {
+      console.error('Error obteniendo IPS:', error);
+      return [];
     }
   }
 

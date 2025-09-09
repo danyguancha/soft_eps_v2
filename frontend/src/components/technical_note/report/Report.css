@@ -1,0 +1,362 @@
+/* components/technical-note/report/Report.css - ✅ ESTILOS ACTUALIZADOS */
+
+/* Contenedor principal del reporte */
+.temporal-report-card {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Título del reporte */
+.temporal-report-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* Controles del reporte */
+.temporal-report-controls {
+  align-items: center;
+}
+
+.temporal-total-statistic .ant-statistic-title {
+  font-size: 11px;
+  margin-bottom: 2px;
+}
+
+.temporal-switch-container {
+  text-align: center;
+  min-width: 80px;
+}
+
+.temporal-switch-label {
+  font-size: 11px;
+  line-height: 1;
+}
+
+.temporal-visibility-button {
+  min-width: 80px;
+}
+
+/* ✅ NUEVOS ESTILOS PARA CARDS SIEMPRE VISIBLES */
+.geographic-filters-card {
+  border: 2px solid #e6f7ff;
+  background: linear-gradient(135deg, #f0f8ff 0%, #ffffff 100%);
+}
+
+.geographic-filters-card .ant-card-head {
+  background: linear-gradient(90deg, #e6f7ff 0%, #f0f8ff 100%);
+  border-bottom: 1px solid #91d5ff;
+}
+
+.geographic-filters-card .ant-card-head-title {
+  font-weight: 600;
+  color: #1890ff;
+}
+
+.keyword-controls-card {
+  border: 2px solid #f6ffed;
+  background: linear-gradient(135deg, #f6ffed 0%, #ffffff 100%);
+}
+
+.keyword-controls-card .ant-card-head {
+  background: linear-gradient(90deg, #f6ffed 0%, #f0f9ff 100%);
+  border-bottom: 1px solid #b7eb8f;
+}
+
+.keyword-controls-card .ant-card-head-title {
+  font-weight: 600;
+  color: #52c41a;
+}
+
+/* Estado de carga */
+.temporal-loading-container {
+  text-align: center;
+  padding: 40px 0;
+}
+
+.temporal-loading-text {
+  margin-top: 16px;
+}
+
+/* Contenido del reporte */
+.temporal-report-content {
+  /* Contenedor principal para el contenido del reporte */
+}
+
+/* Estadísticas por palabra clave */
+.temporal-stats-row {
+  margin-bottom: 24px;
+}
+
+.temporal-stat-card {
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.temporal-stat-medicina {
+  border-color: #1890ff;
+}
+
+.temporal-stat-enfermeria {
+  border-color: #52c41a;
+}
+
+.temporal-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.temporal-keyword-statistic .ant-statistic-title {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Tabla principal */
+.temporal-main-table .ant-table-thead > tr > th {
+  background-color: #fafafa;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.temporal-main-table .ant-table-tbody > tr:hover > td {
+  background-color: #f5f5f5;
+}
+
+/* Columnas de la tabla principal */
+.temporal-column-name {
+  font-size: 12px;
+  color: #333;
+}
+
+.temporal-keyword-tag {
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.temporal-age-tag {
+  font-size: 11px;
+}
+
+.temporal-count-text {
+  font-size: 13px;
+}
+
+.temporal-indicator-icon {
+  color: #1890ff;
+  font-size: 12px;
+}
+
+.temporal-percentage-text {
+  font-size: 11px;
+  color: #8c8c8c;
+}
+
+/* Botón de expansión */
+.temporal-expand-button {
+  color: #1890ff;
+}
+
+.temporal-expand-button:hover {
+  background-color: #e6f7ff;
+}
+
+/* Contenido expandido */
+.temporal-expanded-content {
+  padding: 0 24px 16px 24px;
+}
+
+.temporal-expanded-header {
+  margin-bottom: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+/* Tabla de desglose temporal */
+.temporal-detail-table {
+  background-color: #fafafa;
+  border: 1px solid #f0f0f0;
+  border-radius: 6px;
+}
+
+.temporal-detail-table .ant-table-thead > tr > th {
+  background-color: #f0f0f0;
+  border-bottom: 1px solid #d9d9d9;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.temporal-detail-table .ant-table-tbody > tr > td {
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 12px;
+}
+
+/* Filas de años y meses */
+.temporal-year-row {
+  background-color: #f0f8ff !important;
+  font-weight: 500;
+}
+
+.temporal-month-row {
+  background-color: #f9f9f9 !important;
+  font-size: 12px;
+}
+
+.temporal-year-row:hover {
+  background-color: #e6f3ff !important;
+}
+
+.temporal-month-row:hover {
+  background-color: #f0f0f0 !important;
+}
+
+.temporal-year-count {
+  color: #1890ff;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.temporal-month-count {
+  color: #595959;
+  font-size: 12px;
+}
+
+/* Estados vacíos */
+.temporal-empty-state {
+  margin-top: 24px;
+}
+
+.temporal-empty-content {
+  text-align: center;
+  padding: 40px 0;
+}
+
+.temporal-empty-icon {
+  font-size: 48px;
+  color: #d9d9d9;
+  margin-bottom: 16px;
+}
+
+.temporal-empty-text {
+  margin-bottom: 16px;
+}
+
+.temporal-empty-title {
+  display: block;
+  font-size: 18px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.45);
+  margin-bottom: 8px;
+}
+
+.temporal-empty-description {
+  display: block;
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.temporal-generate-button {
+  min-width: 200px;
+}
+
+.temporal-no-data {
+  padding: 16px;
+  text-align: center;
+}
+
+.temporal-no-report {
+  text-align: center;
+  padding: 40px 0;
+}
+
+.temporal-no-report .temporal-generate-button {
+  margin-top: 16px;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .geographic-filters-card .ant-row,
+  .keyword-controls-card .ant-row {
+    flex-direction: column;
+  }
+  
+  .geographic-filters-card .ant-col,
+  .keyword-controls-card .ant-col {
+    width: 100% !important;
+    margin-bottom: 12px;
+  }
+  
+  .temporal-stats-row .ant-col {
+    width: 100% !important;
+    margin-bottom: 16px;
+  }
+  
+  .temporal-main-table {
+    font-size: 11px;
+  }
+  
+  .temporal-report-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .temporal-report-controls > * {
+    margin-bottom: 8px;
+  }
+}
+
+/* Animaciones */
+.temporal-stat-card {
+  animation: temporal-fade-in 0.3s ease-out;
+}
+
+.temporal-expanded-content {
+  animation: temporal-expand 0.3s ease-out;
+}
+
+.geographic-filters-card,
+.keyword-controls-card {
+  animation: temporal-fade-in 0.3s ease-out;
+}
+
+@keyframes temporal-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes temporal-expand {
+  from {
+    opacity: 0;
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    max-height: 500px;
+  }
+}
+
+/* Estilos para indicadores de expansión */
+.ant-table-expand-icon-th,
+.ant-table-expand-icon-td {
+  width: 60px !important;
+}
+
+/* Mejoras visuales adicionales */
+.temporal-report-card .ant-card-head {
+  background: linear-gradient(90deg, #f0f8ff 0%, #ffffff 100%);
+  border-bottom: 2px solid #e6f3ff;
+}
+
+.temporal-report-card .ant-card-head-title {
+  font-weight: 600;
+}
+
+.temporal-detail-table .ant-table-container {
+  border-radius: 4px;
+  overflow: hidden;
+}

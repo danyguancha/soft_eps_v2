@@ -6,6 +6,8 @@ import re
 import time
 from typing import Dict, Any, List, Optional
 from datetime import datetime
+
+import pandas as pd
 from controllers.duckdb_controller.file_validation_controller import FileValidationController
 from controllers.duckdb_controller.cache_controller import CacheController
 from controllers.duckdb_controller.file_conversion_controller import FileConversionController
@@ -901,23 +903,23 @@ class DuckDBService:
             
         return sanitized
 
-    def _escape_identifier(self, identifier: str) -> str:
-        """Escape robusto para identificadores SQL"""
-        if not identifier:
+    def escape_identifier(self, name: str) -> str:
+        """Escape robusto para identificadores SQL con espacios"""
+        if not name:
             return '""'
         
         # Convertir a string y limpiar
-        identifier = str(identifier).strip()
+        name = str(name).strip()
         
-        if not identifier:
+        if not name:
             return '""'
         
         # CASOS ESPECIALES
-        if identifier.lower() in ("*", "all"):
-            return identifier  # No escapar wildcards
+        if name.lower() in ("*", "all"):
+            return name  # No escapar wildcards
         
-        # ESCAPE SEGURO: Siempre usar comillas dobles
-        escaped = identifier.replace('"', '""')  # Escapar comillas internas
+        # ✅ ESCAPE SEGURO: Siempre usar comillas dobles para nombres con espacios
+        escaped = name.replace('"', '""')  # Escapar comillas internas
         return f'"{escaped}"'
 
     # ========== MÉTODOS DE ADMINISTRACIÓN ==========
@@ -954,94 +956,65 @@ class DuckDBService:
             }
         }
     
-    def ensure_parquet_exists_or_regenerate(self, file_id: str, file_info: Dict = None) -> bool:
-        """
-        Verifica que el archivo Parquet exista, si no lo regenera automáticamente
-        Retorna True si el Parquet existe o se regeneró exitosamente
-        """
+    def ensure_parquet_exists_or_regenerate(self, table_key: str) -> bool:
+        """Verifica que el Parquet existe físicamente, si no lo regenera"""
         try:
-            # Verificar si está cargado en loaded_tables
-            if file_id not in self.loaded_tables:
-                print(f"⚠️ Archivo {file_id} no está en loaded_tables")
+            if table_key not in self.loaded_tables:
+                print(f"⚠️ Tabla {table_key} no está en cache")
                 return False
             
-            table_info = self.loaded_tables[file_id]
-            parquet_path = table_info.get("parquet_path")
+            table_info = self.loaded_tables[table_key]
+            parquet_path = table_info.get('parquet_path')
             
-            # ✅ VERIFICAR SI EL PARQUET EXISTE FÍSICAMENTE
-            if parquet_path and os.path.exists(parquet_path) and os.path.getsize(parquet_path) > 0:
-                print(f"✅ Parquet existe: {parquet_path}")
-                return True
+            if not parquet_path:
+                print(f"⚠️ No hay ruta de Parquet para {table_key}")
+                return False
             
-            print(f"❌ Parquet faltante o vacío: {parquet_path}")
+            # ✅ VERIFICACIÓN FÍSICA DEL ARCHIVO
+            if not os.path.exists(parquet_path):
+                print(f"❌ Archivo Parquet no existe físicamente: {parquet_path}")
+                print(f"🔄 Intentando regenerar desde fuente original...")
+                
+                # Remover de cache para forzar regeneración
+                del self.loaded_tables[table_key]
+                return False
             
-            # ✅ INTENTAR REGENERAR DESDE ARCHIVO ORIGINAL
-            if not file_info:
-                # Obtener info del archivo desde storage_manager
-                from controllers.file_controller import file_controller
-                try:
-                    file_info = file_controller.get_file_info(file_id)
-                except Exception as e:
-                    print(f"❌ No se pudo obtener file_info para {file_id}: {e}")
+            # ✅ VERIFICAR QUE EL ARCHIVO NO ESTÉ VACÍO O CORRUPTO
+            try:
+                file_size = os.path.getsize(parquet_path)
+                if file_size == 0:
+                    print(f"❌ Archivo Parquet está vacío: {parquet_path}")
+                    os.remove(parquet_path)
+                    del self.loaded_tables[table_key]
                     return False
-            
-            original_path = file_info.get("path")
-            original_name = file_info.get("original_name", "unknown")
-            extension = file_info.get("ext", "xlsx")
-            
-            # Verificar que el archivo original exista
-            if not original_path or not os.path.exists(original_path):
-                print(f"❌ Archivo original no existe: {original_path}")
-                # Remover referencia inválida
-                if file_id in self.loaded_tables:
-                    del self.loaded_tables[file_id]
-                return False
-            
-            print(f"🔄 Regenerando Parquet desde: {original_name}")
-            
-            # ✅ RECONVERTIR ARCHIVO ORIGINAL A PARQUET
-            conversion_result = self.convert_file_to_parquet(
-                file_path=original_path,
-                file_id=file_id,
-                original_name=original_name,
-                ext=extension,
-                sheet_name=table_info.get("sheet_name")  # Mantener hoja específica si la había
-            )
-            
-            if conversion_result.get("success"):
-                # Actualizar loaded_tables con nueva información
-                new_parquet_path = conversion_result["parquet_path"]
                 
-                # Recargar en DuckDB
-                self.load_parquet_lazy(file_id, new_parquet_path)
-                
-                print(f"✅ Parquet regenerado exitosamente: {new_parquet_path}")
+                print(f"✅ Parquet verificado: {parquet_path} ({file_size:,} bytes)")
                 return True
-            else:
-                print(f"❌ Error regenerando Parquet: {conversion_result.get('error')}")
-                return False
                 
+            except Exception as file_error:
+                print(f"❌ Error verificando archivo Parquet: {file_error}")
+                return False
+            
         except Exception as e:
             print(f"❌ Error en ensure_parquet_exists_or_regenerate: {e}")
             return False
 
-    def _load_file_on_demand_with_regeneration(self, file_id: str) -> bool:
-        """
-        Carga archivo bajo demanda con regeneración automática si falta el Parquet
-        """
+    def _load_file_on_demand_with_regeneration(self, table_key: str) -> bool:
+        """Carga archivo con regeneración automática si es necesario"""
         try:
-            # Primero intentar carga normal
-            if self._load_file_on_demand(file_id):
-                # Verificar que el Parquet realmente exista
-                return self.ensure_parquet_exists_or_regenerate(file_id)
-            else:
-                print(f"❌ No se pudo cargar {file_id} bajo demanda")
-                return False
-                
-        except Exception as e:
-            print(f"❌ Error en _load_file_on_demand_with_regeneration: {e}")
+            # ✅ SI ESTÁ EN CACHE, VERIFICAR EXISTENCIA FÍSICA
+            if table_key in self.loaded_tables:
+                if self.ensure_parquet_exists_or_regenerate(table_key):
+                    return True
+                # Si no existe físicamente, continuar con regeneración
+            
+            print(f"🔄 Carga bajo demanda no disponible para {table_key}")
+            print(f"💡 Usa read_technical_file_data_paginated() para forzar conversión")
             return False
-
+            
+        except Exception as e:
+            print(f"❌ Error en carga bajo demanda: {e}")
+            return False
 
     def close(self):
         """Cierra conexión DuckDB de forma segura"""
@@ -1051,6 +1024,212 @@ class DuckDBService:
                 print("✅ Conexión DuckDB cerrada")
         except Exception as e:
             print(f"⚠️ Error cerrando DuckDB: {e}")
+
+    def run_sql_df(self, sql: str) -> pd.DataFrame:
+        return self.conn.execute(sql).fetchdf()
+
+    def escape_identifier(self, name: str) -> str:
+        # escape básico para identificadores con comillas dobles
+        return f"\"{name.replace('\"', '\"\"')}\""
+    
+    def _build_filter_condition(self, filter_item: Dict[str, Any]) -> Optional[str]:
+        """
+        Construye una condición WHERE SQL basada en un objeto de filtro
+        
+        filter_item formato esperado:
+        {
+            'column': 'Regional', 
+            'operator': 'in', 
+            'values': ['REGIONAL BOGOTA']
+        }
+        """
+        try:
+            column = filter_item.get('column')
+            operator = filter_item.get('operator', '=').lower()
+            values = filter_item.get('values', filter_item.get('value'))
+            
+            if not column or values is None:
+                print(f"⚠️ Filtro incompleto: {filter_item}")
+                return None
+            
+            # Asegurar que values sea una lista
+            if not isinstance(values, list):
+                values = [values]
+            
+            # Escapar nombre de columna
+            escaped_column = self._escape_identifier(column)
+            
+            # ✅ FUNCIÓN AUXILIAR PARA ESCAPAR VALORES
+            def escape_value(val):
+                return str(val).replace("'", "''")
+            
+            # ✅ CONSTRUCCIÓN DE CONDICIONES SQL (COMILLAS CORREGIDAS)
+            if operator in ['=', 'eq', 'equals']:
+                if len(values) == 0:
+                    return None
+                escaped_val = escape_value(values[0])
+                return f"{escaped_column} = '{escaped_val}'"
+                
+            elif operator in ['!=', 'ne', 'not_equals']:
+                if len(values) == 0:
+                    return None
+                escaped_val = escape_value(values[0])
+                return f"{escaped_column} != '{escaped_val}'"
+                
+            elif operator in ['in', 'IN']:
+                if len(values) == 0:
+                    return None
+                # Escapar cada valor y construir lista
+                escaped_values = [f"'{escape_value(v)}'" for v in values if v is not None]
+                if not escaped_values:
+                    return None
+                values_str = ', '.join(escaped_values)
+                return f"{escaped_column} IN ({values_str})"
+                
+            elif operator in ['not_in', 'not in', 'NOT IN']:
+                if len(values) == 0:
+                    return None
+                escaped_values = [f"'{escape_value(v)}'" for v in values if v is not None]
+                if not escaped_values:
+                    return None
+                values_str = ', '.join(escaped_values)
+                return f"{escaped_column} NOT IN ({values_str})"
+                
+            elif operator in ['contains', 'like']:
+                if len(values) == 0:
+                    return None
+                search_term = escape_value(values[0])
+                return f"{escaped_column} LIKE '%{search_term}%'"
+                
+            elif operator in ['starts_with', 'startswith']:
+                if len(values) == 0:
+                    return None
+                search_term = escape_value(values[0])
+                return f"{escaped_column} LIKE '{search_term}%'"
+                
+            elif operator in ['ends_with', 'endswith']:
+                if len(values) == 0:
+                    return None
+                search_term = escape_value(values[0])
+                return f"{escaped_column} LIKE '%{search_term}'"
+                
+            elif operator in ['>', 'gt', 'greater_than']:
+                if len(values) == 0:
+                    return None
+                escaped_val = escape_value(values[0])
+                return f"{escaped_column} > '{escaped_val}'"
+                
+            elif operator in ['>=', 'gte', 'greater_than_or_equal']:
+                if len(values) == 0:
+                    return None
+                escaped_val = escape_value(values[0])
+                return f"{escaped_column} >= '{escaped_val}'"
+                
+            elif operator in ['<', 'lt', 'less_than']:
+                if len(values) == 0:
+                    return None
+                escaped_val = escape_value(values[0])
+                return f"{escaped_column} < '{escaped_val}'"
+                
+            elif operator in ['<=', 'lte', 'less_than_or_equal']:
+                if len(values) == 0:
+                    return None
+                escaped_val = escape_value(values[0])
+                return f"{escaped_column} <= '{escaped_val}'"
+                
+            elif operator in ['between']:
+                if len(values) < 2:
+                    return None
+                val1 = escape_value(values[0])
+                val2 = escape_value(values[1])
+                return f"{escaped_column} BETWEEN '{val1}' AND '{val2}'"
+                
+            elif operator in ['is_null', 'null']:
+                return f"{escaped_column} IS NULL"
+                
+            elif operator in ['is_not_null', 'not_null']:
+                return f"{escaped_column} IS NOT NULL"
+                
+            else:
+                print(f"⚠️ Operador no soportado: {operator}")
+                return None
+                
+        except Exception as e:
+            print(f"❌ Error construyendo filtro: {e}")
+            print(f"   Filtro problemático: {filter_item}")
+            return None
+
+    def _build_search_condition(self, search_term: str, table_info: Dict[str, Any]) -> Optional[str]:
+        """
+        Construye condición de búsqueda que aplica a todas las columnas de texto
+        """
+        try:
+            if not search_term or not search_term.strip():
+                return None
+            
+            # Limpiar término de búsqueda
+            clean_search = search_term.strip().replace("'", "''")
+            
+            # Obtener columnas disponibles
+            columns = []
+            if table_info.get("type") == "lazy":
+                # Para lazy load, obtener columnas del parquet
+                parquet_path = table_info.get("parquet_path")
+                if parquet_path:
+                    try:
+                        describe_sql = f"DESCRIBE SELECT * FROM read_parquet('{parquet_path}') LIMIT 0"
+                        describe_result = self.conn.execute(describe_sql).fetchall()
+                        columns = [row[0] for row in describe_result]
+                    except:
+                        columns = []
+            else:
+                # Para tablas normales
+                table_name = table_info.get("table_name")
+                if table_name:
+                    try:
+                        describe_sql = f"DESCRIBE {table_name}"
+                        describe_result = self.conn.execute(describe_sql).fetchall()
+                        columns = [row[0] for row in describe_result]
+                    except:
+                        columns = []
+            
+            if not columns:
+                print("⚠️ No se pudieron obtener columnas para búsqueda")
+                return None
+            
+            # ✅ CONSTRUIR BÚSQUEDA EN TODAS LAS COLUMNAS (STRING)
+            search_conditions = []
+            for column in columns:
+                escaped_column = self._escape_identifier(column)
+                # Convertir a string y buscar (DuckDB automáticamente maneja conversiones)
+                condition = f"CAST({escaped_column} AS VARCHAR) LIKE '%{clean_search}%'"
+                search_conditions.append(condition)
+            
+            if search_conditions:
+                # Unir con OR - la búsqueda encuentra en cualquier columna
+                return f"({' OR '.join(search_conditions)})"
+            else:
+                return None
+                
+        except Exception as e:
+            print(f"❌ Error construyendo búsqueda: {e}")
+            return None
+
+    def _sanitize_table_name(self, table_name: str) -> str:
+        """Sanitiza nombres de tabla para DuckDB"""
+        if not table_name:
+            return "temp_table"
+        
+        # Reemplazar caracteres problemáticos
+        import re
+        sanitized = re.sub(r'[^a-zA-Z0-9_]', '_', str(table_name))
+        
+        # Asegurar que no empiece con número
+        if sanitized and sanitized[0].isdigit():
+            sanitized = f"table_{sanitized}"
+        
+        return sanitized or "temp_table"
+
 
 # Función para obtener la instancia
 def get_duckdb_service():
