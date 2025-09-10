@@ -38,7 +38,7 @@ export const AppHeader: React.FC<Props> = ({
         ? 'Procesador'
         : isTablet
         ? 'Procesador Archivos'
-        : 'Procesador de Archivos Excel/CSV'}
+        : 'Evaluación de Nota Técnica'}
     </Title>
     {currentFile && (
       <Badge

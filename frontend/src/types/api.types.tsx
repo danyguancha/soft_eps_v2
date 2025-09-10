@@ -149,6 +149,8 @@ export interface AIRequest {
 // Response types
 export interface FileUploadResponse extends FileInfo {
   message: string;
+  filename: string;
+  id: string;
 }
 
 export interface TransformResponse {
