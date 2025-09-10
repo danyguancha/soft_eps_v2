@@ -1,8 +1,9 @@
-# controllers/technical_note_controller/technical_note.py - ✅ USANDO MÉTODOS EXISTENTES
+# controllers/technical_note_controller/technical_note.py
 import os
 from typing import Dict, Any, List, Optional
 from fastapi import HTTPException
 from services.duckdb_service import duckdb_service
+from services.aux_duckdb_services.query_pagination import QueryPagination
 
 class TechnicalNoteController:
     """Controlador ULTRA-RÁPIDO usando DuckDB existente para archivos técnicos"""
@@ -21,7 +22,7 @@ class TechnicalNoteController:
             print(f"🔍 Verificando fuente de datos para: {filename}")
             
             # ✅ USAR MÉTODO EXISTENTE: ensure_parquet_exists_or_regenerate
-            if duckdb_service.ensure_parquet_exists_or_regenerate(file_key):
+            if QueryPagination().ensure_parquet_exists_or_regenerate(file_key, duckdb_service.loaded_tables):
                 # Parquet existe y está válido
                 table_info = duckdb_service.loaded_tables[file_key]
                 parquet_path = table_info.get('parquet_path')
@@ -30,7 +31,7 @@ class TechnicalNoteController:
                 return f"read_parquet('{parquet_path}')"
             
             # ✅ USAR MÉTODO EXISTENTE: _load_file_on_demand_with_regeneration
-            if duckdb_service._load_file_on_demand_with_regeneration(file_key):
+            if QueryPagination()._load_file_on_demand_with_regeneration(file_key, duckdb_service.loaded_tables):
                 table_info = duckdb_service.loaded_tables[file_key]
                 parquet_path = table_info.get('parquet_path')
                 
@@ -274,14 +275,17 @@ class TechnicalNoteController:
                     }
             
             # ✅ USAR MÉTODO DE QUERY EXISTENTE
-            result = duckdb_service.query_data_ultra_fast(
+            result = QueryPagination().query_data_ultra_fast(
+                conn=duckdb_service.conn,
                 file_id=file_key,
                 filters=filters,
                 search=search,
                 sort_by=sort_by,
                 sort_order=sort_order or "asc",
                 page=page,
-                page_size=page_size
+                page_size=page_size,
+                selected_columns= None,
+                loaded_tables=duckdb_service.loaded_tables
             )
             
             if not result.get("success", True):

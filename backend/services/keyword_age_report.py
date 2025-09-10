@@ -376,8 +376,6 @@ class ColumnKeywordReportService:
                 for variant in variants:
                     actual_columns[variant] = original_name
             
-            print(f"📋 Columnas disponibles para {geo_type}: {column_names}")
-            
             # Buscar coincidencias con los patrones
             for pattern in patterns:
                 # Crear múltiples variantes del patrón
