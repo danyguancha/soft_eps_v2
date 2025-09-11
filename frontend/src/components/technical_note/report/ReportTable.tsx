@@ -1,11 +1,21 @@
-// components/report/ReportTable.tsx
-import { memo, useMemo, useCallback } from 'react';
+// components/report/ReportTable.tsx - VERSION FINAL COMPLETA
+
+import React, { memo, useMemo, useCallback } from 'react';
 import { Table, Typography, Tag, Space, Button, Tooltip, Empty } from 'antd';
 import { CalendarOutlined, ExpandAltOutlined, CompressOutlined } from '@ant-design/icons';
 import { getKeywordConfig } from '../../../config/reportKeywords.config';
 import type { KeywordAgeItem } from '../../../services/TechnicalNoteService';
 
 const { Text } = Typography;
+
+// ✅ FUNCIÓN DE NORMALIZACIÓN ROBUSTA (mantiene acentos, limpia espacios)
+const normalizeSpaces = (str: string): string => {
+  return str.trim().replace(/\s+/g, ' ');
+};
+
+const buildCleanColumnKey = (column: string, keyword: string, ageRange: string): string => {
+  return `${normalizeSpaces(column)}|${normalizeSpaces(keyword)}|${normalizeSpaces(ageRange)}`;
+};
 
 interface ReportTableProps {
   keywordReport: {
@@ -17,13 +27,166 @@ interface ReportTableProps {
 }
 
 export const ReportTable = memo<ReportTableProps>(({ keywordReport, showTemporalData }) => {
+  
+  // ✅ CREAR MAPA NORMALIZADO DE CLAVES
+  const normalizedTemporalData = useMemo(() => {
+    if (!keywordReport?.temporal_data) return {};
+    
+    const normalized: Record<string, any> = {};
+    
+    Object.entries(keywordReport.temporal_data).forEach(([originalKey, data]) => {
+      // Normalizar clave del backend también
+      const parts = originalKey.split('|');
+      if (parts.length === 3) {
+        const normalizedKey = buildCleanColumnKey(parts[0], parts[1], parts[2]);
+        normalized[normalizedKey] = data;
+        console.log('🔄 Clave normalizada:', { original: originalKey, normalized: normalizedKey });
+      }
+    });
+    
+    console.log('📚 Mapa normalizado creado:', Object.keys(normalized));
+    return normalized;
+  }, [keywordReport?.temporal_data]);
+
+  // ✅ DEBUG: Mostrar claves y estados
+  React.useEffect(() => {
+    if (keywordReport?.temporal_data) {
+      console.log('🔍 TODAS las claves recibidas:', Object.keys(keywordReport.temporal_data));
+      console.log('🧹 TODAS las claves normalizadas:', Object.keys(normalizedTemporalData));
+      
+      Object.entries(normalizedTemporalData).forEach(([key, data]) => {
+        console.log(`📋 ${key}:`, {
+          type: (data as any).type,
+          hasYears: !!(data as any).years,
+          hasStates: !!(data as any).states,
+          statesKeys: (data as any).states ? Object.keys((data as any).states) : 'N/A'
+        });
+      });
+    }
+  }, [keywordReport?.temporal_data, normalizedTemporalData]);
+
+  // ✅ RENDERIZADO DE ESTADOS DE VACUNACIÓN
+  const renderVaccinationStatesExpansion = useCallback((record: KeywordAgeItem, statesData: any) => {
+    console.log('🏥 Renderizando estados de vacunación:', record.column, statesData);
+    
+    if (!statesData.states) {
+      return (
+        <div className="temporal-no-data">
+          <Text type="secondary">No hay datos de estados disponibles</Text>
+        </div>
+      );
+    }
+
+    const statesRows: any[] = [];
+
+    // Crear filas para cada estado
+    Object.entries(statesData.states).forEach(([stateName, stateInfo]: [string, any]) => {
+      statesRows.push({
+        key: `state-${stateName}`,
+        state_name: stateName,
+        count: stateInfo.count,
+        percentage: 0 // Se calculará después
+      });
+    });
+
+    // Calcular porcentajes
+    const totalCount = statesRows.reduce((sum, row) => sum + row.count, 0);
+    statesRows.forEach(row => {
+      row.percentage = totalCount > 0 ? (row.count / totalCount * 100) : 0;
+    });
+
+    const statesColumns = [
+      {
+        title: 'Estado',
+        dataIndex: 'state_name',
+        key: 'state_name',
+        width: '40%',
+        render: (text: string) => (
+          <Space>
+            <Tag color={text === 'Completo' ? 'green' : 'orange'}>
+              {text === 'Completo' ? '✅' : '⏳'} {text.toUpperCase()}
+            </Tag>
+          </Space>
+        )
+      },
+      {
+        title: 'Cantidad',
+        dataIndex: 'count',
+        key: 'count',
+        width: '30%',
+        align: 'right' as const,
+        render: (count: number) => (
+          <Text strong className="vaccination-state-count">
+            {count.toLocaleString()}
+          </Text>
+        )
+      },
+      {
+        title: 'Porcentaje',
+        dataIndex: 'percentage',
+        key: 'percentage',
+        width: '30%',
+        align: 'right' as const,
+        render: (percentage: number) => (
+          <Text className="vaccination-state-percentage">
+            {percentage.toFixed(1)}%
+          </Text>
+        )
+      }
+    ];
+
+    return (
+      <div className="vaccination-states-expanded-content">
+        <div className="vaccination-states-expanded-header">
+          <Space>
+            <Tag color="purple">💉 VACUNACIÓN</Tag>
+            <Text strong>{record.column}</Text>
+          </Space>
+        </div>
+
+        <Table
+          dataSource={statesRows}
+          columns={statesColumns}
+          pagination={false}
+          size="small"
+          className="vaccination-states-detail-table"
+          rowClassName="vaccination-state-row"
+        />
+      </div>
+    );
+  }, []);
+
+  // ✅ RENDERIZADO EXPANDIDO (fechas + estados)
   const expandedRowRender = useCallback((record: KeywordAgeItem) => {
-    if (!keywordReport?.temporal_data || !showTemporalData) return null;
+    if (!showTemporalData) return null;
 
-    const columnKey = `${record.column}|${record.keyword}|${record.age_range}`;
-    const temporalData = keywordReport.temporal_data[columnKey];
+    // ✅ USAR CLAVE NORMALIZADA
+    const cleanKey = buildCleanColumnKey(record.column, record.keyword, record.age_range);
+    const temporalData = normalizedTemporalData[cleanKey];
 
-    if (!temporalData || !temporalData.years) {
+    console.log('🔍 expandedRowRender:', { 
+      record: record.column, 
+      cleanKey, 
+      found: !!temporalData,
+      type: temporalData?.type 
+    });
+
+    if (!temporalData) {
+      return (
+        <div className="temporal-no-data">
+          <Text type="secondary">No hay datos temporales disponibles para esta columna</Text>
+        </div>
+      );
+    }
+
+    // ✅ VERIFICAR SI SON ESTADOS DE VACUNACIÓN
+    if (temporalData.type === 'states') {
+      console.log('✅ Renderizando expansión de estados para:', record.column);
+      return renderVaccinationStatesExpansion(record, temporalData);
+    }
+
+    // ✅ LÓGICA EXISTENTE PARA DATOS TEMPORALES CON FECHAS
+    if (!temporalData.years) {
       return (
         <div className="temporal-no-data">
           <Text type="secondary">No hay datos temporales disponibles para esta columna</Text>
@@ -46,7 +209,7 @@ export const ReportTable = memo<ReportTableProps>(({ keywordReport, showTemporal
       });
 
       if (yearData.months) {
-        const sortedMonths = Object.entries(yearData.months).sort(([, a], [, b]) => 
+        const sortedMonths = Object.entries(yearData.months).sort(([, a], [, b]) =>
           (a as any).month - (b as any).month
         );
 
@@ -116,8 +279,9 @@ export const ReportTable = memo<ReportTableProps>(({ keywordReport, showTemporal
         />
       </div>
     );
-  }, [keywordReport?.temporal_data, showTemporalData]);
+  }, [normalizedTemporalData, showTemporalData, renderVaccinationStatesExpansion]);
 
+  // ✅ COLUMNAS DE LA TABLA PRINCIPAL
   const reportColumns = useMemo(() => [
     {
       title: 'Columna',
@@ -178,13 +342,12 @@ export const ReportTable = memo<ReportTableProps>(({ keywordReport, showTemporal
       align: 'right' as const,
       render: (_: any, record: KeywordAgeItem) => {
         if (!keywordReport?.totals_by_keyword) return '-';
-        
-        // Corrección: calcular el total correctamente
+
         const total = Object.values(keywordReport.totals_by_keyword).reduce(
-          (acc: number, curr: number) => acc + curr, 
+          (acc: number, curr: number) => acc + curr,
           0
         );
-        
+
         const percentage = total > 0 ? (record.count / total) * 100 : 0;
         return (
           <Text className="temporal-percentage-text">
@@ -195,6 +358,7 @@ export const ReportTable = memo<ReportTableProps>(({ keywordReport, showTemporal
     }
   ], [keywordReport]);
 
+  // ✅ TABLA PRINCIPAL CON EXPANDIBLE
   return (
     <Table
       dataSource={keywordReport?.items || []}
@@ -203,10 +367,53 @@ export const ReportTable = memo<ReportTableProps>(({ keywordReport, showTemporal
       expandable={{
         expandedRowRender: showTemporalData ? expandedRowRender : undefined,
         expandIcon: ({ expanded, onExpand, record }) => {
-          const columnKey = `${record.column}|${record.keyword}|${record.age_range}`;
-          const hasTemporalData = keywordReport?.temporal_data?.[columnKey];
+          if (!showTemporalData) return null;
+          
+          // ✅ USAR CLAVE NORMALIZADA
+          const cleanKey = buildCleanColumnKey(record.column, record.keyword, record.age_range);
+          const temporalData = normalizedTemporalData[cleanKey];
 
-          if (!showTemporalData || !hasTemporalData) return null;
+          console.log('🔍 expandIcon:', { 
+            column: record.column, 
+            cleanKey, 
+            found: !!temporalData,
+            type: temporalData?.type 
+          });
+
+          if (!temporalData) {
+            console.log('❌ No temporal data para:', record.column);
+            return null;
+          }
+
+          let hasData = false;
+          let isStates = false;
+
+          if (temporalData.type === 'states') {
+            isStates = true;
+            hasData = !!(temporalData.states && Object.keys(temporalData.states).length > 0);
+            console.log('📊 Estados detectados para expand:', record.column, 'hasData:', hasData);
+          } else {
+            hasData = !!(temporalData.years && Object.keys(temporalData.years).length > 0);
+            console.log('📅 Fechas detectadas para expand:', record.column, 'hasData:', hasData);
+          }
+
+          if (!hasData) {
+            console.log('❌ No hay datos expandibles para:', record.column);
+            return null;
+          }
+
+          // ✅ ESTILOS DIFERENCIADOS
+          const iconStyle = isStates ? 
+            { color: '#722ed1' } : // Púrpura para estados
+            { color: '#1890ff' };   // Azul para fechas
+
+          const tooltip = expanded ? 
+            'Contraer desglose' : 
+            isStates ? 
+              'Expandir estados de vacunación' : 
+              'Expandir desglose temporal';
+
+          console.log('✅ Mostrando botón expand para:', record.column, 'tipo:', isStates ? 'estados' : 'fechas');
 
           return (
             <Button
@@ -214,15 +421,27 @@ export const ReportTable = memo<ReportTableProps>(({ keywordReport, showTemporal
               size="small"
               icon={expanded ? <CompressOutlined /> : <ExpandAltOutlined />}
               onClick={e => onExpand(record, e)}
-              title={expanded ? 'Contraer desglose' : 'Expandir desglose'}
+              title={tooltip}
               className="temporal-expand-button"
+              style={iconStyle}
             />
           );
         },
         rowExpandable: (record) => {
           if (!showTemporalData) return false;
-          const columnKey = `${record.column}|${record.keyword}|${record.age_range}`;
-          return !!keywordReport?.temporal_data?.[columnKey];
+          
+          // ✅ USAR CLAVE NORMALIZADA
+          const cleanKey = buildCleanColumnKey(record.column, record.keyword, record.age_range);
+          const temporalData = normalizedTemporalData[cleanKey];
+          
+          if (!temporalData) return false;
+          
+          const expandable = temporalData.type === 'states' ?
+            !!(temporalData.states && Object.keys(temporalData.states).length > 0) :
+            !!(temporalData.years && Object.keys(temporalData.years).length > 0);
+            
+          console.log('🔄 rowExpandable para:', record.column, 'expandable:', expandable);
+          return expandable;
         }
       }}
       pagination={{
