@@ -71,6 +71,22 @@ export const REPORT_KEYWORDS: KeywordConfig[] = [
     icon: SMILE_ICON, // ✅ Icono estático pre-renderizado
     synonyms: ['detartraje', 'profilaxis', 'limpieza'],
     searchTerms: ['detartraje', 'profilaxis', 'limpieza' ]
+  },
+  {
+    key: 'sellantes',
+    label: 'Sellantes',
+    color: '#b0c604ff',
+    icon: SMILE_ICON, // ✅ Icono estático pre-renderizado
+    synonyms: ['sellantes', 'selladores', 'Sellantes'],
+    searchTerms: ['sellante', 'selladores', 'Sellantes']
+  },
+  {
+    key: 'vacunación',
+    label: 'Vacunación',
+    color: '#1c6afaff',
+    icon: SMILE_ICON, // ✅ Icono estático pre-renderizado
+    synonyms: ['vacunacion', 'vacunación', 'vacuna', 'Vacunación'],
+    searchTerms: ['vacunacion', 'vacunación', 'vacuna', 'Vacunación']
   }
 ];
 

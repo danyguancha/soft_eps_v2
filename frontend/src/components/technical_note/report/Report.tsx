@@ -1,6 +1,6 @@
 // components/technical-note/report/Report.tsx - ✅ CÓDIGO COMPLETO CORREGIDO
 import React, { useMemo, useCallback, memo } from 'react';
-import { Card, Typography, Row, Col, Spin, Space, Button, Table, Tag, Statistic, Select, Collapse, Empty, Switch, Tooltip, Alert } from 'antd';
+import { Card, Typography, Row, Col, Spin, Space, Button, Table, Tag, Statistic, Select, Empty, Switch, Tooltip, Alert } from 'antd';
 import { BarChartOutlined, EyeOutlined, EyeInvisibleOutlined, SyncOutlined, FilterOutlined, CalendarOutlined, ExpandAltOutlined, CompressOutlined, ExclamationCircleOutlined, EnvironmentOutlined, ClearOutlined } from '@ant-design/icons';
 import type { KeywordAgeReport, KeywordAgeItem, GeographicFilters } from '../../../services/TechnicalNoteService';
 import {
@@ -104,7 +104,7 @@ const OptimizedKeywordSelect = memo<{
       allowClear={false}
       virtual={true}
       maxTagCount={3}
-      maxTagTextLength={8}
+      maxTagTextLength={18}
       // ✅ PROPIEDADES ACTUALIZADAS ANT DESIGN 5.x
       optionFilterProp="label"  // Filtra por la prop 'label' automáticamente
       popupMatchSelectWidth={false}
@@ -423,7 +423,6 @@ export const Report: React.FC<TemporalReportProps> = memo(({
     loadingReport,
     showReport,
     hasReport,
-    reportItemsCount,
     reportTotalRecords,
     selectedFile,
     reportKeywords,
@@ -435,7 +434,6 @@ export const Report: React.FC<TemporalReportProps> = memo(({
     ipsOptions,
     loadingGeoFilters,
     onToggleReportVisibility,
-    onRegenerateReport,
     onSetReportKeywords,
     onSetShowTemporalData,
     onLoadKeywordAgeReport,
@@ -445,7 +443,6 @@ export const Report: React.FC<TemporalReportProps> = memo(({
     resetGeographicFilters,
 }) => {
 
-    // ✅ FUNCIÓN MEMOIZADA PARA EXPANDIR FILAS
     const expandedRowRender = useCallback((record: KeywordAgeItem) => {
         if (!keywordReport?.temporal_data || !showTemporalData) return null;
 
