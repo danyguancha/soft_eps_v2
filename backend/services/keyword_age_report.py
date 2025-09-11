@@ -342,7 +342,7 @@ class ColumnKeywordReportService:
         patterns = geo_patterns.get(geo_type, [])
         
         try:
-            from services.duckdb_service import duckdb_service
+            from services.duckdb_service.duckdb_service import duckdb_service
             
             # ✅ SINTAXIS CORRECTA PARA PARQUET SEGÚN DOCS DUCKDB
             if 'read_parquet' in data_source:

@@ -1,7 +1,7 @@
 
 import traceback
 from typing import Dict, Any
-from services.duckdb_service import DuckDBService
+from services.duckdb_service.duckdb_service import DuckDBService
 
 class SafeDuckDBService:
     """Wrapper seguro para DuckDB Service que previene crashes"""

@@ -3,7 +3,7 @@ from typing import Dict, Any
 import pandas as pd
 from models.schemas import DataRequest
 from controllers.files_controllers.storage_manager import FileStorageManager
-from services.duckdb_service import duckdb_service
+from services.duckdb_service.duckdb_service import duckdb_service
 
 
 class DataHandler:

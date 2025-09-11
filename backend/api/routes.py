@@ -23,7 +23,7 @@ try:
     
 except ImportError:
     try:
-        from services.duckdb_service import duckdb_service
+        from services.duckdb_service.duckdb_service import duckdb_service
     except ImportError:
         duckdb_service = None
 

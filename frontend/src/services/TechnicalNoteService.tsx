@@ -129,7 +129,7 @@ export interface KeywordAgeReport {
   geographic_filters?: GeographicFilters; // ✅ NUEVO
   items: KeywordAgeItem[];
   totals_by_keyword: Record<string, number>;
-  temporal_data: Record<string, TemporalColumnData>;
+  temporal_data?: Record<string, TemporalColumnData>;
   ultra_fast: boolean;
   engine: string;
   temporal_columns?: number;

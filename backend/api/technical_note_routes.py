@@ -236,7 +236,7 @@ def get_file_columns(filename: str):
 def debug_file_state(filename: str):
     """Debug del estado interno del archivo"""
     try:
-        from services.duckdb_service import duckdb_service
+        from services.duckdb_service.duckdb_service import duckdb_service
         
         file_key = f"technical_{filename}"
         

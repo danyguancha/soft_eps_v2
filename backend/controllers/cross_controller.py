@@ -2,7 +2,7 @@
 
 from typing import Dict, Any
 from models.schemas import FileCrossRequest
-from services.duckdb_service import duckdb_service
+from services.duckdb_service.duckdb_service import duckdb_service
 
 class CrossController:
     """Controlador para operaciones de cruce de archivos"""

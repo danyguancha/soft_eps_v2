@@ -6,7 +6,7 @@ from typing import Dict, Any, Optional, List
 from services.csv_service import CSVService
 from services.excel_service import ExcelService
 from controllers.files_controllers.storage_manager import FileStorageManager
-from services.duckdb_service import duckdb_service
+from services.duckdb_service.duckdb_service import duckdb_service
 
 class UploadHandler:
     def __init__(self, storage_manager: FileStorageManager):
