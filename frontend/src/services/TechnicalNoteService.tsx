@@ -487,6 +487,55 @@ export class TechnicalNoteService {
     }
   }
 
+  //Exportar inasistentes a csv
+
+
+  static async exportInasistentesCSV(
+    filename: string,
+    selectedMonths: number[],
+    selectedYears: number[] = [],
+    selectedKeywords: string[] = [],
+    corteFecha: string = "2025-07-31",
+    geographicFilters: GeographicFilters = {}
+  ): Promise<Blob> {
+    try {
+      console.log(`📥 Exportando reporte CSV con caracteres especiales: ${filename}`);
+
+      const requestBody = {
+        selectedMonths,
+        selectedYears,
+        selectedKeywords,
+        departamento: geographicFilters.departamento,
+        municipio: geographicFilters.municipio,
+        ips: geographicFilters.ips
+      };
+
+      const params = new URLSearchParams({
+        corte_fecha: corteFecha
+      });
+
+      const response = await api.post(
+        `/technical-note/inasistentes-report/${filename}/export-csv?${params}`,
+        requestBody,
+        {
+          timeout: 120000,
+          responseType: 'blob', // ✅ CRÍTICO: Blob para preservar encoding
+          headers: {
+            'Accept': 'text/csv; charset=utf-8' // ✅ Especificar encoding esperado
+          }
+        }
+      );
+
+      console.log(`✅ CSV con caracteres especiales exportado exitosamente`);
+      return response.data;
+
+    } catch (error) {
+      console.error(`❌ Error exportando CSV de ${filename}:`, error);
+      throw error;
+    }
+  }
+
+
 
 
 

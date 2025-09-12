@@ -31,12 +31,6 @@ export const NavigationMenu: React.FC<Props> = ({
         label: isMobile ? 'Transform' : 'Transformar',
       },
       {
-        key: 'chat',
-        icon: <RobotOutlined />,
-        label: isMobile ? 'IA' : 'Asistente IA',
-       
-      },
-      {
         key: 'technical_note',
         icon: <FileTextOutlined />,
         label: isMobile ? 'Technical_note' : 'Nota técnica',

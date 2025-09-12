@@ -1,7 +1,7 @@
 // components/report/InasistentesTable.tsx - Versión con desglose por actividades
 
 import React, { memo, useState } from 'react';
-import { Table, Typography, Tag, Card, Statistic, Row, Col, Empty, Badge, Tabs } from 'antd';
+import { Table, Typography, Tag, Card, Statistic, Row, Col, Empty, Badge, Tabs, Button } from 'antd';
 import {
     UserDeleteOutlined,
     EnvironmentOutlined,
@@ -9,10 +9,12 @@ import {
     CalendarOutlined,
     UnorderedListOutlined,
     CheckCircleOutlined,
-    ExclamationCircleOutlined
+    ExclamationCircleOutlined,
+    DownloadOutlined
 } from '@ant-design/icons';
 import type { InasistentesReportResponse, InasistenteRecord, ActivityReport } from '../../../interfaces/IAbsentUser';
 import './InasistentesTable.css'; // Importar estilos específicos si es necesario
+import { TechnicalNoteService } from '../../../services/TechnicalNoteService';
 
 const { Text } = Typography;
 const { TabPane } = Tabs;
@@ -140,8 +142,8 @@ export const InasistentesTable: React.FC<InasistentesTableProps> = memo(({ repor
             key: 'estado',
             width: '15%',
             render: () => (
-                <Tag 
-                    color="red" 
+                <Tag
+                    color="red"
                     icon={<UserDeleteOutlined style={{ fontSize: 10 }} />}
                     style={{ fontSize: 9, padding: '1px 6px', margin: 0 }}
                 >
@@ -158,8 +160,8 @@ export const InasistentesTable: React.FC<InasistentesTableProps> = memo(({ repor
             title={
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <span style={{ fontSize: 14 }}>{activityReport.actividad}</span>
-                    <Badge 
-                        count={activityReport.statistics.total_inasistentes} 
+                    <Badge
+                        count={activityReport.statistics.total_inasistentes}
                         overflowCount={Infinity}
                         style={{ backgroundColor: '#ff4d4f' }}
                     />
@@ -306,21 +308,21 @@ export const InasistentesTable: React.FC<InasistentesTableProps> = memo(({ repor
                         <Col span={6} key={idx} style={{ marginBottom: 8 }}>
                             <Card
                                 size="small"
-                                style={{ 
+                                style={{
                                     textAlign: 'center',
                                     backgroundColor: activity.statistics.total_inasistentes > 0 ? '#fff2e8' : '#f6ffed'
                                 }}
                             >
                                 <Text strong style={{ fontSize: 10, display: 'block', marginBottom: 4 }}>
-                                    {activity.actividad.length > 25 
-                                        ? `${activity.actividad.substring(0, 25)}...` 
+                                    {activity.actividad.length > 25
+                                        ? `${activity.actividad.substring(0, 25)}...`
                                         : activity.actividad}
                                 </Text>
-                                <Badge 
+                                <Badge
                                     count={activity.statistics.total_inasistentes}
                                     overflowCount={Infinity}
-                                    style={{ 
-                                        backgroundColor: activity.statistics.total_inasistentes > 0 ? '#ff4d4f' : '#52c41a', 
+                                    style={{
+                                        backgroundColor: activity.statistics.total_inasistentes > 0 ? '#ff4d4f' : '#52c41a',
                                     }}
                                 />
                             </Card>
@@ -331,23 +333,98 @@ export const InasistentesTable: React.FC<InasistentesTableProps> = memo(({ repor
         </div>
     );
 
+    const handleExportCSV = async () => {
+        if (!reportData) return;
+
+        try {
+            console.log('📥 Iniciando exportación CSV con caracteres especiales...');
+
+            const { filtros_aplicados, filename, corte_fecha } = reportData;
+
+            // ✅ LLAMAR AL SERVICIO DE EXPORTACIÓN
+            const csvBlob = await TechnicalNoteService.exportInasistentesCSV(
+                filename,
+                filtros_aplicados.selected_months,
+                filtros_aplicados.selected_years,
+                filtros_aplicados.selected_keywords,
+                corte_fecha,
+                {
+                    departamento: filtros_aplicados.departamento,
+                    municipio: filtros_aplicados.municipio,
+                    ips: filtros_aplicados.ips
+                }
+            );
+
+            // ✅ DESCARGAR ARCHIVO PRESERVANDO ENCODING
+            const url = window.URL.createObjectURL(
+                new Blob([csvBlob], { type: 'text/csv; charset=utf-8' })
+            );
+            const link = document.createElement('a');
+            link.href = url;
+
+            // ✅ NOMBRE DESCRIPTIVO CONSERVANDO CARACTERES ESPECIALES
+            const filters = [];
+            if (filtros_aplicados.selected_keywords?.length > 0) {
+                filters.push(filtros_aplicados.selected_keywords.join('-'));
+            }
+            if (filtros_aplicados.selected_months?.length > 0) {
+                filters.push(`meses-${filtros_aplicados.selected_months.join('-')}`);
+            }
+            if (filtros_aplicados.selected_years?.length > 0) {
+                filters.push(`años-${filtros_aplicados.selected_years.join('-')}`);
+            }
+
+            const filterSuffix = filters.length > 0 ? `_${filters.join('_')}` : '';
+            link.download = `inasistentes_${filename.replace('.csv', '')}${filterSuffix}_${corte_fecha}.csv`;
+
+            // ✅ EJECUTAR DESCARGA
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+
+            console.log('✅ CSV con tildes, ñ y acentos descargado exitosamente');
+
+            // ✅ OPCIONAL: Mostrar mensaje de éxito
+            // message.success('CSV exportado correctamente con caracteres especiales preservados');
+
+        } catch (error) {
+            console.error('❌ Error exportando CSV:', error);
+            // message.error('Error al exportar CSV');
+        }
+    };
+
     return (
         <Card
             title={
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <UserDeleteOutlined style={{ color: '#ff4d4f', fontSize: 16 }} />
                     <span style={{ fontSize: 16 }}>Reporte Dinámico de Inasistentes</span>
-                    
-                    <Badge 
-                        count={reportData.resumen_general.total_inasistentes_global} 
+
+                    <Badge
+                        count={reportData.resumen_general.total_inasistentes_global}
                         overflowCount={Infinity}
-                        style={{ backgroundColor: '#ff4d4f'}}
+                        style={{ backgroundColor: '#ff4d4f' }}
                     />
+
                 </div>
+
             }
             size="small"
             style={{ height: '700px', display: 'flex', flexDirection: 'column' }}
+            
         >
+            <Button
+                type="primary"
+                icon={<DownloadOutlined />}
+                onClick={handleExportCSV}
+                size="small"
+                style={{ backgroundColor: '#52c41a', borderColor: '#52c41a', float: 'right' }}
+            >
+                Exportar CSV
+            </Button>
+
+
             {/* Información de filtros aplicados */}
             <div style={{
                 marginBottom: 12,
@@ -376,44 +453,47 @@ export const InasistentesTable: React.FC<InasistentesTableProps> = memo(({ repor
 
             {/* Tabs principales */}
             <div style={{ flex: 1, overflow: 'hidden' }}>
-                <Tabs 
-                    activeKey={activeTab} 
+                <Tabs
+                    activeKey={activeTab}
                     onChange={setActiveTab}
                     size="small"
                     style={{ height: '100%' }}
                     tabBarStyle={{ marginBottom: 8 }}
                 >
-                    <TabPane 
+                    <TabPane
                         tab={
                             <span>
                                 📊 Resumen General
-                                <Badge 
-                                    count={reportData.resumen_general.total_actividades_evaluadas} 
-                                    size="small" 
+                                <Badge
+                                    count={reportData.resumen_general.total_actividades_evaluadas}
+                                    size="small"
                                     overflowCount={Infinity}
                                     style={{ marginLeft: 4, backgroundColor: '#1890ff' }}
                                 />
                             </span>
-                        } 
+                        }
                         key="resumen"
                     >
                         <div style={{ height: '500px', overflow: 'auto' }}>
                             {renderResumenGeneral()}
                         </div>
                     </TabPane>
-                    
-                    <TabPane 
+
+                    <TabPane
                         tab={
                             <span>
                                 📋 Por Actividades
-                                <Badge 
-                                    count={reportData.resumen_general.actividades_con_inasistentes} 
-                                    size="small" 
+                                <Badge
+                                    count={reportData.resumen_general.actividades_con_inasistentes}
+                                    size="small"
                                     overflowCount={Infinity}
                                     style={{ marginLeft: 4, backgroundColor: '#ff4d4f' }}
                                 />
+                                {/* ✅ BOTÓN DE EXPORTACIÓN */}
+
                             </span>
-                        } 
+
+                        }
                         key="actividades"
                     >
                         <div style={{ height: '500px', overflow: 'auto' }}>
@@ -433,6 +513,10 @@ export const InasistentesTable: React.FC<InasistentesTableProps> = memo(({ repor
                             )}
                         </div>
                     </TabPane>
+
+
+
+
                 </Tabs>
             </div>
         </Card>

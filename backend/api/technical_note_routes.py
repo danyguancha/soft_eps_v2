@@ -53,7 +53,7 @@ def get_technical_file_data_with_excel_filters(
             sort_order=sort_order
         )        
         
-        print(f"✅ Respuesta preparada: {len(result.get('data', []))} registros")
+        print(f"Respuesta preparada: {len(result.get('data', []))} registros")
         return result
         
     except HTTPException:
@@ -75,7 +75,7 @@ def get_departamentos(filename: str):
             geo_type='departamento'
         )
         
-        print(f"✅ Departamentos obtenidos: {len(result.get('values', []))}")
+        print(f"Departamentos obtenidos: {len(result.get('values', []))}")
         return result
         
     except HTTPException:
@@ -99,7 +99,7 @@ def get_municipios(
             departamento=departamento
         )
         
-        print(f"✅ Municipios obtenidos: {len(result.get('values', []))}")
+        print(f"Municipios obtenidos: {len(result.get('values', []))}")
         return result
         
     except HTTPException:
@@ -125,7 +125,7 @@ def get_ips(
             municipio=municipio
         )
         
-        print(f"✅ IPS obtenidas: {len(result.get('values', []))}")
+        print(f"IPS obtenidas: {len(result.get('values', []))}")
         return result
         
     except HTTPException:
@@ -141,7 +141,7 @@ def get_keyword_age_report(
     keywords: Optional[str] = Query(None, description="Lista separada por comas, ej: medicina,enfermeria"),
     min_count: int = Query(0, ge=0, description="Filtra ítems con conteo menor a este valor"),
     include_temporal: bool = Query(True, description="Incluir análisis temporal por año/mes"),
-    # ✅ NUEVOS PARÁMETROS GEOGRÁFICOS
+    # NUEVOS PARÁMETROS GEOGRÁFICOS
     departamento: Optional[str] = Query(None, description="Filtrar por departamento específico"),
     municipio: Optional[str] = Query(None, description="Filtrar por municipio específico"),
     ips: Optional[str] = Query(None, description="Filtrar por IPS específica")
@@ -156,7 +156,7 @@ def get_keyword_age_report(
         if keywords and keywords.strip():
             kw_list = [k.strip().lower() for k in keywords.split(",") if k.strip()]
         
-        # ✅ LLAMAR CON FILTROS GEOGRÁFICOS
+        # LLAMAR CON FILTROS GEOGRÁFICOS
         result = technical_note_controller.get_keyword_age_report(
             filename=filename,
             keywords=kw_list,
@@ -168,7 +168,7 @@ def get_keyword_age_report(
         )
         
         items_count = len(result.get('items', []))
-        print(f"✅ Reporte geográfico generado: {items_count} items")
+        print(f"Reporte geográfico generado: {items_count} items")
         
         return result
         
@@ -284,7 +284,7 @@ def get_age_ranges(
         
         years_count = len(result["age_ranges"]["years"])
         months_count = len(result["age_ranges"]["months"])
-        print(f"✅ Rangos enviados: {years_count} años únicos, {months_count} meses únicos")
+        print(f"Rangos enviados: {years_count} años únicos, {months_count} meses únicos")
         
         return result
         
@@ -304,7 +304,7 @@ def get_inasistentes_report(
     try:
         print(f"🏥 POST /inasistentes-report/{filename}")
         
-        # ✅ EXTRAER PARÁMETROS
+        # EXTRAER PARÁMETROS
         selected_months = request.get("selectedMonths", [])
         selected_years = request.get("selectedYears", [])
         selected_keywords = request.get("selectedKeywords", [])
@@ -312,7 +312,7 @@ def get_inasistentes_report(
         municipio = request.get("municipio")
         ips = request.get("ips")
         
-        # ✅ VALIDACIONES
+        # VALIDACIONES
         if not selected_months and not selected_years:
             raise HTTPException(
                 status_code=400, 
@@ -339,10 +339,10 @@ def get_inasistentes_report(
         if not result.get("success"):
             raise HTTPException(status_code=500, detail=result.get("error", "Error generando reporte"))
         
-        # ✅ ACTUALIZAR CONTADORES PARA NUEVA ESTRUCTURA
+        # ACTUALIZAR CONTADORES PARA NUEVA ESTRUCTURA
         total_inasistentes = result.get("resumen_general", {}).get("total_inasistentes_global", 0)
         actividades_evaluadas = result.get("resumen_general", {}).get("total_actividades_evaluadas", 0)
-        print(f"✅ Reporte dinámico generado: {total_inasistentes} inasistentes, {actividades_evaluadas} actividades")
+        print(f"Reporte dinámico generado: {total_inasistentes} inasistentes, {actividades_evaluadas} actividades")
         
         return result
         
@@ -352,3 +352,50 @@ def get_inasistentes_report(
         print(f"❌ Error en /inasistentes-report/{filename}: {e}")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
+
+# export reporte de inasistentes
+
+@router.post("/inasistentes-report/{filename}/export-csv")
+def export_inasistentes_csv(
+    filename: str,
+    request: Dict[str, Any],
+    corte_fecha: Optional[str] = Query("2025-07-31", description="Fecha de corte en formato YYYY-MM-DD")
+):
+    """Exporta reporte de inasistentes a CSV"""
+    try:
+        print(f"📥 POST /inasistentes-report/{filename}/export-csv")
+        
+        # EXTRAER PARÁMETROS
+        selected_months = request.get("selectedMonths", [])
+        selected_years = request.get("selectedYears", [])
+        selected_keywords = request.get("selectedKeywords", [])
+        departamento = request.get("departamento")
+        municipio = request.get("municipio")
+        ips = request.get("ips")
+        
+        # VALIDACIONES
+        if not selected_months and not selected_years:
+            raise HTTPException(
+                status_code=400, 
+                detail="Debe seleccionar al menos una edad en meses o años"
+            )
+        
+        # EXPORTAR CSV
+        csv_response = technical_note_controller.export_inasistentes_csv(
+            filename=filename,
+            selected_months=selected_months,
+            selected_years=selected_years,
+            selected_keywords=selected_keywords,
+            corte_fecha=corte_fecha,
+            departamento=departamento,
+            municipio=municipio,
+            ips=ips
+        )
+        
+        return csv_response
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error en /export-csv/{filename}: {e}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")

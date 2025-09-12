@@ -402,6 +402,15 @@ class TechnicalNoteController:
                                                             selected_years, selected_keywords, corte_fecha,
                                                             departamento, municipio, ips,
                                                             self.static_files_dir)
+    
+    def export_inasistentes_csv(self, filename: str, selected_months: List[int],
+                           selected_years: List[int] = None, selected_keywords: List[str] = None,
+                           corte_fecha: str = "2025-07-31", departamento: Optional[str] = None,
+                           municipio: Optional[str] = None, ips: Optional[str] = None):
+        return AbsentUserController().export_inasistentes_to_csv(
+            filename, selected_months, selected_years, selected_keywords, 
+            corte_fecha, departamento, municipio, ips, self.static_files_dir
+        )
 
 
 # Función factory para mantener compatibilidad
