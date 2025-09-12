@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-    baseURL: 'http://localhost:8001/api/v1',
+    baseURL: 'http://localhost:8002/api/v1',
     //baseURL: 'https://soft-eps.onrender.com/api/v1',
     timeout: 3000000,
     headers: {

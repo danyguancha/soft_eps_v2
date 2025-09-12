@@ -1,5 +1,7 @@
 // services/TechnicalNoteService.tsx - ✅ CON FILTROS GEOGRÁFICOS COMPLETOS
 import api from '../Api';
+import type { InasistentesReportResponse } from '../interfaces/IAbsentUser';
+import type { AgeRangesResponse } from '../interfaces/IAge';
 import type { FilterCondition } from '../types/api.types';
 
 export interface TechnicalFileInfo {
@@ -135,8 +137,9 @@ export interface KeywordAgeReport {
   temporal_columns?: number;
 }
 
+
 export class TechnicalNoteService {
-  
+
   static async getAvailableFiles(): Promise<TechnicalFileInfo[]> {
     try {
       console.log('🌐 API Request: GET /technical-note/available');
@@ -150,11 +153,11 @@ export class TechnicalNoteService {
       throw error;
     }
   }
-  
+
   static async getFileData(
-    filename: string, 
-    page: number = 1, 
-    pageSize: number = 1000, 
+    filename: string,
+    page: number = 1,
+    pageSize: number = 1000,
     sheetName?: string,
     filters?: FilterCondition[],
     search?: string,
@@ -169,17 +172,17 @@ export class TechnicalNoteService {
         ...(search && { search: search.trim() }),
         ...(sortBy && { sort_by: sortBy }),
         ...(sortOrder && { sort_order: sortOrder }),
-        ...(filters && filters.length > 0 && { 
-          filters: JSON.stringify(filters) 
+        ...(filters && filters.length > 0 && {
+          filters: JSON.stringify(filters)
         })
       });
-      
+
       console.log(`🌐 API Request con filtros estilo Excel: GET /technical-note/${filename}?${params}`);
-      
+
       const response = await api.get(`/technical-note/data/${filename}?${params}`, {
         timeout: 45000
       });
-      
+
       console.log('✅ Respuesta con filtros estilo Excel:', {
         status: response.status,
         rowsInPage: response.data?.pagination?.rows_in_page,
@@ -187,7 +190,7 @@ export class TechnicalNoteService {
         originalTotal: response.data?.pagination?.original_total,
         filtered: response.data?.pagination?.filtered
       });
-      
+
       return response.data;
     } catch (error) {
       console.error(`❌ Error con filtros estilo Excel:`, error);
@@ -206,18 +209,18 @@ export class TechnicalNoteService {
         ...(sheetName && { sheet_name: sheetName }),
         limit: limit.toString()
       });
-      
+
       console.log(`🔍 Obteniendo valores únicos estilo Excel: ${filename} - ${columnName}`);
-      
+
       const response = await api.get(
-        `/technical-note/unique-values/${filename}/${columnName}?${params}`, 
+        `/technical-note/unique-values/${filename}/${columnName}?${params}`,
         {
           timeout: 15000
         }
       );
-      
+
       console.log(`✅ Valores únicos estilo Excel obtenidos: ${response.data.total_unique} para ${columnName}`);
-      
+
       return response.data;
     } catch (error) {
       console.error(`❌ Error obteniendo valores únicos de ${columnName}:`, error);
@@ -227,13 +230,13 @@ export class TechnicalNoteService {
 
   // ✅ NUEVOS MÉTODOS PARA FILTROS GEOGRÁFICOS
   static async getGeographicValues(
-    filename: string, 
+    filename: string,
     geoType: 'departamentos' | 'municipios' | 'ips',
     filters: GeographicFilters = {}
   ): Promise<GeographicValuesResponse> {
     try {
       const params = new URLSearchParams();
-      
+
       if (filters.departamento) {
         params.append('departamento', filters.departamento);
       }
@@ -242,15 +245,15 @@ export class TechnicalNoteService {
       }
 
       const url = `/technical-note/geographic/${filename}/${geoType}${params.toString() ? `?${params}` : ''}`;
-      
+
       console.log(`🗺️ Obteniendo ${geoType}: GET ${url}`);
-      
+
       const response = await api.get(url, {
         timeout: 15000
       });
-      
+
       console.log(`✅ ${geoType} obtenidos: ${response.data?.values?.length || 0} valores`);
-      
+
       return response.data;
     } catch (error) {
       console.error(`❌ Error obteniendo ${geoType}:`, error);
@@ -272,7 +275,7 @@ export class TechnicalNoteService {
         min_count: minCount.toString(),
         include_temporal: includeTemporal.toString()
       });
-      
+
       // ✅ AGREGAR FILTROS GEOGRÁFICOS
       if (geographicFilters.departamento) {
         params.append('departamento', geographicFilters.departamento);
@@ -283,18 +286,18 @@ export class TechnicalNoteService {
       if (geographicFilters.ips) {
         params.append('ips', geographicFilters.ips);
       }
-      
+
       const response = await api.get(
         `/technical-note/report/${filename}?${params}`,
         {
           timeout: 45000
         }
       );
-      
+
       const itemsCount = response.data.items?.length || 0;
       const temporalCount = response.data.temporal_columns || 0;
       console.log(`✅ Reporte geográfico obtenido: ${itemsCount} elementos, ${temporalCount} con datos temporales`);
-      
+
       return response.data;
     } catch (error) {
       console.error(`❌ Error obteniendo reporte geográfico de ${filename}:`, error);
@@ -305,13 +308,13 @@ export class TechnicalNoteService {
   static async getFileMetadata(filename: string): Promise<TechnicalFileMetadata> {
     try {
       console.log(`📋 Obteniendo metadatos: ${filename}`);
-      
+
       const response = await api.get(`/technical-note/metadata/${filename}`, {
         timeout: 15000
       });
-      
+
       console.log(`✅ Metadatos obtenidos: ${response.data.total_rows?.toLocaleString()} filas`);
-      
+
       return response.data;
     } catch (error) {
       console.error(`Error obteniendo metadatos de ${filename}:`, error);
@@ -327,11 +330,11 @@ export class TechnicalNoteService {
   }> {
     try {
       console.log(`📋 Obteniendo columnas: ${filename}`);
-      
+
       const response = await api.get(`/technical-note/columns/${filename}`, {
         timeout: 10000
       });
-      
+
       return response.data;
     } catch (error) {
       console.error(`Error obteniendo columnas de ${filename}:`, error);
@@ -392,6 +395,101 @@ export class TechnicalNoteService {
   static calculateTotalPages(totalRows: number, pageSize: number): number {
     return Math.ceil(totalRows / pageSize);
   }
+
+  //edad
+  static async getAgeRanges(
+    filename: string,
+    corteFecha: string = "2025-07-31"
+  ): Promise<AgeRangesResponse> {
+    try {
+      console.log(`📅 Obteniendo rangos de edades: ${filename} con corte ${corteFecha}`);
+
+      const params = new URLSearchParams({
+        corte_fecha: corteFecha
+      });
+
+      const response = await api.get(
+        `/technical-note/age-ranges/${filename}?${params}`,
+        {
+          timeout: 30000
+        }
+      );
+
+      const yearsCount = response.data.age_ranges?.years?.length || 0;
+      const monthsCount = response.data.age_ranges?.months?.length || 0;
+
+      console.log(`✅ Rangos obtenidos: ${yearsCount} años, ${monthsCount} meses`);
+
+      return response.data;
+    } catch (error) {
+      console.error(`❌ Error obteniendo rangos de ${filename}:`, error);
+      throw error;
+    }
+  }
+
+  //inasistentes
+  // services/TechnicalNoteService.tsx
+
+  static async getInasistentesReport(
+    filename: string,
+    selectedMonths: number[],
+    selectedYears: number[] = [],
+    selectedKeywords: string[] = [],
+    corteFecha: string = "2025-07-31",
+    geographicFilters: GeographicFilters = {}
+  ): Promise<InasistentesReportResponse> {
+    try {
+      console.log(`🏥 Generando reporte DINÁMICO de inasistentes: ${filename}`);
+      console.log(`📅 Filtros edad:`, { selectedMonths, selectedYears });
+      console.log(`🔑 Palabras clave:`, selectedKeywords);
+      console.log(`🗺️ Filtros geo:`, geographicFilters);
+
+      const requestBody = {
+        selectedMonths,
+        selectedYears,
+        selectedKeywords,
+        departamento: geographicFilters.departamento,
+        municipio: geographicFilters.municipio,
+        ips: geographicFilters.ips
+      };
+
+      const params = new URLSearchParams({
+        corte_fecha: corteFecha
+      });
+
+      const response = await api.post(
+        `/technical-note/inasistentes-report/${filename}?${params}`,
+        requestBody,
+        {
+          timeout: 60000
+        }
+      );
+
+      // ✅ LOGS ACTUALIZADOS PARA NUEVA ESTRUCTURA
+      const totalInasistentes = response.data.resumen_general?.total_inasistentes_global || 0;
+      const totalActividades = response.data.resumen_general?.total_actividades_evaluadas || 0;
+      const actividadesConInasistentes = response.data.resumen_general?.actividades_con_inasistentes || 0;
+
+      console.log(`✅ Reporte dinámico obtenido:`);
+      console.log(`   👥 ${totalInasistentes} inasistentes totales`);
+      console.log(`   📋 ${totalActividades} actividades evaluadas`);
+      console.log(`   🎯 ${actividadesConInasistentes} actividades con inasistencias`);
+
+      // Log de columnas descubiertas
+      if (response.data.columnas_descubiertas) {
+        console.log(`🔍 Columnas descubiertas:`, response.data.columnas_descubiertas);
+      }
+
+      return response.data;
+    } catch (error) {
+      console.error(`❌ Error obteniendo reporte dinámico de ${filename}:`, error);
+      throw error;
+    }
+  }
+
+
+
+
 }
 
 export const TechnicalNoteHelpers = {
@@ -400,3 +498,6 @@ export const TechnicalNoteHelpers = {
   getRecommendedPageSize: TechnicalNoteService.getRecommendedPageSize,
   calculateTotalPages: TechnicalNoteService.calculateTotalPages
 };
+
+
+

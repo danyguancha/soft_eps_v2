@@ -1,6 +1,6 @@
 # api/technical_note_routes.py - COMPLETO CON DEBUG
 from fastapi import APIRouter, HTTPException, Query
-from typing import Optional
+from typing import Any, Dict, Optional
 import json
 from controllers.technical_note_controller.technical_note import technical_note_controller
 
@@ -253,5 +253,102 @@ def debug_file_state(filename: str):
         
     except Exception as e:
         print(f"❌ Error en debug: {e}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+    
+@router.get("/age-ranges/{filename}")
+def get_age_ranges(
+    filename: str,
+    corte_fecha: Optional[str] = Query("2025-07-31", description="Fecha de corte en formato YYYY-MM-DD")
+):
+    """Obtiene rangos de edades únicos para filtros de inasistentes"""
+    try:
+        print(f"📅 GET /age-ranges/{filename} con fecha corte: {corte_fecha}")
+        
+        # Validar formato de fecha
+        try:
+            from datetime import datetime
+            datetime.strptime(corte_fecha, "%Y-%m-%d")
+        except ValueError:
+            raise HTTPException(
+                status_code=400, 
+                detail="Fecha de corte debe tener formato YYYY-MM-DD"
+            )
+        
+        result = technical_note_controller.get_age_ranges(
+            filename=filename,
+            corte_fecha=corte_fecha
+        )
+        
+        if not result.get("success"):
+            raise HTTPException(status_code=500, detail=result.get("error", "Error obteniendo rangos"))
+        
+        years_count = len(result["age_ranges"]["years"])
+        months_count = len(result["age_ranges"]["months"])
+        print(f"✅ Rangos enviados: {years_count} años únicos, {months_count} meses únicos")
+        
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error en /age-ranges/{filename}: {e}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+@router.post("/inasistentes-report/{filename}")
+def get_inasistentes_report(
+    filename: str,
+    request: Dict[str, Any],
+    corte_fecha: Optional[str] = Query("2025-07-31", description="Fecha de corte en formato YYYY-MM-DD")
+):
+    """Genera reporte de inasistentes dinámico con descubrimiento automático de actividades"""
+    try:
+        print(f"🏥 POST /inasistentes-report/{filename}")
+        
+        # ✅ EXTRAER PARÁMETROS
+        selected_months = request.get("selectedMonths", [])
+        selected_years = request.get("selectedYears", [])
+        selected_keywords = request.get("selectedKeywords", [])
+        departamento = request.get("departamento")
+        municipio = request.get("municipio")
+        ips = request.get("ips")
+        
+        # ✅ VALIDACIONES
+        if not selected_months and not selected_years:
+            raise HTTPException(
+                status_code=400, 
+                detail="Debe seleccionar al menos una edad en meses o años"
+            )
+        
+        if not isinstance(selected_keywords, list):
+            raise HTTPException(
+                status_code=400, 
+                detail="selectedKeywords debe ser un array"
+            )
+        
+        result = technical_note_controller.get_inasistentes_report(
+            filename=filename,
+            selected_months=selected_months,
+            selected_years=selected_years,
+            selected_keywords=selected_keywords,
+            corte_fecha=corte_fecha,
+            departamento=departamento,
+            municipio=municipio,
+            ips=ips
+        )
+        
+        if not result.get("success"):
+            raise HTTPException(status_code=500, detail=result.get("error", "Error generando reporte"))
+        
+        # ✅ ACTUALIZAR CONTADORES PARA NUEVA ESTRUCTURA
+        total_inasistentes = result.get("resumen_general", {}).get("total_inasistentes_global", 0)
+        actividades_evaluadas = result.get("resumen_general", {}).get("total_actividades_evaluadas", 0)
+        print(f"✅ Reporte dinámico generado: {total_inasistentes} inasistentes, {actividades_evaluadas} actividades")
+        
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error en /inasistentes-report/{filename}: {e}")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 

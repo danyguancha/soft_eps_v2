@@ -3,6 +3,8 @@ import os
 from typing import Dict, Any, List, Optional
 from fastapi import HTTPException
 
+from controllers.technical_note_controller.absent_user_controller import AbsentUserController
+from controllers.technical_note_controller.age_controller import AgeController
 from services.duckdb_service.duckdb_service import duckdb_service
 from services.aux_duckdb_services.query_pagination import QueryPagination
 
@@ -387,6 +389,19 @@ class TechnicalNoteController:
             "geo_type": geo_type,
             "values": []
         }
+    
+    def get_age_ranges(self, filename: str, corte_fecha: str = "2025-07-31"):
+        return AgeController().get_age_ranges(filename, corte_fecha, self.static_files_dir)
+    
+
+    def get_inasistentes_report(self, filename: str,selected_months: List[int],
+                                selected_years: List[int] = None, selected_keywords: List[str] = None,corte_fecha: str = "2025-07-31",
+                                departamento: Optional[str] = None,municipio: Optional[str] = None,
+                                ips: Optional[str] = None):
+        return AbsentUserController().get_inasistentes_report(filename, selected_months,
+                                                            selected_years, selected_keywords, corte_fecha,
+                                                            departamento, municipio, ips,
+                                                            self.static_files_dir)
 
 
 # Función factory para mantener compatibilidad
