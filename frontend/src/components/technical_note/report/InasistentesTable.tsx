@@ -339,15 +339,15 @@ export const InasistentesTable: React.FC<InasistentesTableProps> = memo(({ repor
         try {
             console.log('📥 Iniciando exportación CSV con caracteres especiales...');
 
-            const { filtros_aplicados, filename, corte_fecha } = reportData;
+            const { filtros_aplicados, filename } = reportData; // Ya no usamos corte_fecha (fecha de corte)
 
-            // ✅ LLAMAR AL SERVICIO DE EXPORTACIÓN
+            // Llamar al servicio de exportación (el backend puede ignorar corteFecha si no se usa)
             const csvBlob = await TechnicalNoteService.exportInasistentesCSV(
                 filename,
                 filtros_aplicados.selected_months,
                 filtros_aplicados.selected_years,
                 filtros_aplicados.selected_keywords,
-                corte_fecha,
+                'IGNORE',
                 {
                     departamento: filtros_aplicados.departamento,
                     municipio: filtros_aplicados.municipio,
@@ -355,44 +355,53 @@ export const InasistentesTable: React.FC<InasistentesTableProps> = memo(({ repor
                 }
             );
 
-            // ✅ DESCARGAR ARCHIVO PRESERVANDO ENCODING
+            
+            const now = new Date(); 
+            const pad = (n: number) => String(n).padStart(2, '0'); 
+            const yyyy = now.getFullYear(); 
+            const MM = pad(now.getMonth() + 1); 
+            const dd = pad(now.getDate()); 
+            const HH = pad(now.getHours()); 
+            const mm = pad(now.getMinutes()); 
+            const ss = pad(now.getSeconds()); 
+
+            const today = `${yyyy}-${MM}-${dd}`; 
+            const hms = `${HH}-${mm}-${ss}`; 
+
+            // Descargar preservando encoding
             const url = window.URL.createObjectURL(
                 new Blob([csvBlob], { type: 'text/csv; charset=utf-8' })
-            );
+            ); 
             const link = document.createElement('a');
-            link.href = url;
+            link.href = url; 
 
-            // ✅ NOMBRE DESCRIPTIVO CONSERVANDO CARACTERES ESPECIALES
-            const filters = [];
+            
+            const filters: string[] = []; 
             if (filtros_aplicados.selected_keywords?.length > 0) {
-                filters.push(filtros_aplicados.selected_keywords.join('-'));
+                filters.push(filtros_aplicados.selected_keywords.join('-')); 
             }
             if (filtros_aplicados.selected_months?.length > 0) {
-                filters.push(`meses-${filtros_aplicados.selected_months.join('-')}`);
+                filters.push(`meses-${filtros_aplicados.selected_months.join('-')}`); 
             }
             if (filtros_aplicados.selected_years?.length > 0) {
-                filters.push(`años-${filtros_aplicados.selected_years.join('-')}`);
+                filters.push(`años-${filtros_aplicados.selected_years.join('-')}`); 
             }
+            const filterSuffix = filters.length > 0 ? `_${filters.join('_')}` : ''; 
 
-            const filterSuffix = filters.length > 0 ? `_${filters.join('_')}` : '';
-            link.download = `inasistentes_${filename.replace('.csv', '')}${filterSuffix}_${corte_fecha}.csv`;
+            // Nombre final único con fecha y hora locales
+            link.download = `inasistentes_${filename.replace('.csv', '')}${filterSuffix}_${today}_${hms}.csv`; 
 
-            // ✅ EJECUTAR DESCARGA
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            document.body.appendChild(link); 
+            link.click(); 
+            document.body.removeChild(link); 
             window.URL.revokeObjectURL(url);
 
             console.log('✅ CSV con tildes, ñ y acentos descargado exitosamente');
-
-            // ✅ OPCIONAL: Mostrar mensaje de éxito
-            // message.success('CSV exportado correctamente con caracteres especiales preservados');
-
         } catch (error) {
             console.error('❌ Error exportando CSV:', error);
-            // message.error('Error al exportar CSV');
         }
     };
+
 
     return (
         <Card
@@ -412,7 +421,7 @@ export const InasistentesTable: React.FC<InasistentesTableProps> = memo(({ repor
             }
             size="small"
             style={{ height: '700px', display: 'flex', flexDirection: 'column' }}
-            
+
         >
             <Button
                 type="primary"

@@ -1,3 +1,5 @@
+import csv
+from datetime import datetime
 import io
 from typing import Any, Dict, List, Optional
 import unicodedata
@@ -249,94 +251,103 @@ class AbsentUserController:
         departamento: Optional[str] = None,
         municipio: Optional[str] = None,
         ips: Optional[str] = None,
-        path_technical_note = ''
+        path_technical_note = '',
+        encoding: str = "cp1252", 
+        use_excel_sep_hint: bool = True, 
+        sep: str = ";"              
     ) -> StreamingResponse:
-        """Exporta reporte de inasistentes a formato CSV"""
-        try:
-            print(f"📥 Exportando reporte a CSV: {filename}")
-            
-            # ✅ GENERAR REPORTE COMPLETO
-            report_data = self.get_inasistentes_report(
-                filename, selected_months, selected_years, selected_keywords,
-                corte_fecha, departamento, municipio, ips, path_technical_note
-            )
-            
-            if not report_data.get("success"):
-                raise Exception(report_data.get("error", "Error generando reporte"))
-            
-            # ✅ PROCESAR DATOS PARA CSV
-            all_records = []
-            
-            # Agregar datos de cada actividad
-            for activity_report in report_data["inasistentes_por_actividad"]:
-                for inasistente in activity_report["inasistentes"]:
-                    record = {
-                        # Información personal
-                        "Departamento": inasistente["departamento"],
-                        "Municipio": inasistente["municipio"], 
-                        "Nombre IPS": inasistente["nombre_ips"],
-                        "Número Identificación": inasistente["nro_identificacion"],
-                        "Primer Apellido": inasistente["primer_apellido"],
-                        "Segundo Apellido": inasistente["segundo_apellido"],
-                        "Primer Nombre": inasistente["primer_nombre"],
-                        "Segundo Nombre": inasistente["segundo_nombre"],
-                        "Fecha Nacimiento": inasistente["fecha_nacimiento"],
-                        "Edad Años": inasistente["edad_anos"],
-                        "Edad Meses": inasistente["edad_meses"],
-                        
-                        # Información de la actividad
-                        "Actividad Faltante": inasistente["columna_evaluada"],
-                        "Estado Actividad": inasistente["actividad_valor"],
-                        "Grupo Actividad": activity_report["actividad"],
-                        
-                        # Información del reporte
-                        "Fecha Corte": report_data["corte_fecha"],
-                        "Método Generación": report_data["metodo"]
-                    }
-                    all_records.append(record)
-            
-            # ✅ CREAR DATAFRAME Y EXPORTAR A CSV
-            if not all_records:
-                # CSV vacío con headers
-                df = pd.DataFrame(columns=[
-                    "Departamento", "Municipio", "Nombre IPS", "Número Identificación",
-                    "Primer Apellido", "Segundo Apellido", "Primer Nombre", "Segundo Nombre",
-                    "Fecha Nacimiento", "Edad Años", "Edad Meses", "Actividad Faltante",
-                    "Estado Actividad", "Grupo Actividad", "Fecha Corte", "Método Generación"
-                ])
-            else:
-                df = pd.DataFrame(all_records)
-            
-            # ✅ GENERAR CSV EN MEMORIA
-            buffer = io.StringIO()
-            df.to_csv(buffer, index=False, encoding='utf-8')
-            buffer.seek(0)
-            
-            # ✅ GENERAR NOMBRE DE ARCHIVO DESCRIPTIVO
-            filters_info = []
-            if selected_keywords:
-                filters_info.append(f"palabras-{'-'.join(selected_keywords)}")
-            if selected_months:
-                filters_info.append(f"meses-{'-'.join(map(str, selected_months))}")
-            if selected_years:
-                filters_info.append(f"años-{'-'.join(map(str, selected_years))}")
-            if departamento:
-                filters_info.append(f"dept-{departamento.replace(' ', '-')}")
-            
-            filter_suffix = "_" + "_".join(filters_info) if filters_info else ""
-            csv_filename = f"inasistentes_{filename.replace('.csv', '')}{filter_suffix}_{corte_fecha}.csv"
-            
-            print(f"✅ CSV generado: {len(all_records)} registros en {csv_filename}")
-            
-            # ✅ RETORNAR STREAMING RESPONSE
-            return StreamingResponse(
-                io.StringIO(buffer.getvalue()),
-                media_type="text/csv",
-                headers={"Content-Disposition": f"attachment; filename={csv_filename}"}
-            )
-            
-        except Exception as e:
-            print(f"❌ Error exportando CSV: {e}")
-            import traceback
-            traceback.print_exc()
-            raise Exception(f"Error exportando reporte: {str(e)}")
+
+        report_data = self.get_inasistentes_report(
+            filename, selected_months, selected_years, selected_keywords,
+            corte_fecha, departamento, municipio, ips, path_technical_note
+        )
+        if not report_data.get("success"):
+            raise Exception(report_data.get("error", "Error generando reporte"))
+
+        rows = []
+        for activity_report in report_data["inasistentes_por_actividad"]:
+            for r in activity_report["inasistentes"]:
+                rows.append({
+                    "Departamento": r["departamento"],
+                    "Municipio": r["municipio"],
+                    "Nombre IPS": r["nombre_ips"],
+                    "Número Identificación": r["nro_identificacion"],
+                    "Primer Apellido": r["primer_apellido"],
+                    "Segundo Apellido": r["segundo_apellido"],
+                    "Primer Nombre": r["primer_nombre"],
+                    "Segundo Nombre": r["segundo_nombre"],
+                    "Fecha Nacimiento": r["fecha_nacimiento"],
+                    "Edad Años": r["edad_anos"],
+                    "Edad Meses": r["edad_meses"],
+                    "Actividad Faltante": r["columna_evaluada"],
+                    "Estado Actividad": r["actividad_valor"],
+                    "Grupo Actividad": activity_report["actividad"],
+                    "Fecha Corte": report_data["corte_fecha"],
+                })
+
+        df = pd.DataFrame(rows, columns=[
+            "Departamento","Municipio","Nombre IPS","Número Identificación",
+            "Primer Apellido","Segundo Apellido","Primer Nombre","Segundo Nombre",
+            "Fecha Nacimiento","Edad Años","Edad Meses",
+            "Actividad Faltante","Estado Actividad","Grupo Actividad",
+            "Fecha Corte","Método Generación"
+        ])
+
+        # Mapa de codificación
+        enc_map = {"cp1252": "cp1252", "latin-1": "latin-1", "utf-8-sig": "utf-8-sig"}
+        enc = enc_map.get(encoding.lower(), "cp1252")
+
+        # Escribir a buffer binario con separador ";"
+        buf = io.BytesIO()
+
+        # 1) Escribir opcionalmente la línea "sep=;" para Excel
+        if use_excel_sep_hint:
+            # Escribir “sep=;” con la misma codificación
+            prefix = ("sep=" + sep + "\n").encode(enc)
+            buf.write(prefix)
+
+        # 2) Escribir el CSV con pandas y separador ";"
+        #    quoting opcional: csv.QUOTE_MINIMAL (por defecto) o csv.QUOTE_ALL si necesitas comillas siempre
+        df.to_csv(
+            buf,
+            index=False,
+            encoding=enc,
+            sep=sep,                    
+            quoting=csv.QUOTE_MINIMAL,  # 
+            quotechar='"',
+            lineterminator="\n"
+        )
+        buf.seek(0)
+
+        # Nombre de archivo (sanitizado para filename, no para contenido)
+        def safe_name(s: str) -> str:
+            repl = (("ñ","n"),("Ñ","N"),("á","a"),("é","e"),("í","i"),("ó","o"),("ú","u"),
+                    ("Á","A"),("É","E"),("Í","I"),("Ó","O"),("Ú","U"))
+            for a,b in repl: s = s.replace(a,b)
+            return s.replace(" ", "-")
+
+        filters = []
+        if selected_keywords: filters.append("palabras-" + "-".join(safe_name(k) for k in selected_keywords))
+        if selected_months:   filters.append("meses-" + "-".join(map(str, selected_months)))
+        if selected_years:    filters.append("años-" + "-".join(map(str, selected_years)))
+        if departamento:      filters.append("dept-" + safe_name(departamento))
+        suffix = "_" + "_".join(filters) if filters else ""
+        ts = datetime.now().strftime('%Y%m%d_%H%M%S')
+        out_name = f"inasistentes_{filename.replace('.csv','')}{suffix}_{corte_fecha}.csv"
+
+        def stream():
+            buf.seek(0)
+            chunk = buf.read(8192)
+            while chunk:
+                yield chunk
+                chunk = buf.read(8192)
+
+        charset = "windows-1252" if enc == "cp1252" else ("ISO-8859-1" if enc == "latin-1" else "utf-8")
+        return StreamingResponse(
+            stream(),
+            media_type="application/octet-stream",
+            headers={
+                "Content-Disposition": f'attachment; filename="{out_name}"',
+                "Content-Type": f"text/csv; charset={charset}"
+            }
+        )
