@@ -291,7 +291,7 @@ class FileStorageManager:
             if os.path.exists(file_path):
                 files_info.append({
                     "file_id": file_id,
-                    "filename": original_name,
+                    "original_name": original_name,
                     "display_name": original_name.replace('.csv', '').replace('_', ' ').title(),
                     "file_path": file_path,
                     "file_size": file_info.get("file_size", 0),

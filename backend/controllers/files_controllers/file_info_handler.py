@@ -22,19 +22,20 @@ class FileInfoHandler:
     
     def list_all_files(self) -> Dict[str, Any]:
         """Lista todos los archivos cargados"""
-        storage = self.storage_manager.get_all_files()
+        storage = self.storage_manager.list_technical_files()
         files = []
         
-        for file_id, info in storage.items():
-            files.append({
-                "file_id": file_id,
-                "original_name": info["original_name"],
-                "total_rows": info["total_rows"],
-                "columns_count": len(info["columns"]),
-                "sheets": info.get("sheets")
-            })
+        # for file_id, info in storage:
+        #     files.append({
+        #         "file_id": file_id,
+        #         "original_name": info["original_name"],
+        #         "total_rows": info["total_rows"],
+        #         "columns_count": len(info["columns"]),
+        #         "sheets": info.get("sheets")
+        #     })
         
-        return {"files": files, "total": len(files)}
+        
+        return {"files": storage, "total": len(storage)}
     
     def delete_file(self, file_id: str) -> Dict[str, Any]:
         """Elimina archivo del sistema"""

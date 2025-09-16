@@ -62,9 +62,9 @@ export const useFileUpload = () => {
       return false;
     }
 
-    const isLt50M = file.size / 1024 / 1024 < 50;
-    if (!isLt50M) {
-      message.error('El archivo debe ser menor a 50MB');
+    const isLt100M = file.size / 1024 / 1024 < 100;
+    if (!isLt100M) {
+      message.error('El archivo debe ser menor a 100MB');
       return false;
     }
 
