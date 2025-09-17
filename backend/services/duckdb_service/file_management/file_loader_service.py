@@ -77,8 +77,8 @@ class FileLoaderService:
                 
                 # Verificar si coincide el nombre original
                 if metadata.get('original_name') == original_name:
-                    file_hash = metadata.get('file_hash')
-                    parquet_path = self.cache.get_cached_parquet_path(file_hash)
+                    file_id = metadata.get('file_id')
+                    parquet_path = self.cache.get_cached_parquet_path(file_id)
                     
                     if os.path.exists(parquet_path):
                         return parquet_path, metadata

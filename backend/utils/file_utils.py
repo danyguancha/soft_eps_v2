@@ -137,10 +137,10 @@ class FileUtils:
         csv_extensions = ['csv', 'txt', 'tsv']
         return self.get_file_extension(file_path) in csv_extensions
 
-    def get_safe_filename(self, original_name: str, file_hash: str) -> str:
+    def get_safe_filename(self, original_name: str, file_id: str) -> str:
         """Genera un nombre de archivo seguro usando el hash"""
         extension = self.get_file_extension(original_name)
-        safe_name = f"{file_hash[:8]}_{self.clean_filename(original_name)}"
+        safe_name = f"{file_id[:8]}_{self.clean_filename(original_name)}"
         if extension:
             safe_name = f"{safe_name}.{extension}"
         return safe_name

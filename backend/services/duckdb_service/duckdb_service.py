@@ -89,8 +89,9 @@ class DuckDBService:
             
             print("✅ Controladores y servicios DuckDB inicializados")
             
-            # Auto-recuperación de archivos en cache
-            RecoverCacheFiles().auto_recover_cached_files(
+            # CORREGIDO: Usar schedule_auto_recovery en lugar de auto_recover_cached_files
+            from services.aux_duckdb_services.recover_cache_files import recover_cache_files
+            recover_cache_files.schedule_auto_recovery(
                 self.metadata_dir, 
                 self.controllers['cache'], 
                 self.loaded_tables
@@ -470,9 +471,13 @@ class DuckDBService:
         print("🔄 Recarga manual de archivos solicitada...")
         try:
             self.loaded_tables.clear()
-            RecoverCacheFiles().auto_recover_cached_files(
-                self.metadata_dir, self.cache, self.loaded_tables
+            
+            # CORREGIDO: Usar la instancia singleton
+            from services.aux_duckdb_services.recover_cache_files import recover_cache_files
+            recover_cache_files.auto_recover_cached_files(
+                self.metadata_dir, self.controllers['cache'], self.loaded_tables
             )
+            
             return {
                 "success": True,
                 "loaded_count": len(self.loaded_tables),
@@ -483,7 +488,7 @@ class DuckDBService:
                 "success": False,
                 "error": str(e)
             }
-    
+        
     def get_loaded_files_info(self) -> Dict[str, Any]:
         """Información detallada de archivos cargados"""
         return {

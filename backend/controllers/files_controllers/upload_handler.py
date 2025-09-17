@@ -133,7 +133,7 @@ class UploadHandler:
                     "compression_ratio": parquet_result["compression_ratio"],
                     "conversion_time": parquet_result["conversion_time"],
                     "from_cache": parquet_result.get("from_cache", False),
-                    "file_hash": parquet_result.get("file_hash"),
+                    "file_id": parquet_result.get("file_id"),
                     "cached": parquet_result.get("cached", False),
                     "load_type": "lazy",
                     "sheet_detection_time": sheet_detection_time
@@ -157,7 +157,7 @@ class UploadHandler:
                 "processing_time": parquet_result["conversion_time"],
                 "from_cache": parquet_result.get("from_cache", False),
                 "cache_hit": parquet_result.get("from_cache", False),
-                "file_hash": parquet_result.get("file_hash"),
+                "file_id": parquet_result.get("file_id"),
                 "load_type": "lazy",
                 "ultra_optimized": True,
                 "has_sheets": len(sheets) > 1,
