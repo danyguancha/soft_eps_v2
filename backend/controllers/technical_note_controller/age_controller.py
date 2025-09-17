@@ -47,11 +47,13 @@ class AgeController:
             FROM {data_source}
             WHERE "Fecha Nacimiento" IS NOT NULL
             AND TRIM("Fecha Nacimiento") != ''
+            AND LENGTH(TRIM("Fecha Nacimiento")) >= 10
             AND TRY_CAST(strptime("Fecha Nacimiento", '%d/%m/%Y') AS DATE) IS NOT NULL
             AND strptime("Fecha Nacimiento", '%d/%m/%Y') <= DATE '{corte_fecha}'
             AND date_diff('month', strptime("Fecha Nacimiento", '%d/%m/%Y'), DATE '{corte_fecha}') >= 0
             ORDER BY edad_meses ASC
             """
+
             
             months_result = duckdb_service.conn.execute(months_sql).fetchall()
             unique_months = [int(row[0]) for row in months_result if row[0] is not None]
@@ -60,22 +62,31 @@ class AgeController:
             
             # CORREGIR: Estadísticas con formato DD/MM/YYYY correcto
             stats_sql = f"""
-            SELECT 
-                COUNT(*) as total_registros,
-                COUNT(CASE WHEN "Fecha Nacimiento" IS NOT NULL AND TRIM("Fecha Nacimiento") != '' 
-                        AND TRY_CAST(strptime("Fecha Nacimiento", '%d/%m/%Y') AS DATE) IS NOT NULL THEN 1 END) as registros_con_fecha_nacimiento,
-                COUNT(CASE WHEN edad IS NOT NULL AND TRIM(edad) != '' 
-                        AND TRY_CAST(edad AS INTEGER) IS NOT NULL THEN 1 END) as registros_con_edad,
-                MIN(TRY_CAST(edad AS INTEGER)) as edad_min_años,
-                MAX(TRY_CAST(edad AS INTEGER)) as edad_max_años,
-                MIN(CASE WHEN TRY_CAST(strptime("Fecha Nacimiento", '%d/%m/%Y') AS DATE) IS NOT NULL 
-                        THEN date_diff('month', strptime("Fecha Nacimiento", '%d/%m/%Y'), DATE '{corte_fecha}') 
-                        ELSE NULL END) as edad_min_meses,
-                MAX(CASE WHEN TRY_CAST(strptime("Fecha Nacimiento", '%d/%m/%Y') AS DATE) IS NOT NULL 
-                        THEN date_diff('month', strptime("Fecha Nacimiento", '%d/%m/%Y'), DATE '{corte_fecha}') 
-                        ELSE NULL END) as edad_max_meses
-            FROM {data_source}
-            """
+                        SELECT 
+                            COUNT(*) as total_registros,
+                            COUNT(CASE WHEN "Fecha Nacimiento" IS NOT NULL AND TRIM("Fecha Nacimiento") != '' 
+                                    AND LENGTH(TRIM("Fecha Nacimiento")) >= 10
+                                    AND TRY_CAST(strptime("Fecha Nacimiento", '%d/%m/%Y') AS DATE) IS NOT NULL THEN 1 END) as registros_con_fecha_nacimiento,
+                            COUNT(CASE WHEN edad IS NOT NULL AND TRIM(edad) != '' 
+                                    AND TRY_CAST(edad AS INTEGER) IS NOT NULL THEN 1 END) as registros_con_edad,
+                            MIN(TRY_CAST(edad AS INTEGER)) as edad_min_años,
+                            MAX(TRY_CAST(edad AS INTEGER)) as edad_max_años,
+                            MIN(CASE WHEN "Fecha Nacimiento" IS NOT NULL 
+                                    AND TRIM("Fecha Nacimiento") != ''
+                                    AND LENGTH(TRIM("Fecha Nacimiento")) >= 10
+                                    AND TRY_CAST(strptime("Fecha Nacimiento", '%d/%m/%Y') AS DATE) IS NOT NULL 
+                                    AND strptime("Fecha Nacimiento", '%d/%m/%Y') <= DATE '{corte_fecha}'
+                                    THEN date_diff('month', strptime("Fecha Nacimiento", '%d/%m/%Y'), DATE '{corte_fecha}') 
+                                    ELSE NULL END) as edad_min_meses,
+                            MAX(CASE WHEN "Fecha Nacimiento" IS NOT NULL 
+                                    AND TRIM("Fecha Nacimiento") != ''
+                                    AND LENGTH(TRIM("Fecha Nacimiento")) >= 10
+                                    AND TRY_CAST(strptime("Fecha Nacimiento", '%d/%m/%Y') AS DATE) IS NOT NULL 
+                                    AND strptime("Fecha Nacimiento", '%d/%m/%Y') <= DATE '{corte_fecha}'
+                                    THEN date_diff('month', strptime("Fecha Nacimiento", '%d/%m/%Y'), DATE '{corte_fecha}') 
+                                    ELSE NULL END) as edad_max_meses
+                        FROM {data_source}
+                        """
             
             stats_result = duckdb_service.conn.execute(stats_sql).fetchone()
             
