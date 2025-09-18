@@ -1,10 +1,8 @@
+// src/components/navigation/NavigationMenu.tsx
 import React, { useMemo } from 'react';
 import { Menu } from 'antd';
-import {
-  FormOutlined,
-  RobotOutlined,
-  FileTextOutlined
-} from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
+import { getAvailableTabs } from '../tabs/TabRegistry';
 
 type LayoutMode = 'inline' | 'vertical';
 
@@ -20,33 +18,39 @@ export const NavigationMenu: React.FC<Props> = ({
   layout,
   isMobile,
   activeKey,
-  currentFile,
   onSelect,
 }) => {
-  const items = useMemo(
-    () => [
-      {
-        key: 'transform',
-        icon: <FormOutlined />,
-        label: isMobile ? 'Transform' : 'Transformar',
-      },
-      {
-        key: 'technical_note',
-        icon: <FileTextOutlined />,
-        label: isMobile ? 'Technical_note' : 'Nota técnica',
-       
-      },
-    ],
-    [currentFile, isMobile],
-  );
+  const navigate = useNavigate();
+
+  // Genera items dinámicamente desde el TAB_REGISTRY
+  const items = useMemo(() => {
+    const availableTabs = getAvailableTabs();
+    
+    return availableTabs
+      .filter(tab => {
+        // Solo muestra los tabs principales en el menú lateral
+        const mainTabs = ['welcome', 'transform', 'technical_note', 'upload', 'chat'];
+        return mainTabs.includes(tab.key);
+      })
+      .map(tab => ({
+        key: tab.key,
+        icon: tab.icon,
+        label: isMobile ? tab.label : tab.label,
+        onClick: () => {
+          navigate(`/${tab.key}`);
+          onSelect(tab.key);
+        }
+      }));
+  }, [isMobile, navigate, onSelect]);
 
   return (
     <Menu
       mode={layout}
       selectedKeys={[activeKey]}
       items={items}
-      onSelect={({ key }) => onSelect(key)}
       className={layout === 'inline' ? 'sidebar-menu' : 'mobile-sidebar-menu'}
     />
   );
 };
+
+export default NavigationMenu;

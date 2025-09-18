@@ -24,7 +24,7 @@ export const WelcomeTab: React.FC<TabProps> = ({ isMobile }) => {
             {/* Área del título - arriba */}
             <div className="hero-title-area">
                 <Title level={isMobile ? 1 : 1} className="hero-title-enhanced">
-                    Procesador de Archivos
+                    Evaluación de nota técnica
                     <br />
                     <span className="hero-subtitle">Potenciado con IA</span>
                 </Title>

@@ -21,7 +21,7 @@ class UploadHandler:
         }
 
     async def upload_file(self, file: UploadFile) -> Dict[str, Any]:
-        """UPLOAD OPTIMIZADO que guarda archivos con nombre original en technical_note"""
+        """UPLOAD OPTIMIZADO con manejo robusto de encoding"""
         if not file.filename:
             raise HTTPException(status_code=400, detail="Nombre de archivo requerido")
             
@@ -32,67 +32,80 @@ class UploadHandler:
                 detail=f"Tipo de archivo no soportado: {ext}"
             )
         
-        # ✅ USAR NOMBRE ORIGINAL COMO FILE_ID (sin UUID)
         original_filename = file.filename
-        file_id = original_filename  # El ID es el nombre del archivo
+        file_id = original_filename
         
-        # ✅ CREAR ARCHIVO TEMPORAL PRIMERO
+        # Crear archivo temporal
         temp_dir = self.storage_manager.ensure_upload_directory()
         temp_filename = f"temp_{int(time.time())}_{original_filename}"
         temp_file_path = os.path.join(temp_dir, temp_filename)
         
         try:
-            # ✅ GUARDAR ARCHIVO TEMPORAL
+            # Guardar archivo temporal
             await self._save_file_streaming(file, temp_file_path)
             
-            # ✅ OBTENER HOJAS PARA ARCHIVOS EXCEL (SIEMPRE)
-            sheets = []
+            # ✅ PROCESAR SEGÚN EL TIPO DE ARCHIVO
+            columns_list = []
+            sheets_list = []
             default_sheet = None
-            sheet_detection_time = 0
+            total_rows = 0
+            processing_method = "Standard"
+            sheet_detection_time = 0.0
             
             if ext in ['xlsx', 'xls']:
+                # PROCESAMIENTO EXCEL (tu código existente)
                 sheet_start = time.time()
-                
                 try:
                     sheet_info = duckdb_service.get_excel_sheets(temp_file_path)
                     sheet_detection_time = time.time() - sheet_start
                     
                     if sheet_info["success"]:
-                        sheets = sheet_info["sheets"]
+                        sheets_list = sheet_info["sheets"]
                         default_sheet = sheet_info["default_sheet"]
                     else:
-                        sheets = ["Sheet1"]  # Fallback
+                        sheets_list = ["Sheet1"]
                         default_sheet = "Sheet1"
                         
                 except Exception as e:
                     print(f"⚠️ Error detectando hojas Excel: {e}")
-                    sheets = ["Sheet1"]  # Fallback de emergencia
+                    sheets_list = ["Sheet1"]
                     default_sheet = "Sheet1"
-                    sheet_detection_time = 0.001
-            else:
-                # Para archivos CSV
-                sheets = []
-                default_sheet = None
+                
+                processing_method = "Excel_Detected"
+                
+            elif ext == 'csv':
+                # ✅ USAR PROCESAMIENTO ROBUSTO PARA CSV
+                csv_result = await self._detect_and_process_csv_robust(temp_file_path)
+                
+                if csv_result["success"]:
+                    columns_list = csv_result["columns"]
+                    total_rows = csv_result["total_rows"]
+                    processing_method = csv_result["method"]
+                    print(f"📊 CSV procesado: {len(columns_list)} columnas, {total_rows} filas")
+                else:
+                    print(f"⚠️ Error procesando CSV, usando valores por defecto")
+                    columns_list = []
+                    total_rows = 0
+                    processing_method = "CSV_Failed"
             
-            # ✅ MOVER ARCHIVO A SU UBICACIÓN FINAL CON NOMBRE ORIGINAL
+            # Mover archivo a ubicación final (tu código existente)
             file_info = {
                 "ext": ext,
                 "original_name": original_filename,
-                "sheets": sheets,
+                "sheets": sheets_list,
                 "default_sheet": default_sheet,
                 "upload_type": "technical_note",
                 "user_uploaded": True
             }
             
-            # Usar el nuevo método del storage_manager para guardar con nombre original
             final_file_path = self.storage_manager.store_file_with_original_name(
                 source_file_path=temp_file_path,
                 original_filename=original_filename,
                 file_info=file_info,
-                overwrite=True  # Permitir sobrescribir archivos existentes
+                overwrite=True
             )
             
-            # ✅ LIMPIAR ARCHIVO TEMPORAL
+            # Limpiar archivo temporal
             try:
                 if os.path.exists(temp_file_path):
                     os.remove(temp_file_path)
@@ -101,7 +114,7 @@ class UploadHandler:
             
             print(f"✅ Archivo guardado como: {final_file_path}")
             
-            # ✅ CONVERSIÓN OPTIMIZADA USANDO NOMBRE ORIGINAL COMO FILE_ID
+            # Conversión a Parquet (tu código existente)
             parquet_result = duckdb_service.convert_file_to_parquet(
                 final_file_path, file_id, original_filename, ext
             )
@@ -113,68 +126,41 @@ class UploadHandler:
                 else:
                     raise HTTPException(status_code=500, detail=error_msg)
             
-            # ✅ CARGA LAZY INSTANTÁNEA
+            # ✅ USAR DATOS DEL PARQUET SI NO SE OBTUVIERON DEL CSV
+            if not columns_list and parquet_result.get("columns"):
+                columns_list = parquet_result["columns"]
+            if not total_rows and parquet_result.get("total_rows"):
+                total_rows = parquet_result["total_rows"]
+            
+            # Carga lazy (tu código existente)
             table_name = duckdb_service.load_parquet_lazy(
                 file_id, parquet_result["parquet_path"]
             )
             
-            # ✅ ACTUALIZAR INFORMACIÓN COMPLETA EN STORAGE
-            updated_file_info = self.storage_manager.get_file_info(file_id)
-            if updated_file_info:
-                updated_file_info.update({
-                    "parquet_path": parquet_result["parquet_path"],
-                    "table_name": table_name,
-                    "columns": parquet_result["columns"],
-                    "total_rows": parquet_result["total_rows"],
-                    "strategy": "OPTIMIZED_ORIGINAL_NAME",
-                    "engine": "DuckDB + Original Name + Sheet Detection",
-                    "file_size_mb": os.path.getsize(final_file_path) / 1024 / 1024,
-                    "method": parquet_result.get("method"),
-                    "compression_ratio": parquet_result["compression_ratio"],
-                    "conversion_time": parquet_result["conversion_time"],
-                    "from_cache": parquet_result.get("from_cache", False),
-                    "file_id": parquet_result.get("file_id"),
-                    "cached": parquet_result.get("cached", False),
-                    "load_type": "lazy",
-                    "sheet_detection_time": sheet_detection_time
-                })
-                
-                self.storage_manager.store_file_info(file_id, updated_file_info)
-            
-            # ✅ RESPUESTA GARANTIZADA CON HOJAS
+            # ✅ RESPUESTA GARANTIZADA CON TODOS LOS CAMPOS
             response = {
-                "file_id": file_id,  # ✅ Ahora es el nombre original
-                "filename": original_filename,  # ✅ Nombre original explícito
-                "columns": parquet_result["columns"],
-                "sheets": sheets,
-                "default_sheet": default_sheet,
-                "total_rows": parquet_result["total_rows"],
-                "ultra_fast": True,
-                "engine": "DuckDB + Original Name + Sheet Detection",
-                "file_size_mb": os.path.getsize(final_file_path) / 1024 / 1024,
-                "processing_method": parquet_result.get("method"),
-                "compression_ratio": parquet_result["compression_ratio"],
-                "processing_time": parquet_result["conversion_time"],
-                "from_cache": parquet_result.get("from_cache", False),
-                "cache_hit": parquet_result.get("from_cache", False),
-                "file_id": parquet_result.get("file_id"),
-                "load_type": "lazy",
-                "ultra_optimized": True,
-                "has_sheets": len(sheets) > 1,
-                "sheet_count": len(sheets),
-                "sheet_detection_time": sheet_detection_time,
-                "is_excel": ext in ['xlsx', 'xls'],
-                "stored_in": "technical_note",  # ✅ Indicar dónde se guardó
-                "original_name_preserved": True,  # ✅ Indicar que se preservó el nombre
-                "final_path": final_file_path  # ✅ Ruta final para debug
-            }            
-            return response
-                
-        except Exception as e:
-            # ✅ LIMPIAR ARCHIVOS EN CASO DE ERROR
-            cleanup_files = [temp_file_path]
+                "file_id": file_id,
+                "filename": original_filename,
+                "columns": columns_list,                    # ✅ Siempre lista
+                "sheets": sheets_list,                      # ✅ Siempre lista (vacía para CSV)
+                "default_sheet": default_sheet,             # ✅ None para CSV
+                "total_rows": total_rows,                   # ✅ Siempre entero
+                "is_excel": ext in ['xlsx', 'xls'],         # ✅ Booleano
+                "has_sheets": len(sheets_list) > 1,         # ✅ Booleano
+                "sheet_count": len(sheets_list),            # ✅ Entero
+                "sheet_detection_time": sheet_detection_time, # ✅ Float
+                "ultra_fast": True,                         # ✅ Booleano
+                "engine": "DuckDB + Robust Encoding",       # ✅ String
+                "file_size_mb": round(os.path.getsize(final_file_path) / 1024 / 1024, 2), # ✅ Float
+                "processing_method": processing_method,      # ✅ String
+                "from_cache": parquet_result.get("from_cache", False) # ✅ Booleano
+            }
             
-            # Si se creó el archivo final, también limpiarlo
+            return response
+            
+        except Exception as e:
+            # Limpiar archivos en caso de error
+            cleanup_files = [temp_file_path]
             try:
                 final_path = self.storage_manager.get_file_path(original_filename)
                 if os.path.exists(final_path):
@@ -186,11 +172,9 @@ class UploadHandler:
                 try:
                     if os.path.exists(cleanup_file):
                         os.remove(cleanup_file)
-                        print(f"🧹 Limpiado: {cleanup_file}")
-                except Exception as cleanup_error:
-                    print(f"⚠️ Error limpiando {cleanup_file}: {cleanup_error}")
+                except:
+                    pass
             
-            # También limpiar del storage si se agregó
             try:
                 self.storage_manager.remove_file_by_original_name(original_filename)
             except:
@@ -378,6 +362,107 @@ class UploadHandler:
                 "total_files": 0,
                 "total_size_mb": 0,
                 "extensions": {}
+            }
+        
+    async def _detect_and_process_csv_robust(self, file_path: str) -> Dict[str, Any]:
+        """Detecta encoding y procesa CSV de forma robusta"""
+        try:
+            import chardet
+            import pandas as pd
+            
+            # DETECTAR ENCODING AUTOMÁTICAMENTE
+            with open(file_path, 'rb') as raw_file:
+                raw_data = raw_file.read(10000)  # Primeros 10KB para detectar
+                encoding_result = chardet.detect(raw_data)
+                detected_encoding = encoding_result.get('encoding', 'utf-8')
+                confidence = encoding_result.get('confidence', 0)
+            
+            print(f"🔍 Encoding detectado: {detected_encoding} (confianza: {confidence:.2f})")
+            
+            # LISTA DE ENCODINGS A PROBAR
+            encodings_to_try = [
+                detected_encoding,
+                'utf-8',
+                'latin-1',
+                'cp1252',
+                'iso-8859-1',
+                'utf-8-sig'
+            ]
+            
+            # Eliminar None y duplicados
+            encodings_to_try = list(dict.fromkeys([enc for enc in encodings_to_try if enc]))
+            
+            # PROBAR ENCODINGS HASTA ENCONTRAR UNO QUE FUNCIONE
+            for encoding in encodings_to_try:
+                try:
+                    print(f"🔄 Intentando encoding: {encoding}")
+                    # Leer solo una muestra primero para validar
+                    df_sample = pd.read_csv(file_path, encoding=encoding, nrows=100)
+                    
+                    # Si llegamos aquí, el encoding funciona
+                    print(f"✅ Encoding exitoso: {encoding}")
+                    
+                    # Obtener columnas
+                    columns_list = df_sample.columns.tolist()
+                    
+                    # Contar filas total
+                    try:
+                        with open(file_path, 'r', encoding=encoding) as f:
+                            total_rows = sum(1 for line in f) - 1  # -1 para header
+                    except:
+                        total_rows = len(df_sample)
+                    
+                    return {
+                        "success": True,
+                        "columns": columns_list,
+                        "total_rows": total_rows,
+                        "encoding_used": encoding,
+                        "method": f"CSV_Robust_{encoding}"
+                    }
+                    
+                except Exception as e:
+                    print(f"⚠️ Error con encoding {encoding}: {str(e)[:100]}")
+                    continue
+            
+            # Si todos los encodings fallaron
+            print(f"❌ Todos los encodings fallaron para el CSV")
+            return {
+                "success": False,
+                "columns": [],
+                "total_rows": 0,
+                "encoding_used": "failed",
+                "method": "CSV_Failed"
+            }
+            
+        except ImportError:
+            print("⚠️ chardet no disponible, usando encoding básico")
+            # Fallback sin chardet
+            try:
+                df = pd.read_csv(file_path, encoding='utf-8', nrows=100)
+                return {
+                    "success": True,
+                    "columns": df.columns.tolist(),
+                    "total_rows": len(df),
+                    "encoding_used": "utf-8",
+                    "method": "CSV_Basic"
+                }
+            except:
+                return {
+                    "success": False,
+                    "columns": [],
+                    "total_rows": 0,
+                    "encoding_used": "failed",
+                    "method": "CSV_Failed"
+                }
+        
+        except Exception as e:
+            print(f"❌ Error crítico procesando CSV: {e}")
+            return {
+                "success": False,
+                "columns": [],
+                "total_rows": 0,
+                "encoding_used": "error",
+                "method": "CSV_Error"
             }
 
 # ✅ INSTANCIAS GLOBALES

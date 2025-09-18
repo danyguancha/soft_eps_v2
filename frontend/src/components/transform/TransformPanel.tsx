@@ -142,58 +142,7 @@ export const TransformPanel: React.FC<Props> = ({
       
       <Card title="Transformaciones de Datos" className="transform-card">
         <Row gutter={[16, 16]}>
-          {/* Operaciones básicas */}
-          <Col xs={24} sm={24} md={8}>
-            <Card size="small" title="Operaciones Básicas" className="transform-category">
-              <Space direction="vertical" className="transform-buttons" style={{ width: '100%' }}>
-                <TransformButton
-                  opKey="concatenate"
-                  label="Concatenar Columnas"
-                  size={isMobile ? 'large' : 'middle'}
-                  onSelect={onSelectOp}
-                />
-                <TransformButton
-                  opKey="split_column"
-                  label="Dividir Columna"
-                  size={isMobile ? 'large' : 'middle'}
-                  onSelect={onSelectOp}
-                />
-                <TransformButton
-                  opKey="replace_values"
-                  label="Reemplazar Valores"
-                  size={isMobile ? 'large' : 'middle'}
-                  onSelect={onSelectOp}
-                />
-              </Space>
-            </Card>
-          </Col>
-
-          {/* Operaciones avanzadas */}
-          <Col xs={24} sm={24} md={8}>
-            <Card size="small" title="Operaciones Avanzadas" className="transform-category">
-              <Space direction="vertical" className="transform-buttons" style={{ width: '100%' }}>
-                <TransformButton
-                  opKey="to_uppercase"
-                  label="Convertir a Mayúsculas"
-                  size={isMobile ? 'large' : 'middle'}
-                  onSelect={onSelectOp}
-                />
-                <TransformButton
-                  opKey="fill_null"
-                  label="Llenar Valores Nulos"
-                  size={isMobile ? 'large' : 'middle'}
-                  onSelect={onSelectOp}
-                />
-                <TransformButton
-                  opKey="delete_column"
-                  label="Eliminar Columna"
-                  size={isMobile ? 'large' : 'middle'}
-                  onSelect={onSelectOp}
-                />
-              </Space>
-            </Card>
-          </Col>
-
+          
           {/* Cruce de Archivos */}
           <Col xs={24} sm={24} md={8}>
             <Card size="small" title="Cruce de Datos" className="transform-category">

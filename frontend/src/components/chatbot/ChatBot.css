@@ -1,0 +1,663 @@
+/* src/components/chatbot/ChatBot.css - ADAPTACIÓN AUTOMÁTICA DE TEMA */
+
+/* ✅ VARIABLES CSS PARA TEMA DINÁMICO */
+:root {
+  /* Colores base para modo claro */
+  --whatsapp-bg-primary: #e5ddd5;
+  --whatsapp-bg-pattern: #f0f0f0;
+  --whatsapp-text-primary: #303030;
+  --whatsapp-text-secondary: #667781;
+  --whatsapp-text-muted: #8696a0;
+  
+  /* Header */
+  --whatsapp-header-bg: linear-gradient(135deg, #075e54, #128c7e);
+  --whatsapp-header-text: #ffffff;
+  
+  /* Burbujas */
+  --whatsapp-bubble-sent-bg: #dcf8c6;
+  --whatsapp-bubble-sent-text: #303030;
+  --whatsapp-bubble-received-bg: #ffffff;
+  --whatsapp-bubble-received-text: #303030;
+  
+  /* Input area */
+  --whatsapp-input-area-bg: #f0f0f0;
+  --whatsapp-input-container-bg: #ffffff;
+  --whatsapp-input-text: #303030;
+  --whatsapp-input-placeholder: #667781;
+  
+  /* Separadores y bordes */
+  --whatsapp-border-color: #e0e0e0;
+  --whatsapp-separator-bg: rgba(255, 255, 255, 0.9);
+  --whatsapp-separator-text: #667781;
+  
+  /* Botones y acciones */
+  --whatsapp-button-text: #667781;
+  --whatsapp-button-hover: #f5f5f5;
+  --whatsapp-accent-color: #25d366;
+  --whatsapp-accent-hover: #20c55e;
+  
+  /* Sombras y efectos */
+  --whatsapp-shadow-light: rgba(0, 0, 0, 0.1);
+  --whatsapp-shadow-medium: rgba(0, 0, 0, 0.15);
+  --whatsapp-overlay-bg: rgba(0, 0, 0, 0.05);
+  
+  /* Estados de mensaje */
+  --whatsapp-status-sending: rgba(102, 119, 129, 0.6);
+  --whatsapp-status-sent: #4fc3f7;
+  --whatsapp-status-error: #e53e3e;
+  
+  /* Emoji picker */
+  --whatsapp-picker-bg: #ffffff;
+  --whatsapp-picker-border: #e0e0e0;
+  --whatsapp-picker-category-bg: #f5f5f5;
+  --whatsapp-picker-text: #333333;
+  --whatsapp-picker-hover: #f0f0f0;
+}
+
+/* ✅ MODO OSCURO AUTOMÁTICO */
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Colores base para modo oscuro */
+    --whatsapp-bg-primary: #0b141a;
+    --whatsapp-bg-pattern: #1a2932;
+    --whatsapp-text-primary: #e9edef;
+    --whatsapp-text-secondary: #8696a0;
+    --whatsapp-text-muted: #667781;
+    
+    /* Header permanece igual (ya es oscuro) */
+    --whatsapp-header-bg: linear-gradient(135deg, #075e54, #128c7e);
+    --whatsapp-header-text: #ffffff;
+    
+    /* Burbujas modo oscuro */
+    --whatsapp-bubble-sent-bg: #005c4b;
+    --whatsapp-bubble-sent-text: #e9edef;
+    --whatsapp-bubble-received-bg: #5f6761ff;
+    --whatsapp-bubble-received-text: #eef2f4ff;
+    
+    /* Input area oscuro */
+    --whatsapp-input-area-bg: #202c33;
+    --whatsapp-input-container-bg: #2a3942;
+    --whatsapp-input-text: #e9edef;
+    --whatsapp-input-placeholder: #8696a0;
+    
+    /* Separadores y bordes oscuros */
+    --whatsapp-border-color: #3b4a54;
+    --whatsapp-separator-bg: rgba(32, 44, 51, 0.9);
+    --whatsapp-separator-text: #8696a0;
+    
+    /* Botones modo oscuro */
+    --whatsapp-button-text: #8696a0;
+    --whatsapp-button-hover: #3b4a54;
+    
+    /* Sombras más sutiles */
+    --whatsapp-shadow-light: rgba(0, 0, 0, 0.3);
+    --whatsapp-shadow-medium: rgba(0, 0, 0, 0.4);
+    --whatsapp-overlay-bg: rgba(0, 0, 0, 0.2);
+    
+    /* Emoji picker oscuro */
+    --whatsapp-picker-bg: #2a3942;
+    --whatsapp-picker-border: #3b4a54;
+    --whatsapp-picker-category-bg: #202c33;
+    --whatsapp-picker-text: #e9edef;
+    --whatsapp-picker-hover: #3b4a54;
+  }
+}
+
+/* ✅ CONTENEDOR PRINCIPAL */
+.whatsapp-chat-container {
+  display: flex;
+  flex-direction: column;
+  height: 500px;
+  background-color: var(--whatsapp-bg-primary);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px var(--whatsapp-shadow-light);
+  position: relative;
+  color: var(--whatsapp-text-primary);
+  transition: all 0.3s ease;
+}
+
+/* Patrón de fondo adaptativo */
+.whatsapp-chat-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    radial-gradient(circle at 25% 25%, var(--whatsapp-bg-pattern) 1px, transparent 1px),
+    radial-gradient(circle at 75% 75%, var(--whatsapp-bg-pattern) 1px, transparent 1px);
+  background-size: 20px 20px;
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+/* ✅ HEADER ADAPTATIVO */
+.whatsapp-header {
+  background: var(--whatsapp-header-bg);
+  color: var(--whatsapp-header-text);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 1px 3px var(--whatsapp-shadow-medium);
+  z-index: 10;
+  position: relative;
+}
+
+.whatsapp-header-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.whatsapp-avatar-header {
+  background: var(--whatsapp-accent-color);
+  border: 2px solid var(--whatsapp-header-text);
+}
+
+.whatsapp-header-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.whatsapp-contact-name {
+  font-size: 16px;
+  font-weight: 500;
+  margin: 0;
+  color: var(--whatsapp-header-text);
+}
+
+.whatsapp-status {
+  font-size: 12px;
+  opacity: 0.8;
+  margin: 0;
+  color: var(--whatsapp-header-text);
+}
+
+/* ✅ ÁREA DE MENSAJES ADAPTATIVA */
+.whatsapp-messages-area {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+  position: relative;
+  z-index: 1;
+  background-color: var(--whatsapp-bg-primary);
+}
+
+.whatsapp-messages-area::-webkit-scrollbar {
+  width: 4px;
+}
+
+.whatsapp-messages-area::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.whatsapp-messages-area::-webkit-scrollbar-thumb {
+  background: var(--whatsapp-text-secondary);
+  border-radius: 2px;
+  opacity: 0.5;
+}
+
+.whatsapp-messages-area::-webkit-scrollbar-thumb:hover {
+  opacity: 0.8;
+}
+
+/* ✅ SEPARADORES ADAPTATIVOS */
+.whatsapp-date-separator {
+  display: flex;
+  justify-content: center;
+  margin: 16px 0;
+}
+
+.whatsapp-date-text {
+  background: var(--whatsapp-separator-bg);
+  color: var(--whatsapp-separator-text);
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  box-shadow: 0 1px 2px var(--whatsapp-shadow-light);
+  backdrop-filter: blur(4px);
+}
+
+/* ✅ MENSAJES ADAPTATIVOS */
+.whatsapp-message {
+  display: flex;
+  margin-bottom: 8px;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.whatsapp-message-sent {
+  justify-content: flex-end;
+}
+
+.whatsapp-message-received {
+  justify-content: flex-start;
+}
+
+.whatsapp-message-avatar {
+  background: var(--whatsapp-accent-color);
+  flex-shrink: 0;
+}
+
+/* ✅ BURBUJAS ADAPTATIVAS */
+.whatsapp-bubble {
+  max-width: 70%;
+  padding: 8px 12px;
+  border-radius: 18px;
+  position: relative;
+  word-wrap: break-word;
+  box-shadow: 0 1px 2px var(--whatsapp-shadow-light);
+  transition: all 0.2s ease;
+}
+
+.whatsapp-bubble-sent {
+  background: var(--whatsapp-bubble-sent-bg);
+  color: var(--whatsapp-bubble-sent-text);
+  border-bottom-right-radius: 4px;
+  margin-left: auto;
+}
+
+.whatsapp-bubble-received {
+  background: var(--whatsapp-bubble-received-bg);
+  color: var(--whatsapp-bubble-received-text);
+  border-bottom-left-radius: 4px;
+}
+
+.whatsapp-message-content {
+  line-height: 1.4;
+  margin-bottom: 4px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: inherit;
+}
+
+.whatsapp-message-time {
+  font-size: 11px;
+  color: var(--whatsapp-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+/* Estados de mensaje adaptativos */
+.whatsapp-status-icon {
+  font-size: 10px;
+}
+
+.whatsapp-status-icon.sending {
+  color: var(--whatsapp-status-sending);
+}
+
+.whatsapp-status-icon.error {
+  color: var(--whatsapp-status-error);
+}
+
+.whatsapp-status-icon.sent {
+  color: var(--whatsapp-status-sent);
+}
+
+/* ✅ INDICADOR DE ESCRITURA ADAPTATIVO */
+.whatsapp-typing {
+  padding: 12px 16px;
+}
+
+.whatsapp-typing-indicator {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.whatsapp-typing-indicator span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--whatsapp-text-secondary);
+  animation: whatsapp-typing 1.4s infinite;
+}
+
+.whatsapp-typing-indicator span:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.whatsapp-typing-indicator span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.whatsapp-typing-indicator span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes whatsapp-typing {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  30% {
+    transform: translateY(-10px);
+    opacity: 1;
+  }
+}
+
+/* ✅ ÁREA DE INPUT ADAPTATIVA */
+.whatsapp-input-area {
+  background: var(--whatsapp-input-area-bg);
+  padding: 8px 16px;
+  border-top: 1px solid var(--whatsapp-border-color);
+  position: relative;
+  z-index: 10;
+  transition: all 0.3s ease;
+}
+
+.whatsapp-input-container {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  background: var(--whatsapp-input-container-bg);
+  border-radius: 24px;
+  padding: 8px;
+  box-shadow: 0 1px 3px var(--whatsapp-shadow-light);
+  transition: all 0.3s ease;
+}
+
+.whatsapp-emoji-button {
+  color: var(--whatsapp-button-text);
+  padding: 8px;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
+}
+
+.whatsapp-emoji-button:hover {
+  background-color: var(--whatsapp-button-hover);
+  color: var(--whatsapp-accent-color);
+}
+
+.whatsapp-emoji-button.active {
+  background-color: var(--whatsapp-accent-color);
+  color: white;
+}
+
+.whatsapp-emoji-button.active:hover {
+  background-color: var(--whatsapp-accent-hover);
+}
+
+/* ✅ INPUT ADAPTATIVO */
+.whatsapp-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  resize: none;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--whatsapp-input-text);
+}
+
+.whatsapp-input::placeholder {
+  color: var(--whatsapp-input-placeholder);
+}
+
+.whatsapp-input:focus {
+  box-shadow: none;
+  border: none;
+  outline: none;
+  color: var(--whatsapp-input-text);
+}
+
+.whatsapp-input .ant-input {
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  background: transparent;
+  color: var(--whatsapp-input-text);
+}
+
+/* Antd textarea override para modo oscuro */
+.whatsapp-input .ant-input:focus {
+  border-color: transparent;
+  box-shadow: none;
+  background: transparent;
+}
+
+/* ✅ BOTÓN DE ENVÍO ADAPTATIVO */
+.whatsapp-send-button {
+  color: var(--whatsapp-button-text);
+  padding: 8px;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.whatsapp-send-button:hover {
+  background-color: var(--whatsapp-button-hover);
+}
+
+.whatsapp-send-active {
+  background: var(--whatsapp-accent-color);
+  color: white;
+}
+
+.whatsapp-send-active:hover {
+  background: var(--whatsapp-accent-hover);
+  color: white;
+}
+
+/* ✅ EMOJI PICKER ADAPTATIVO */
+.whatsapp-emoji-picker-container {
+  position: absolute;
+  bottom: 70px;
+  left: 16px;
+  z-index: 1000;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px var(--whatsapp-shadow-medium);
+  background: var(--whatsapp-picker-bg);
+  overflow: hidden;
+  animation: whatsapp-emojiPickerSlideUp 0.3s ease-out;
+}
+
+@keyframes whatsapp-emojiPickerSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Personalización del EmojiPicker para tema dinámico */
+.whatsapp-emoji-picker-container .EmojiPickerReact {
+  --epr-bg-color: var(--whatsapp-picker-bg);
+  --epr-category-label-bg-color: var(--whatsapp-picker-category-bg);
+  --epr-picker-border-color: var(--whatsapp-picker-border);
+  --epr-search-border-color: var(--whatsapp-picker-border);
+  --epr-emoji-size: 28px;
+  --epr-category-icon-active-color: var(--whatsapp-accent-color);
+  --epr-hover-bg-color: var(--whatsapp-picker-hover);
+  --epr-focus-bg-color: var(--whatsapp-picker-hover);
+  --epr-text-color: var(--whatsapp-picker-text);
+  border: none;
+}
+
+.whatsapp-emoji-picker-container .EmojiPickerReact .epr-search-container input {
+  border-radius: 20px;
+  padding: 8px 16px;
+  font-size: 14px;
+  background: var(--whatsapp-picker-category-bg);
+  border: 1px solid var(--whatsapp-picker-border);
+  color: var(--whatsapp-picker-text);
+}
+
+.whatsapp-emoji-picker-container .EmojiPickerReact .epr-search-container input::placeholder {
+  color: var(--whatsapp-text-muted);
+}
+
+.whatsapp-emoji-picker-container .EmojiPickerReact .epr-emoji-category-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--whatsapp-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.whatsapp-emoji-picker-container .EmojiPickerReact .epr-emoji {
+  transition: transform 0.2s ease;
+}
+
+.whatsapp-emoji-picker-container .EmojiPickerReact .epr-emoji:hover {
+  transform: scale(1.2);
+}
+
+.whatsapp-emoji-picker-container .EmojiPickerReact .epr-preview {
+  border-top: 1px solid var(--whatsapp-picker-border);
+  background: var(--whatsapp-picker-category-bg);
+  padding: 12px 16px;
+}
+
+.whatsapp-emoji-picker-container .EmojiPickerReact .epr-preview .epr-preview-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--whatsapp-picker-text);
+}
+
+/* ✅ EFECTOS Y ANIMACIONES ADAPTATIVOS */
+.whatsapp-message {
+  animation: whatsapp-fadeIn 0.3s ease-out;
+}
+
+@keyframes whatsapp-fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.whatsapp-bubble:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px var(--whatsapp-shadow-medium);
+  transition: all 0.2s ease;
+}
+
+/* ✅ RESPONSIVE MEJORADO */
+@media (max-width: 768px) {
+  .whatsapp-chat-container {
+    height: 500px;
+  }
+  
+  .whatsapp-bubble {
+    max-width: 85%;
+  }
+  
+  .whatsapp-header {
+    padding: 10px 12px;
+  }
+  
+  .whatsapp-messages-area {
+    padding: 12px;
+  }
+  
+  .whatsapp-emoji-picker-container {
+    left: 8px;
+    right: 8px;
+    bottom: 65px;
+  }
+  
+  .whatsapp-emoji-picker-container .EmojiPickerReact {
+    width: 100% !important;
+    max-width: 100%;
+  }
+}
+
+/* ✅ ESTADOS DE CONEXIÓN ADAPTATIVOS */
+.whatsapp-status.typing {
+  color: var(--whatsapp-accent-color);
+}
+
+.whatsapp-status.online {
+  color: var(--whatsapp-accent-color);
+}
+
+.whatsapp-status.offline {
+  color: var(--whatsapp-text-muted);
+}
+
+/* ✅ OVERLAY ADAPTATIVO */
+.whatsapp-chat-container:has(.whatsapp-emoji-picker-container) .whatsapp-messages-area::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--whatsapp-overlay-bg);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ✅ EFECTOS ADICIONALES DEL EMOJI BUTTON */
+.whatsapp-emoji-button {
+  position: relative;
+}
+
+.whatsapp-emoji-button::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(37, 211, 102, 0.1);
+  transform: scale(0);
+  transition: transform 0.2s ease;
+}
+
+.whatsapp-emoji-button.active::after {
+  transform: scale(1);
+}
+
+.whatsapp-emoji-button.active {
+  animation: whatsapp-emojiPulse 2s infinite;
+}
+
+@keyframes whatsapp-emojiPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(37, 211, 102, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(37, 211, 102, 0);
+  }
+}
+
+/* ✅ MEJORAS PARA INPUT AREA CUANDO PICKER ESTÁ ABIERTO */
+.whatsapp-input-area:has(.whatsapp-emoji-picker-container) {
+  background: var(--whatsapp-input-area-bg);
+}
+
+/* ✅ TRANSICIONES SUAVES PARA CAMBIO DE TEMA */
+* {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}

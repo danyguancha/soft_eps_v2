@@ -317,7 +317,6 @@ class ColumnKeywordReportService:
         LIMIT 1000
         """
         
-        print(f"🔧 SQL generado: {sql}")
         return sql
 
     def _find_geographic_column(self, data_source: str, geo_type: str, escape_identifier_func) -> Optional[str]:

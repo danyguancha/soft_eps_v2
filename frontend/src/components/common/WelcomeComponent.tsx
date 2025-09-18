@@ -8,7 +8,7 @@ export const WelcomeComponent: React.FC<WelcomeComponentProps> = ({ isMobile }) 
       <div className="welcome-content">
         <div className="welcome-icon">📊</div>
         <h2 className="welcome-title">
-          {isMobile ? '¡Bienvenido!' : '¡Bienvenido al Procesador de Archivos!'}
+          {isMobile ? '¡Bienvenido!' : '¡Bienvenido al evaluador de la nota técnica!'}
         </h2>
         <p className="welcome-description">
           {isMobile

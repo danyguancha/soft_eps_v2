@@ -1,14 +1,17 @@
 // src/App.tsx
 import '@ant-design/v5-patch-for-react-19';
 import React, { useState } from 'react';
+import { BrowserRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { Layout, Alert, Spin, Drawer, Modal } from 'antd';
 import { Grid } from 'antd';
 
 import { AppHeader } from './components/layout/AppHeader';
 import { NavigationMenu } from './components/navigation/NavigationMenu';
-import { TabRenderer } from './components/tabs/TabRenderer';
 import FileCrossManager from './components/cross/FileCrossManager';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
+
+// Importa el nuevo componente de routing dinámico
+import { DynamicTabRouter } from './components/routing/DynamicTabRouter';
 
 import { useFileOperations } from './hooks/useFileOperations';
 import { useCrossData } from './hooks/useCrossData';
@@ -20,14 +23,16 @@ const { Header, Content, Sider, Footer } = Layout;
 const { useBreakpoint } = Grid;
 
 interface UIState {
-  activeTab: TabKey;
   collapsed: boolean;
   mobileMenuVisible: boolean;
   crossModalVisible: boolean;
 }
 
-const App: React.FC = () => {
+// Componente principal de la aplicación
+const AppContent: React.FC = () => {
   const screens = useBreakpoint();
+  const location = useLocation();
+  const navigate = useNavigate();
   
   const isMobile = !(screens.md ?? false);
   const isTablet = !!(screens.md && !screens.lg);
@@ -36,18 +41,21 @@ const App: React.FC = () => {
   const crossData = useCrossData();
 
   const [ui, setUI] = useState<UIState>({
-    activeTab: 'welcome',
     collapsed: isMobile,
     mobileMenuVisible: false,
     crossModalVisible: false,
   });
 
-  const handleTabChange = (key: string) =>
-    setUI((p) => ({
-      ...p,
-      activeTab: key as TabKey,
-      mobileMenuVisible: false,
-    }));
+  // Determina la clave activa basada en la ruta actual
+  const getActiveKey = (): TabKey => {
+    const path = location.pathname.slice(1) || 'welcome'; // Remueve '/' inicial
+    return path as TabKey;
+  };
+
+  const handleMenuSelect = (key: string) => {
+    setUI((p) => ({ ...p, mobileMenuVisible: false }));
+    navigate(`/${key}`);
+  };
 
   const handleToggleSidebar = () =>
     setUI((p) =>
@@ -76,13 +84,14 @@ const App: React.FC = () => {
                 width={200}
                 className="app-sider"
                 collapsedWidth={80}
+                collapsed={ui.collapsed}
               >
                 <NavigationMenu
                   layout="inline"
                   isMobile={false}
-                  activeKey={ui.activeTab}
+                  activeKey={getActiveKey()}
                   currentFile={null}
-                  onSelect={handleTabChange}
+                  onSelect={handleMenuSelect}
                 />
               </Sider>
             )}
@@ -101,36 +110,36 @@ const App: React.FC = () => {
                 )}
 
                 <div className="main-content">
-                  {fileOperations.loading && !fileOperations.currentData && ui.activeTab === 'upload' ? (
+                  {fileOperations.loading && !fileOperations.currentData && getActiveKey() === 'upload' ? (
                     <div className="loading-container">
                       <Spin size={isMobile ? 'default' : 'large'} />
                     </div>
                   ) : (
-                    <TabRenderer
-                      activeTab={ui.activeTab}
-                      fileData={fileOperations.currentFile}
-                      isMobile={isMobile}
-                      isTablet={isTablet}
-                      onTabChange={handleTabChange}
-                      onOpenCrossModal={() => setUI(p => ({ ...p, crossModalVisible: true }))}
-                      // Props específicos para CrossTab
-                      crossResult={crossData.crossResult}
-                      crossTableState={crossData.crossTableState}
-                      processedCrossData={crossData.processedCrossData}
-                      crossDataTotal={crossData.crossDataTotal}
-                      onCrossPaginationChange={crossData.handleCrossPaginationChange}
-                      onCrossFiltersChange={crossData.handleCrossFiltersChange}
-                      onCrossSortChange={crossData.handleCrossSortChange}
-                      onCrossSearch={crossData.handleCrossSearch}
-                      onExportCrossResult={crossData.handleExportCrossResult}
-                      onClearCrossResult={crossData.handleClearCrossResult}
-                    />
+                    <Routes>
+                      {/* Ruta por defecto */}
+                      <Route path="/" element={<DynamicTabRouter tabKey="welcome" />} />
+                      
+                      {/* Rutas dinámicas para cada tab del registro */}
+                      <Route path="/welcome" element={<DynamicTabRouter tabKey="welcome" />} />
+                      <Route path="/upload" element={<DynamicTabRouter tabKey="upload" />} />
+                      <Route path="/transform" element={<DynamicTabRouter tabKey="transform" />} />
+                      <Route path="/export" element={<DynamicTabRouter tabKey="export" />} />
+                      <Route path="/chat" element={<DynamicTabRouter tabKey="chat" />} />
+                      <Route path="/cross" element={<DynamicTabRouter tabKey="cross" />} />
+                      <Route path="/technical_note" element={<DynamicTabRouter tabKey="technical_note" />} />
+                      
+                      {/* Rutas anidadas para nota técnica con grupos etarios */}
+                      <Route path="/technical_note/:ageGroup" element={<DynamicTabRouter tabKey="technical_note" />} />
+                      
+                      {/* Ruta 404 */}
+                      <Route path="*" element={<div>Página no encontrada</div>} />
+                    </Routes>
                   )}
                 </div>
               </Content>
               
               <Footer className="app-footer">
-                {isMobile ? 'Procesador ©2025' : 'Procesador de Archivos ©2025'}
+                {isMobile ? 'Procesador ©2025' : 'Evaluación de nota técnica ©2025'}
               </Footer>
             </Layout>
           </Layout>
@@ -147,9 +156,9 @@ const App: React.FC = () => {
             <NavigationMenu
               layout="vertical"
               isMobile
-              activeKey={ui.activeTab}
+              activeKey={getActiveKey()}
               currentFile={null}
-              onSelect={handleTabChange}
+              onSelect={handleMenuSelect}
             />
           </Drawer>
 
@@ -168,7 +177,7 @@ const App: React.FC = () => {
               onRefreshFiles={fileOperations.loadFiles}
               onCrossComplete={(result) => {
                 crossData.handleCrossComplete(result);
-                setUI(p => ({ ...p, crossModalVisible: false, activeTab: 'cross' }));
+                setUI(p => ({ ...p, crossModalVisible: false }));
               }}
               onComplete={() => setUI((p) => ({ ...p, crossModalVisible: false }))}
             />
@@ -176,6 +185,15 @@ const App: React.FC = () => {
         </Layout>
       </div>
     </ErrorBoundary>
+  );
+};
+
+// Componente App principal con BrowserRouter
+const App: React.FC = () => {
+  return (
+    <BrowserRouter>
+      <AppContent />
+    </BrowserRouter>
   );
 };
 

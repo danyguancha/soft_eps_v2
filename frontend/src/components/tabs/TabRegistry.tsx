@@ -1,9 +1,8 @@
 // src/components/tabs/TabRegistry.tsx
-import {  UploadOutlined, MessageOutlined, DownloadOutlined, SwapOutlined, HomeOutlined, FileTextOutlined } from '@ant-design/icons';
+import {  MessageOutlined, DownloadOutlined, SwapOutlined, HomeOutlined, FileTextOutlined } from '@ant-design/icons';
 import type { TabConfig } from '../../types/api.types';
 
 // Importar tabs
-import { UploadTab } from './uploadTab/UploadTab';
 import { TransformTab } from './transformTab/TransformTab';
 import { ExportTab } from './exportTab/ExportTab';
 import { ChatTab } from './chartTab/ChatTab';
@@ -11,19 +10,13 @@ import { CrossTab } from './crossTab/CrossTab';
 import { TransformOutlined } from '@mui/icons-material';
 import { WelcomeTab } from './welcomeTab/WelcomeTab';
 import TechnicalNoteViewer from '../technical_note/TechnicalNoteViewer'
+import { UploadTab } from './uploadTab/UploadTab';
 export const TAB_REGISTRY: Record<string, TabConfig> = {
    welcome: {  // ✅ Nuevo tab de bienvenida
     key: 'welcome',
     label: 'Inicio',
     icon: <HomeOutlined />,
     component: WelcomeTab,
-    requiresFile: false,
-  },
-  upload: {
-    key: 'upload',
-    label: 'Cargar',
-    icon: <UploadOutlined />,
-    component: UploadTab,
     requiresFile: false,
   },
   transform: {
@@ -60,7 +53,7 @@ export const TAB_REGISTRY: Record<string, TabConfig> = {
     icon: <FileTextOutlined />,
     component: TechnicalNoteViewer,
     requiresFile: false,
-  },
+  }
 };
 
 // ✅ Función para obtener tabs disponibles

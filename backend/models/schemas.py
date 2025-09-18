@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any, Generic, TypeVar
 from enum import Enum
 
@@ -16,15 +16,12 @@ class PaginatedResponse(BaseModel, Generic[T]):
 class FileUploadResponse(BaseModel):
     message: str
     file_id: str
-    columns: List[str]
-    sheets: Optional[List[str]] = None
-    total_rows: int
-
-    sheets: List[str] = []  # NUEVO: Lista de hojas
-    default_sheet: Optional[str] = None  # NUEVO: Hoja por defecto
-    total_rows: int
+    columns: List[str] = Field(default_factory=list)  # ✅ Usar default_factory para listas
+    sheets: List[str] = Field(default_factory=list)   # ✅ Una sola definición
+    default_sheet: Optional[str] = None
+    total_rows: int = 0  # ✅ Una sola definición con default
     
-    # NUEVOS CAMPOS PARA EXCEL
+    # CAMPOS PARA EXCEL
     is_excel: bool = False  
     has_sheets: bool = False
     sheet_count: int = 0
@@ -41,15 +38,14 @@ class FileUploadResponse(BaseModel):
         schema_extra = {
             "example": {
                 "message": "Archivo cargado exitosamente",
-                "file_id": "123e4567-e89b-12d3-a456-426614174000",
+                "file_id": "archivo.csv",
                 "columns": ["ID", "Nombre", "Email"],
-                "sheets": ["Hoja1", "Datos", "Resumen"],
+                "sheets": ["Hoja1", "Datos"],
                 "default_sheet": "Hoja1", 
                 "total_rows": 1500,
                 "is_excel": True,
                 "has_sheets": True,
-                "sheet_count": 3,
-                "sheet_detection_time": 0.125
+                "sheet_count": 2
             }
         }
 
@@ -130,7 +126,15 @@ class TransformRequest(BaseModel):
 
 class AIRequest(BaseModel):
     question: str
-    file_context: Optional[str] = None
+    file_context: Optional[str] = None  # ID del archivo para contexto específico
+    
+    class Config:
+        schema_extra = {
+            "example": {
+                "question": "¿Cuáles son las estadísticas principales de este archivo?",
+                "file_context": "archivo.csv"
+            }
+        }
 
 class ExportFormat(str, Enum):
     CSV = "csv"
