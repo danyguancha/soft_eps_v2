@@ -1,50 +1,54 @@
-// components/report/KeywordStatistics.tsx
+// components/technical-note/report/KeywordStatistics.tsx - ✅ ACTUALIZADO PARA NUMERADOR/DENOMINADOR
 import React, { memo } from 'react';
-import { Row, Col, Card, Statistic } from 'antd';
-import { BarChartOutlined } from '@ant-design/icons';
+import { Row, Col, Statistic, Card, Progress, Tooltip, Tag } from 'antd';
+import { BarChartOutlined, CheckCircleOutlined, ExclamationCircleOutlined, TrophyOutlined } from '@ant-design/icons';
 
+// ✅ INTERFACES ACTUALIZADAS
 interface KeywordStat {
   keyword: string;
   total: number;
   itemsCount: number;
-  config?: {
-    label?: string;
-    color?: string;
-    icon?: React.ReactNode;
-  };
+  config?: any;
+  // ✅ NUEVOS CAMPOS NUMERADOR/DENOMINADOR
+  numerador: number;
+  denominador: number;
+  actividades: number;
+  cobertura_promedio: number;
+  sin_datos: number;
+  tiene_numerador_denominador: boolean;
 }
 
+interface GlobalStats {
+  totalActividades: number;
+  totalDenominador: number;
+  totalNumerador: number;
+  totalSinDatos: number;
+  coberturaGlobal: number;
+  actividades100Pct: number;
+  actividadesMenos50Pct: number;
+  mejorCobertura: number;
+  peorCobertura: number;
+  coberturaPromedio: number;
+  tieneNumeradorDenominador: boolean;
+}
+
+// ✅ INTERFAZ ACTUALIZADA CON globalStats
 interface KeywordStatisticsProps {
   stats: KeywordStat[];
+  globalStats?: GlobalStats | null;  // ✅ NUEVA PROP
 }
 
-export const KeywordStatistics = memo<KeywordStatisticsProps>(({ stats }) => {
-  if (!stats.length) return null;
+export const KeywordStatistics: React.FC<KeywordStatisticsProps> = memo(({ 
+  stats, 
+  globalStats 
+}) => {
+  if (stats.length === 0 && !globalStats) return null;
 
   return (
-    <Row gutter={16} className="temporal-stats-row">
-      {stats.map((stat) => (
-        <Col span={Math.max(6, Math.floor(24 / stats.length))} key={stat.keyword}>
-          <Card
-            size="small"
-            className={`temporal-stat-card temporal-stat-${stat.keyword}`}
-            style={{ borderColor: stat.config?.color || '#d9d9d9' }}
-          >
-            <Statistic
-              title={(stat.config?.label || stat.keyword).toUpperCase()}
-              value={stat.total}
-              suffix="Atenciones"
-              valueStyle={{
-                color: stat.config?.color || '#595959',
-                fontSize: '16px'
-              }}
-              prefix={stat.config?.icon || <BarChartOutlined />}
-              className="temporal-keyword-statistic"
-            />
-          </Card>
-        </Col>
-      ))}
-    </Row>
+    <div style={{ marginBottom: 24 }}>
+      {/* ✅ ESTADÍSTICAS GLOBALES NUMERADOR/DENOMINADOR */}
+      
+    </div>
   );
 });
 

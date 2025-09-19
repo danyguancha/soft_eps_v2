@@ -1,59 +1,108 @@
-// components/report/ReportControls.tsx
-import { memo } from 'react';
-import { Space, Button, Statistic, Switch, Typography } from 'antd';
-import { EyeOutlined, EyeInvisibleOutlined, BarChartOutlined, CalendarOutlined } from '@ant-design/icons';
+// components/technical-note/report/ReportControls.tsx - ✅ ACTUALIZADO
+import React, { memo } from 'react';
+import { Space, Switch, Button, Statistic, Tooltip } from 'antd';
+import { EyeOutlined, EyeInvisibleOutlined, BarChartOutlined } from '@ant-design/icons';
 
-const { Text } = Typography;
-
-interface ReportControlsProps {
+// ✅ INTERFAZ ACTUALIZADA
+export interface ReportControlsProps {
   hasReport: boolean;
   reportTotalRecords: number;
   showTemporalData: boolean;
   showReport: boolean;
   onSetShowTemporalData: (show: boolean) => void;
   onToggleReportVisibility: () => void;
+  // ✅ NUEVOS CAMPOS NUMERADOR/DENOMINADOR
+  totalDenominador?: number;
+  totalNumerador?: number;
+  coberturaGlobal?: number;
 }
 
-export const ReportControls = memo<ReportControlsProps>(({
+export const ReportControls: React.FC<ReportControlsProps> = memo(({
   hasReport,
   reportTotalRecords,
   showTemporalData,
   showReport,
   onSetShowTemporalData,
-  onToggleReportVisibility
-}) => (
-  <Space className="temporal-report-controls">
-    {hasReport && (
-      <>
-        <Statistic
-          title="Total Atenciones"
-          value={reportTotalRecords}
-          valueStyle={{ fontSize: '14px' }}
-          prefix={<BarChartOutlined />}
-          className="temporal-total-statistic"
-        />
-        <Space direction="vertical" size="small" className="temporal-switch-container">
-          <Text className="temporal-switch-label">Desglose</Text>
-          <Switch
-            checked={showTemporalData}
-            onChange={onSetShowTemporalData}
-            size="small"
-            checkedChildren={<CalendarOutlined />}
-            unCheckedChildren={<CalendarOutlined />}
-          />
+  onToggleReportVisibility,
+  // ✅ NUEVOS PROPS
+  totalDenominador = 0,
+  totalNumerador = 0,
+  coberturaGlobal = 0
+}) => {
+  const tieneNumeradorDenominador = totalDenominador > 0 && totalNumerador > 0;
+
+  return (
+    <Space size="large">
+      {/* ✅ ESTADÍSTICAS NUMERADOR/DENOMINADOR O TRADICIONALES */}
+      {tieneNumeradorDenominador ? (
+        // Mostrar estadísticas N/D
+        <Space size="middle">
+          <Tooltip title="Población total evaluada">
+            <Statistic
+              title="Denominador"
+              value={totalDenominador}
+              formatter={(value) => value?.toLocaleString()}
+              valueStyle={{ fontSize: '14px' }}
+            />
+          </Tooltip>
+          
+          <Tooltip title="Población con datos registrados">
+            <Statistic
+              title="Numerador"
+              value={totalNumerador}
+              formatter={(value) => value?.toLocaleString()}
+              valueStyle={{ fontSize: '14px', color: '#52c41a' }}
+            />
+          </Tooltip>
+          
+          <Tooltip title="Porcentaje de cobertura global">
+            <Statistic
+              title="Cobertura"
+              value={coberturaGlobal}
+              suffix="%"
+              precision={1}
+              valueStyle={{ 
+                fontSize: '14px', 
+                color: coberturaGlobal >= 70 ? '#52c41a' : coberturaGlobal >= 50 ? '#fa8c16' : '#ff4d4f'
+              }}
+            />
+          </Tooltip>
         </Space>
-      </>
-    )}
-    <Button
-      icon={showReport ? <EyeInvisibleOutlined /> : <EyeOutlined />}
-      onClick={onToggleReportVisibility}
-      type={showReport ? 'default' : 'primary'}
-      size="small"
-      className="temporal-visibility-button"
-    >
-      {showReport ? 'Ocultar' : 'Mostrar'}
-    </Button>
-  </Space>
-));
+      ) : (
+        // Mostrar estadísticas tradicionales
+        <Statistic
+          title="Registros"
+          value={reportTotalRecords}
+          formatter={(value) => value?.toLocaleString()}
+          valueStyle={{ fontSize: '14px' }}
+        />
+      )}
+
+      {/* Controles existentes */}
+      {hasReport && (
+        <Space>
+          <Tooltip title="Mostrar/ocultar análisis temporal">
+            <Switch
+              checked={showTemporalData}
+              onChange={onSetShowTemporalData}
+              checkedChildren="Temporal"
+              unCheckedChildren="Temporal"
+              size="small"
+            />
+          </Tooltip>
+
+          <Button
+            type="text"
+            icon={showReport ? <EyeInvisibleOutlined /> : <EyeOutlined />}
+            onClick={onToggleReportVisibility}
+            size="small"
+          >
+            {showReport ? 'Ocultar' : 'Mostrar'}
+          </Button>
+        </Space>
+      )}
+    </Space>
+  );
+});
 
 ReportControls.displayName = 'ReportControls';

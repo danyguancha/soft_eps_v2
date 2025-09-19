@@ -1,4 +1,4 @@
-// services/TechnicalNoteService.tsx - ✅ CON FILTROS GEOGRÁFICOS COMPLETOS
+// services/TechnicalNoteService.tsx - ✅ CON NUMERADOR/DENOMINADOR COMPLETO
 import api from '../Api';
 import type { InasistentesReportResponse } from '../interfaces/IAbsentUser';
 import type { AgeRangesResponse } from '../interfaces/IAge';
@@ -78,13 +78,29 @@ export interface ColumnUniqueValues {
   limit_applied: number;
 }
 
-// ✅ INTERFACES PARA REPORTE PALABRA CLAVE + EDAD
-export interface KeywordAgeItem {
+// ✅ INTERFACES ACTUALIZADAS PARA NUMERADOR/DENOMINADOR
+export interface KeywordAgeReportItem {
   column: string;
   keyword: string;
   age_range: string;
   count: number;
-}
+  
+  // ✅ NUEVOS CAMPOS NUMERADOR/DENOMINADOR
+  numerador?: number;
+  denominador?: number;
+  cobertura_porcentaje?: number;
+  sin_datos?: number;
+  metodo?: string;
+  
+  // ✅ NUEVOS CAMPOS TÉCNICOS
+  age_range_extracted?: {
+    min_age: number;
+    max_age: number;
+    unit: string;
+    sql_filter: string;
+  };
+  corte_fecha?: string;
+} 
 
 export interface TemporalMonth {
   month: number;
@@ -105,11 +121,12 @@ export interface TemporalColumnData {
   years: Record<string, TemporalYear>;
 }
 
-// ✅ NUEVAS INTERFACES PARA FILTROS GEOGRÁFICOS
+// ✅ INTERFACES PARA FILTROS GEOGRÁFICOS
 export interface GeographicFilters {
   departamento?: string | null;
   municipio?: string | null;
   ips?: string | null;
+  corte_fecha?: string;  // ✅ NUEVO
 }
 
 export interface GeographicValuesResponse {
@@ -122,21 +139,59 @@ export interface GeographicValuesResponse {
   engine: string;
 }
 
+// ✅ NUEVA INTERFAZ: TotalsByKeyword actualizada
+export interface TotalsByKeyword {
+  count: number;
+  
+  // ✅ NUEVOS CAMPOS
+  numerador?: number;
+  denominador?: number;
+  actividades?: number;
+  cobertura_promedio?: number;
+}
+
+// ✅ NUEVA INTERFAZ: GlobalStatistics
+export interface GlobalStatistics {
+  total_actividades: number;
+  total_denominador_global: number;
+  total_numerador_global: number;
+  total_sin_datos_global: number;
+  cobertura_global_porcentaje: number;
+  actividades_100_pct_cobertura: number;
+  actividades_menos_50_pct_cobertura: number;
+  mejor_cobertura: number;
+  peor_cobertura: number;
+  cobertura_promedio: number;
+}
+
+// ✅ INTERFAZ PRINCIPAL ACTUALIZADA
 export interface KeywordAgeReport {
   success: boolean;
   filename: string;
+  corte_fecha?: string;  // ✅ NUEVO
   rules: {
     keywords: string[];
   };
-  geographic_filters?: GeographicFilters; // ✅ NUEVO
-  items: KeywordAgeItem[];
-  totals_by_keyword: Record<string, number>;
-  temporal_data?: Record<string, TemporalColumnData>;
-  ultra_fast: boolean;
-  engine: string;
+  geographic_filters: GeographicFilters & {
+    filter_type?: string;
+  };
+  items: KeywordAgeReportItem[];
+  totals_by_keyword: Record<string, TotalsByKeyword>;
+  temporal_data: Record<string, TemporalColumnData>;
+  
+  // ✅ NUEVOS CAMPOS
+  global_statistics?: GlobalStatistics;
+  metodo?: string;
+  version?: string;
+  caracteristicas?: string[];
+  
+  // Campos existentes
+  ultra_fast?: boolean;
+  engine?: string;
+  data_source_used?: string;
+  message?: string;
   temporal_columns?: number;
 }
-
 
 export class TechnicalNoteService {
 
@@ -228,7 +283,7 @@ export class TechnicalNoteService {
     }
   }
 
-  // ✅ NUEVOS MÉTODOS PARA FILTROS GEOGRÁFICOS
+  // ✅ MÉTODOS PARA FILTROS GEOGRÁFICOS
   static async getGeographicValues(
     filename: string,
     geoType: 'departamentos' | 'municipios' | 'ips',
@@ -261,19 +316,21 @@ export class TechnicalNoteService {
     }
   }
 
-  // ✅ MÉTODO ACTUALIZADO: Reporte con filtros geográficos
+  // ✅ MÉTODO PRINCIPAL ACTUALIZADO: Reporte con numerador/denominador
   static async getKeywordAgeReport(
     filename: string,
     keywords?: string[],
     minCount: number = 0,
     includeTemporal: boolean = true,
-    geographicFilters: GeographicFilters = {}
+    geographicFilters: GeographicFilters = {},
+    corteFecha: string = "2025-07-31"  // ✅ NUEVO PARÁMETRO
   ): Promise<KeywordAgeReport> {
     try {
       const params = new URLSearchParams({
         ...(keywords && keywords.length > 0 && { keywords: keywords.join(',') }),
         min_count: minCount.toString(),
-        include_temporal: includeTemporal.toString()
+        include_temporal: includeTemporal.toString(),
+        corte_fecha: corteFecha  // ✅ NUEVO PARÁMETRO
       });
 
       // ✅ AGREGAR FILTROS GEOGRÁFICOS
@@ -296,11 +353,31 @@ export class TechnicalNoteService {
 
       const itemsCount = response.data.items?.length || 0;
       const temporalCount = response.data.temporal_columns || 0;
-      console.log(`✅ Reporte geográfico obtenido: ${itemsCount} elementos, ${temporalCount} con datos temporales`);
+      
+      // ✅ NUEVOS LOGS PARA NUMERADOR/DENOMINADOR
+      const globalStats = response.data.global_statistics || {};
+      const totalDenominador = globalStats.total_denominador_global || 0;
+      const totalNumerador = globalStats.total_numerador_global || 0;
+      const coberturaGlobal = globalStats.cobertura_global_porcentaje || 0;
+      const metodo = response.data.metodo || 'No especificado';
+      
+      console.log(`✅ Reporte numerador/denominador obtenido:`);
+      console.log(`   📊 ${itemsCount} actividades encontradas`);
+      console.log(`   📊 DENOMINADOR GLOBAL: ${totalDenominador.toLocaleString()}`);
+      console.log(`   ✅ NUMERADOR GLOBAL: ${totalNumerador.toLocaleString()}`);
+      console.log(`   📈 COBERTURA GLOBAL: ${coberturaGlobal}%`);
+      console.log(`   🎯 Método: ${metodo}`);
+      console.log(`   🗓️ Fecha corte: ${corteFecha}`);
+      
+      // Log adicional de actividades con 100% y <50% cobertura
+      if (globalStats.actividades_100_pct_cobertura !== undefined) {
+        console.log(`   ✅ Actividades 100%: ${globalStats.actividades_100_pct_cobertura}`);
+        console.log(`   ⚠️ Actividades <50%: ${globalStats.actividades_menos_50_pct_cobertura}`);
+      }
 
       return response.data;
     } catch (error) {
-      console.error(`❌ Error obteniendo reporte geográfico de ${filename}:`, error);
+      console.error(`❌ Error obteniendo reporte numerador/denominador de ${filename}:`, error);
       throw error;
     }
   }
@@ -342,7 +419,7 @@ export class TechnicalNoteService {
     }
   }
 
-  // ✅ NUEVOS MÉTODOS DE CONVENIENCIA PARA FILTROS GEOGRÁFICOS
+  // ✅ MÉTODOS DE CONVENIENCIA PARA FILTROS GEOGRÁFICOS
   static async getDepartamentos(filename: string): Promise<string[]> {
     try {
       const result = await this.getGeographicValues(filename, 'departamentos');
@@ -396,7 +473,7 @@ export class TechnicalNoteService {
     return Math.ceil(totalRows / pageSize);
   }
 
-  //edad
+  // ✅ MÉTODO DE EDADES ACTUALIZADO
   static async getAgeRanges(
     filename: string,
     corteFecha: string = "2025-07-31"
@@ -427,9 +504,7 @@ export class TechnicalNoteService {
     }
   }
 
-  //inasistentes
-  // services/TechnicalNoteService.tsx
-
+  // ✅ MÉTODO DE INASISTENTES ACTUALIZADO
   static async getInasistentesReport(
     filename: string,
     selectedMonths: number[],
@@ -443,6 +518,7 @@ export class TechnicalNoteService {
       console.log(`📅 Filtros edad:`, { selectedMonths, selectedYears });
       console.log(`🔑 Palabras clave:`, selectedKeywords);
       console.log(`🗺️ Filtros geo:`, geographicFilters);
+      console.log(`🗓️ Fecha corte: ${corteFecha}`);
 
       const requestBody = {
         selectedMonths,
@@ -487,9 +563,7 @@ export class TechnicalNoteService {
     }
   }
 
-  //Exportar inasistentes a csv
-
-
+  // ✅ MÉTODO DE EXPORTACIÓN CSV ACTUALIZADO
   static async exportInasistentesCSV(
     filename: string,
     selectedMonths: number[],
@@ -500,6 +574,7 @@ export class TechnicalNoteService {
   ): Promise<Blob> {
     try {
       console.log(`📥 Exportando reporte CSV con caracteres especiales: ${filename}`);
+      console.log(`🗓️ Fecha corte: ${corteFecha}`);
 
       const requestBody = {
         selectedMonths,
@@ -534,11 +609,6 @@ export class TechnicalNoteService {
       throw error;
     }
   }
-
-
-
-
-
 }
 
 export const TechnicalNoteHelpers = {
@@ -547,6 +617,3 @@ export const TechnicalNoteHelpers = {
   getRecommendedPageSize: TechnicalNoteService.getRecommendedPageSize,
   calculateTotalPages: TechnicalNoteService.calculateTotalPages
 };
-
-
-

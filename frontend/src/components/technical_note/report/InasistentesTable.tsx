@@ -339,7 +339,7 @@ export const InasistentesTable: React.FC<InasistentesTableProps> = memo(({ repor
         try {
             console.log('📥 Iniciando exportación CSV con caracteres especiales...');
 
-            const { filtros_aplicados, filename } = reportData; // Ya no usamos corte_fecha (fecha de corte)
+            const { filtros_aplicados, filename, corte_fecha } = reportData; // Ya no usamos corte_fecha (fecha de corte)
 
             // Llamar al servicio de exportación (el backend puede ignorar corteFecha si no se usa)
             const csvBlob = await TechnicalNoteService.exportInasistentesCSV(
@@ -347,7 +347,7 @@ export const InasistentesTable: React.FC<InasistentesTableProps> = memo(({ repor
                 filtros_aplicados.selected_months,
                 filtros_aplicados.selected_years,
                 filtros_aplicados.selected_keywords,
-                'IGNORE',
+                corte_fecha,
                 {
                     departamento: filtros_aplicados.departamento,
                     municipio: filtros_aplicados.municipio,

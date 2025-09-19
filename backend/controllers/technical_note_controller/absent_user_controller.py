@@ -1,6 +1,12 @@
 
+import csv
+from datetime import datetime
+import io
 from typing import Any, Dict, List, Optional
 import unicodedata
+
+from fastapi.responses import StreamingResponse
+import pandas as pd
 
 from services.duckdb_service.duckdb_service import duckdb_service
 from services.technical_note_services.data_source_service import DataSourceService
@@ -283,7 +289,7 @@ class AbsentUserController:
         
         return health_report
 
-    # Resto de métodos sin cambios...
+    
     def get_inasistentes_report(
         self,
         filename: str,
@@ -465,6 +471,113 @@ class AbsentUserController:
             'medicina': ['"Consulta por Medicina 1 mes"'],
         }
     
-    def export_inasistentes_to_csv(self, *args, **kwargs):
-        # Mantener método existente sin cambios
-        pass
+    def export_inasistentes_to_csv(
+        self,
+        filename: str,
+        selected_months: List[int],
+        selected_years: List[int] = None,
+        selected_keywords: List[str] = None,  
+        corte_fecha: str = "2025-07-31",
+        departamento: Optional[str] = None,
+        municipio: Optional[str] = None,
+        ips: Optional[str] = None,
+        path_technical_note = '',
+        encoding: str = "cp1252", 
+        use_excel_sep_hint: bool = True, 
+        sep: str = ";"              
+    ) -> StreamingResponse:
+
+        report_data = self.get_inasistentes_report(
+            filename, selected_months, selected_years, selected_keywords,
+            corte_fecha, departamento, municipio, ips, path_technical_note
+        )
+        if not report_data.get("success"):
+            raise Exception(report_data.get("error", "Error generando reporte"))
+
+        rows = []
+        for activity_report in report_data["inasistentes_por_actividad"]:
+            for r in activity_report["inasistentes"]:
+                rows.append({
+                    "Departamento": r["departamento"],
+                    "Municipio": r["municipio"],
+                    "Nombre IPS": r["nombre_ips"],
+                    "Número Identificación": r["nro_identificacion"],
+                    "Primer Apellido": r["primer_apellido"],
+                    "Segundo Apellido": r["segundo_apellido"],
+                    "Primer Nombre": r["primer_nombre"],
+                    "Segundo Nombre": r["segundo_nombre"],
+                    "Fecha Nacimiento": r["fecha_nacimiento"],
+                    "Edad Años": r["edad_anos"],
+                    "Edad Meses": r["edad_meses"],
+                    "Actividad Faltante": r["columna_evaluada"],
+                    "Estado Actividad": r["actividad_valor"],
+                    "Grupo Actividad": activity_report["actividad"],
+                    "Fecha Corte": report_data["corte_fecha"],
+                })
+
+        df = pd.DataFrame(rows, columns=[
+            "Departamento","Municipio","Nombre IPS","Número Identificación",
+            "Primer Apellido","Segundo Apellido","Primer Nombre","Segundo Nombre",
+            "Fecha Nacimiento","Edad Años","Edad Meses",
+            "Actividad Faltante","Estado Actividad","Grupo Actividad",
+            "Fecha Corte"
+        ])
+
+        # Mapa de codificación
+        enc_map = {"cp1252": "cp1252", "latin-1": "latin-1", "utf-8-sig": "utf-8-sig"}
+        enc = enc_map.get(encoding.lower(), "cp1252")
+
+        # Escribir a buffer binario con separador ";"
+        buf = io.BytesIO()
+
+        # 1) Escribir opcionalmente la línea "sep=;" para Excel
+        if use_excel_sep_hint:
+            # Escribir “sep=;” con la misma codificación
+            prefix = ("sep=" + sep + "\n").encode(enc)
+            buf.write(prefix)
+
+        # 2) Escribir el CSV con pandas y separador ";"
+        #    quoting opcional: csv.QUOTE_MINIMAL (por defecto) o csv.QUOTE_ALL si necesitas comillas siempre
+        df.to_csv(
+            buf,
+            index=False,
+            encoding=enc,
+            sep=sep,                    
+            quoting=csv.QUOTE_MINIMAL,  # 
+            quotechar='"',
+            lineterminator="\n"
+        )
+        buf.seek(0)
+
+        # Nombre de archivo (sanitizado para filename, no para contenido)
+        def safe_name(s: str) -> str:
+            repl = (("ñ","n"),("Ñ","N"),("á","a"),("é","e"),("í","i"),("ó","o"),("ú","u"),
+                    ("Á","A"),("É","E"),("Í","I"),("Ó","O"),("Ú","U"))
+            for a,b in repl: s = s.replace(a,b)
+            return s.replace(" ", "-")
+
+        filters = []
+        if selected_keywords: filters.append("palabras-" + "-".join(safe_name(k) for k in selected_keywords))
+        if selected_months:   filters.append("meses-" + "-".join(map(str, selected_months)))
+        if selected_years:    filters.append("años-" + "-".join(map(str, selected_years)))
+        if departamento:      filters.append("dept-" + safe_name(departamento))
+        suffix = "_" + "_".join(filters) if filters else ""
+        ts = datetime.now().strftime('%Y%m%d_%H%M%S')
+        out_name = f"inasistentes_{filename.replace('.csv','')}{suffix}_{corte_fecha}.csv"
+
+        def stream():
+            buf.seek(0)
+            chunk = buf.read(8192)
+            while chunk:
+                yield chunk
+                chunk = buf.read(8192)
+
+        charset = "windows-1252" if enc == "cp1252" else ("ISO-8859-1" if enc == "latin-1" else "utf-8")
+        return StreamingResponse(
+            stream(),
+            media_type="application/octet-stream",
+            headers={
+                "Content-Disposition": f'attachment; filename="{out_name}"',
+                "Content-Type": f"text/csv; charset={charset}"
+            }
+        )

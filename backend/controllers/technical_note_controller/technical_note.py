@@ -130,10 +130,17 @@ class TechnicalNoteController:
         include_temporal: bool = True,
         departamento: Optional[str] = None,
         municipio: Optional[str] = None,
-        ips: Optional[str] = None
+        ips: Optional[str] = None,
+        corte_fecha: str = "2025-07-31"  # ✅ NUEVO PARÁMETRO
     ) -> Dict[str, Any]:
-        """Genera reporte usando servicio especializado"""
+        """Genera reporte CON NUMERADOR/DENOMINADOR usando servicio especializado"""
         try:
+            print(f"\n📊 ========== REPORTE KEYWORDS CON NUMERADOR/DENOMINADOR ==========")
+            print(f"📋 Archivo: {filename}")
+            print(f"🗓️ Fecha corte: {corte_fecha}")  # ✅ NUEVO LOG
+            print(f"🔍 Keywords: {keywords}")
+            print(f"🗺️ Filtros: Dept={departamento}, Mun={municipio}, IPS={ips}")
+            
             file_key = generate_file_key(filename)
             
             # Asegurar fuente de datos
@@ -145,7 +152,7 @@ class TechnicalNoteController:
                     detail=f"No se pudo acceder a los datos de {filename}: {str(data_error)}"
                 )
             
-            # Generar reporte usando servicio especializado
+            # ✅ GENERAR REPORTE CON NUMERADOR/DENOMINADOR
             geographic_filters = {
                 'departamento': departamento,
                 'municipio': municipio,
@@ -158,13 +165,14 @@ class TechnicalNoteController:
                 keywords=keywords,
                 min_count=min_count,
                 include_temporal=include_temporal,
-                geographic_filters=geographic_filters
+                geographic_filters=geographic_filters,
+                corte_fecha=corte_fecha  # ✅ PASAR NUEVO PARÁMETRO
             )
             
         except HTTPException:
             raise
         except Exception as e:
-            print(f"❌ Error completo en reporte: {e}")
+            print(f"❌ Error completo en reporte numerador/denominador: {e}")
             import traceback
             traceback.print_exc()
             raise HTTPException(status_code=500, detail=f"Error generando reporte: {str(e)}")

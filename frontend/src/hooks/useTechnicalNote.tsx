@@ -1,4 +1,4 @@
-// hooks/useTechnicalNote.ts - ✅ CON FILTROS GEOGRÁFICOS INTEGRADOS
+// hooks/useTechnicalNote.ts - ✅ ARCHIVO COMPLETO CON CORRECCIONES DE TIPADO
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   TechnicalNoteService,
@@ -6,7 +6,8 @@ import {
   type TechnicalFileData,
   type TechnicalFileMetadata,
   type KeywordAgeReport,
-  type GeographicFilters
+  type GeographicFilters,
+  type GlobalStatistics  // ✅ IMPORTACIÓN AGREGADA
 } from '../services/TechnicalNoteService';
 import type { FilterCondition, SortCondition } from '../types/api.types';
 
@@ -32,7 +33,10 @@ export const useTechnicalNote = () => {
   const [reportMinCount, setReportMinCount] = useState<number>(0);
   const [showTemporalData, setShowTemporalData] = useState<boolean>(true);
 
-  // ✅ NUEVOS ESTADOS PARA FILTROS GEOGRÁFICOS
+  // ✅ ESTADO PARA FECHA DE CORTE
+  const [corteFecha, setCorteFecha] = useState<string>("2025-07-31");
+
+  // ✅ ESTADOS PARA FILTROS GEOGRÁFICOS
   const [geographicFilters, setGeographicFilters] = useState<GeographicFilters>({});
   const [departamentosOptions, setDepartamentosOptions] = useState<string[]>([]);
   const [municipiosOptions, setMunicipiosOptions] = useState<string[]>([]);
@@ -64,7 +68,39 @@ export const useTechnicalNote = () => {
   const [pageSize, setPageSize] = useState(20);
   const [serverPagination, setServerPagination] = useState<any>(null);
 
-  // ✅ NUEVOS MÉTODOS PARA FILTROS GEOGRÁFICOS
+  // ✅ FUNCIÓN AUXILIAR PARA OBTENER ESTADÍSTICAS GLOBALES TIPADAS
+  const getGlobalStatistics = useCallback((): GlobalStatistics | null => {
+    return keywordReport?.global_statistics || null;
+  }, [keywordReport]);
+
+  // ✅ FUNCIÓN AUXILIAR PARA CÁLCULOS SEGUROS
+  const calculateReportTotals = useCallback(() => {
+    if (!keywordReport) {
+      return {
+        totalRecords: 0,
+        totalDenominador: 0,
+        totalNumerador: 0,
+        coberturaGlobal: 0,
+        actividades100Pct: 0,
+        actividadesMenos50Pct: 0
+      };
+    }
+
+    const globalStats = getGlobalStatistics();
+    const totalRecords = Object.values(keywordReport.totals_by_keyword)
+      .reduce((sum, item) => sum + (item.count || 0), 0);
+
+    return {
+      totalRecords,
+      totalDenominador: globalStats?.total_denominador_global || 0,
+      totalNumerador: globalStats?.total_numerador_global || 0,
+      coberturaGlobal: globalStats?.cobertura_global_porcentaje || 0,
+      actividades100Pct: globalStats?.actividades_100_pct_cobertura || 0,
+      actividadesMenos50Pct: globalStats?.actividades_menos_50_pct_cobertura || 0
+    };
+  }, [keywordReport, getGlobalStatistics]);
+
+  // ✅ MÉTODOS PARA FILTROS GEOGRÁFICOS
   const loadDepartamentos = useCallback(async (filename: string) => {
     if (!filename) return;
 
@@ -166,6 +202,11 @@ export const useTechnicalNote = () => {
     setIpsOptions([]);
   }, []);
 
+  // ✅ HANDLER PARA CAMBIO DE FECHA DE CORTE
+  const handleCorteFechaChange = useCallback((newFecha: string) => {
+    setCorteFecha(newFecha);
+  }, []);
+
   // ✅ Cargar archivos disponibles
   const loadAvailableFiles = useCallback(async () => {
     if (loadingRef.current) return;
@@ -208,23 +249,27 @@ export const useTechnicalNote = () => {
     }
   }, []);
 
-  // ✅ ACTUALIZADO: Cargar reporte con filtros geográficos
+  // ✅ ACTUALIZADO: Cargar reporte con numerador/denominador
   const loadKeywordAgeReport = useCallback(async (
     filename: string,
     keywords?: string[],
     minCount: number = 0,
     includeTemporal: boolean = true,
-    geoFilters: GeographicFilters = {}
+    geoFilters: GeographicFilters = {},
+    corteFechaOverride?: string
   ) => {
     try {
       setLoadingReport(true);
 
-      console.log('📊 Cargando reporte con filtros:', {
+      const fechaToUse = corteFechaOverride || corteFecha;
+
+      console.log('📊 Cargando reporte numerador/denominador con:', {
         filename,
         keywords,
         minCount,
         includeTemporal,
-        geoFilters
+        geoFilters,
+        corteFecha: fechaToUse
       });
 
       const report = await TechnicalNoteService.getKeywordAgeReport(
@@ -232,16 +277,26 @@ export const useTechnicalNote = () => {
         keywords, 
         minCount, 
         includeTemporal, 
-        geoFilters
+        geoFilters,
+        fechaToUse
       );
       
       setKeywordReport(report);
       setShowReport(true);
 
+      // ✅ LOGS ACTUALIZADOS CON VERIFICACIÓN DE TIPOS
       const totalItems = report.items.length;
-      const totalRecords = Object.values(report.totals_by_keyword).reduce((a, b) => a + b, 0);
+      const globalStats: GlobalStatistics | undefined = report.global_statistics;
+      const totalDenominador = globalStats?.total_denominador_global || 0;
+      const totalNumerador = globalStats?.total_numerador_global || 0;
+      const coberturaGlobal = globalStats?.cobertura_global_porcentaje || 0;
 
-      console.log(`✅ Reporte geográfico cargado: ${totalItems} elementos, ${totalRecords.toLocaleString()} registros totales`);
+      console.log(`✅ Reporte numerador/denominador cargado:`);
+      console.log(`   📊 ${totalItems} actividades`);
+      console.log(`   📊 DENOMINADOR: ${totalDenominador.toLocaleString()}`);
+      console.log(`   ✅ NUMERADOR: ${totalNumerador.toLocaleString()}`);
+      console.log(`   📈 COBERTURA: ${coberturaGlobal}%`);
+      console.log(`   🗓️ Fecha corte: ${fechaToUse}`);
 
       return report;
     } catch (error: any) {
@@ -251,7 +306,7 @@ export const useTechnicalNote = () => {
     } finally {
       setLoadingReport(false);
     }
-  }, []);
+  }, [corteFecha]);
 
   // MÉTODO PRINCIPAL: Cargar página con filtros del servidor
   const loadFileDataWithServerFilters = useCallback(async (
@@ -337,10 +392,10 @@ export const useTechnicalNote = () => {
         console.log('🤖 Auto-generando reporte palabra clave + edad...');
         setTimeout(async () => {
           try {
-            console.log('🤖 Intentando generar reporte temporal automático...');
+            console.log('🤖 Intentando generar reporte numerador/denominador automático...');
             await loadKeywordAgeReport(filename, reportKeywords, 0, true, geographicFilters);
           } catch (reportError: any) {
-            console.error('❌ Error en reporte temporal auto-generado:', reportError);
+            console.error('❌ Error en reporte auto-generado:', reportError);
           }
         }, 2000);
       }
@@ -457,6 +512,7 @@ export const useTechnicalNote = () => {
     if (!selectedFile) return;
     
     console.log('🔄 Regenerando reporte con filtros geográficos:', geographicFilters);
+    console.log('🗓️ Fecha corte:', corteFecha);
     
     loadKeywordAgeReport(
       selectedFile, 
@@ -481,26 +537,29 @@ export const useTechnicalNote = () => {
     setReportKeywords(prev => prev.filter(k => k !== keyword));
   }, []);
 
-  // ✅ MÉTODO PARA GENERAR REPORTE CON FILTROS GEOGRÁFICOS ACTUALES
+  // ✅ MÉTODO ACTUALIZADO: Generar reporte con filtros geográficos y fecha
   const handleLoadKeywordAgeReport = useCallback((
     filename: string,
     keywords?: string[],
     minCount?: number,
     includeTemporal?: boolean,
-    geoFiltersOverride?: GeographicFilters
+    geoFiltersOverride?: GeographicFilters,
+    corteFechaOverride?: string
   ) => {
     const filtersToUse = geoFiltersOverride || geographicFilters;
+    const fechaToUse = corteFechaOverride || corteFecha;
     
-    console.log('📊 Generando reporte con:', {
+    console.log('📊 Generando reporte numerador/denominador con:', {
       filename,
       keywords,
       minCount,
       includeTemporal,
-      geographicFilters: filtersToUse
+      geographicFilters: filtersToUse,
+      corteFecha: fechaToUse
     });
     
-    return loadKeywordAgeReport(filename, keywords, minCount, includeTemporal, filtersToUse);
-  }, [geographicFilters, loadKeywordAgeReport]);
+    return loadKeywordAgeReport(filename, keywords, minCount, includeTemporal, filtersToUse, fechaToUse);
+  }, [geographicFilters, corteFecha, loadKeywordAgeReport]);
 
   // Limpiar datos
   const clearCurrentData = useCallback(() => {
@@ -526,6 +585,9 @@ export const useTechnicalNote = () => {
     setDepartamentosOptions([]);
     setMunicipiosOptions([]);
     setIpsOptions([]);
+
+    // ✅ NO limpiar fecha de corte (mantener para siguiente uso)
+    // setCorteFecha("2025-07-31");
 
     setPagination(prev => ({
       ...prev,
@@ -573,7 +635,7 @@ export const useTechnicalNote = () => {
     pageSize,
     serverPagination,
 
-    // ✅ Estados del reporte con filtros geográficos
+    // Estados del reporte con filtros geográficos
     keywordReport,
     loadingReport,
     showReport,
@@ -581,7 +643,10 @@ export const useTechnicalNote = () => {
     reportMinCount,
     showTemporalData,
 
-    // ✅ Estados de filtros geográficos
+    // Estado de fecha de corte
+    corteFecha,
+
+    // Estados de filtros geográficos
     geographicFilters,
     departamentosOptions,
     municipiosOptions,
@@ -595,14 +660,14 @@ export const useTechnicalNote = () => {
     clearCurrentData,
     getFileByDisplayName,
 
-    // Handlers para DataTable - TODOS DEL SERVIDOR
+    // Handlers para DataTable
     handlePaginationChange,
     handleFiltersChange,
     handleSortChange,
     handleDeleteRows,
     handleSearch,
 
-    // ✅ Acciones del reporte con filtros geográficos
+    // Acciones del reporte
     loadKeywordAgeReport: handleLoadKeywordAgeReport,
     toggleReportVisibility,
     regenerateReport,
@@ -612,7 +677,10 @@ export const useTechnicalNote = () => {
     onAddKeyword: handleAddKeyword,
     onRemoveKeyword: handleRemoveKeyword,
 
-    // ✅ Handlers para filtros geográficos
+    // Handler para fecha de corte
+    onCorteFechaChange: handleCorteFechaChange,
+
+    // Handlers para filtros geográficos
     onDepartamentoChange: handleDepartamentoChange,
     onMunicipioChange: handleMunicipioChange,
     onIpsChange: handleIpsChange,
@@ -633,12 +701,22 @@ export const useTechnicalNote = () => {
     isFiltered: serverPagination?.filtered || false,
     originalTotal: serverPagination?.original_total || 0,
 
-    // ✅ Info del reporte
+    // ✅ Info del reporte CORREGIDA CON TIPADO SEGURO
     hasReport: !!keywordReport && keywordReport.items.length > 0,
     reportItemsCount: keywordReport?.items?.length || 0,
-    reportTotalRecords: keywordReport ? Object.values(keywordReport.totals_by_keyword).reduce((a, b) => a + b, 0) : 0,
+    reportTotalRecords: calculateReportTotals().totalRecords,
 
-    // ✅ Info de filtros geográficos
+    // ✅ CAMPOS DE ESTADÍSTICAS GLOBALES CORREGIDOS
+    reportGlobalStats: getGlobalStatistics(),
+    reportMetodo: keywordReport?.metodo,
+    reportVersion: keywordReport?.version,
+    reportTotalDenominador: calculateReportTotals().totalDenominador,
+    reportTotalNumerador: calculateReportTotals().totalNumerador,
+    reportCoberturaGlobal: calculateReportTotals().coberturaGlobal,
+    reportActividades100Pct: calculateReportTotals().actividades100Pct,
+    reportActividadesMenos50Pct: calculateReportTotals().actividadesMenos50Pct,
+
+    // Info de filtros geográficos
     hasGeographicFilters: !!(geographicFilters.departamento || geographicFilters.municipio || geographicFilters.ips),
     geographicSummary: [
       geographicFilters.departamento && `Dept: ${geographicFilters.departamento}`,

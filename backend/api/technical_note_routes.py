@@ -141,22 +141,53 @@ def get_keyword_age_report(
     keywords: Optional[str] = Query(None, description="Lista separada por comas, ej: medicina,enfermeria"),
     min_count: int = Query(0, ge=0, description="Filtra ítems con conteo menor a este valor"),
     include_temporal: bool = Query(True, description="Incluir análisis temporal por año/mes"),
-    # NUEVOS PARÁMETROS GEOGRÁFICOS
+    # PARÁMETROS GEOGRÁFICOS EXISTENTES
     departamento: Optional[str] = Query(None, description="Filtrar por departamento específico"),
     municipio: Optional[str] = Query(None, description="Filtrar por municipio específico"),
-    ips: Optional[str] = Query(None, description="Filtrar por IPS específica")
+    ips: Optional[str] = Query(None, description="Filtrar por IPS específica"),
+    # ✅ NUEVO PARÁMETRO PARA NUMERADOR/DENOMINADOR
+    corte_fecha: str = Query("2025-07-31", description="Fecha de corte para cálculo de edades (YYYY-MM-DD)")
 ):
-    """Genera reporte de palabras clave + rangos de edad CON FILTROS GEOGRÁFICOS"""
+    """
+    🆕 Genera reporte CON NUMERADOR/DENOMINADOR POR RANGO DE EDAD ESPECÍFICO
+    
+    NUEVA LÓGICA:
+    - Busca columnas que coincidan con keywords (medicina, enfermería, etc.)
+    - Para cada columna: extrae rango de edad del nombre
+    - DENOMINADOR: población total en ese rango específico
+    - NUMERADOR: población en rango que SÍ tiene datos en la columna
+    - COBERTURA: (numerador/denominador) * 100
+    
+    Parámetros:
+    - keywords: Lista de palabras clave separadas por comas
+    - min_count: Filtro mínimo de conteo (aplicado al numerador)
+    - corte_fecha: Fecha para cálculo de edades en formato YYYY-MM-DD
+    - departamento, municipio, ips: Filtros geográficos
+    """
     try:
-        print(f"📊 GET /report/{filename} con filtros geográficos")
+        print(f"\n📊 ========== GET /report/{filename} NUMERADOR/DENOMINADOR ==========")
+        print(f"🗓️ Fecha corte: {corte_fecha}")
+        print(f"🔍 Keywords: {keywords}")
         print(f"🗺️ Filtros: Dept={departamento}, Mun={municipio}, IPS={ips}")
+        print(f"📊 Min count: {min_count}, Temporal: {include_temporal}")
+        
+        # Validar formato de fecha
+        try:
+            from datetime import datetime
+            datetime.strptime(corte_fecha, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Formato de fecha inválido: {corte_fecha}. Use YYYY-MM-DD"
+            )
         
         # Procesar keywords
         kw_list = None
         if keywords and keywords.strip():
             kw_list = [k.strip().lower() for k in keywords.split(",") if k.strip()]
+            print(f"🎯 Keywords procesadas: {kw_list}")
         
-        # LLAMAR CON FILTROS GEOGRÁFICOS
+        # ✅ LLAMAR CON PARÁMETRO corte_fecha
         result = technical_note_controller.get_keyword_age_report(
             filename=filename,
             keywords=kw_list,
@@ -164,11 +195,24 @@ def get_keyword_age_report(
             include_temporal=include_temporal,
             departamento=departamento,
             municipio=municipio,
-            ips=ips
+            ips=ips,
+            corte_fecha=corte_fecha  # ✅ NUEVO PARÁMETRO
         )
         
+        # ✅ LOGGING EXTENDIDO CON NUMERADOR/DENOMINADOR
         items_count = len(result.get('items', []))
-        print(f"Reporte geográfico generado: {items_count} items")
+        global_stats = result.get('global_statistics', {})
+        total_denominador = global_stats.get('total_denominador_global', 0)
+        total_numerador = global_stats.get('total_numerador_global', 0)
+        cobertura_global = global_stats.get('cobertura_global_porcentaje', 0.0)
+        
+        print(f"✅ ========== REPORTE COMPLETADO ==========")
+        print(f"📊 Items encontrados: {items_count}")
+        print(f"📊 DENOMINADOR GLOBAL: {total_denominador:,}")
+        print(f"✅ NUMERADOR GLOBAL: {total_numerador:,}")  
+        print(f"📈 COBERTURA GLOBAL: {cobertura_global}%")
+        print(f"🎯 Método: {result.get('metodo', 'No especificado')}")
+        print(f"============================================")
         
         return result
         
@@ -179,6 +223,7 @@ def get_keyword_age_report(
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
 
 @router.get("/unique-values/{filename}/{column_name}")
 def get_column_unique_values(

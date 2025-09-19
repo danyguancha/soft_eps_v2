@@ -1,13 +1,13 @@
 // components/report/AgeRangeSelector.tsx - CON BOTÓN MANUAL PARA GENERAR REPORTE
 
 import React, { useState, useEffect } from 'react';
-import { 
-  Select, Card, Row, Col, Typography, Statistic, Spin, Alert, 
-  DatePicker, Button, Space, Divider, Tag 
+import {
+  Select, Card, Row, Col, Typography, Statistic, Spin, Alert,
+  DatePicker, Button, Space, Divider, Tag
 } from 'antd';
-import { 
-  CalendarOutlined, UserOutlined, PlayCircleOutlined, 
-  StopOutlined, ReloadOutlined, CheckCircleOutlined 
+import {
+  CalendarOutlined, UserOutlined, PlayCircleOutlined,
+  StopOutlined, ReloadOutlined, CheckCircleOutlined
 } from '@ant-design/icons';
 import { TechnicalNoteService } from '../../../services/TechnicalNoteService';
 import type { AgeRangesResponse } from '../../../interfaces/IAge';
@@ -23,11 +23,13 @@ interface AgeRangeSelectorProps {
     selectedMonths: number[];
     corteFecha: string;
   }) => void;
+  initialCorteFecha?: string;
 }
 
 export const AgeRangeSelector: React.FC<AgeRangeSelectorProps> = ({
   filename,
-  onAgeSelectionChange
+  onAgeSelectionChange,
+  initialCorteFecha = "2025-07-31"
 }) => {
   const [ageRanges, setAgeRanges] = useState<AgeRangesResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -35,7 +37,7 @@ export const AgeRangeSelector: React.FC<AgeRangeSelectorProps> = ({
   const [selectedYears, setSelectedYears] = useState<number[]>([]);
   const [selectedMonths, setSelectedMonths] = useState<number[]>([]);
   const [corteFecha, setCorteFecha] = useState<string>("2025-07-31");
-  
+
   // ✅ NUEVO ESTADO PARA CONTROL MANUAL
   const [isGenerating, setIsGenerating] = useState(false);
   const [hasGenerated, setHasGenerated] = useState(false);
@@ -49,7 +51,7 @@ export const AgeRangeSelector: React.FC<AgeRangeSelectorProps> = ({
   const loadAgeRanges = async (fecha: string) => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const response = await TechnicalNoteService.getAgeRanges(filename, fecha);
       setAgeRanges(response);
@@ -86,14 +88,14 @@ export const AgeRangeSelector: React.FC<AgeRangeSelectorProps> = ({
       };
 
       console.log('🚀 Generando reporte con selección:', selection);
-      
+
       // Llamar al callback del componente padre
       await onAgeSelectionChange(selection);
-      
+
       // Marcar como exitoso
       setLastSuccessfulSelection(selection);
       setHasGenerated(true);
-      
+
     } catch (error: any) {
       console.error('❌ Error generando reporte:', error);
       setError(error.message || 'Error generando reporte de inasistentes');
@@ -114,7 +116,7 @@ export const AgeRangeSelector: React.FC<AgeRangeSelectorProps> = ({
   // ✅ FUNCIÓN PARA RECARGAR CON LA MISMA SELECCIÓN
   const handleReloadReport = async () => {
     if (!lastSuccessfulSelection) return;
-    
+
     setIsGenerating(true);
     setError(null);
 
@@ -132,7 +134,7 @@ export const AgeRangeSelector: React.FC<AgeRangeSelectorProps> = ({
   // ✅ HANDLER CORREGIDO PARA FECHA
   const handleDateChange = (date: Dayjs | null, dateString: string | string[]) => {
     const dateStr = Array.isArray(dateString) ? dateString[0] : dateString;
-    
+
     if (dateStr && date) {
       setCorteFecha(dateStr);
       // Limpiar selecciones y estado al cambiar fecha
@@ -178,7 +180,7 @@ export const AgeRangeSelector: React.FC<AgeRangeSelectorProps> = ({
   }
 
   return (
-    <Card 
+    <Card
       title={
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <UserOutlined />
@@ -321,12 +323,12 @@ export const AgeRangeSelector: React.FC<AgeRangeSelectorProps> = ({
 
       {/* ✅ INFORMACIÓN DE SELECCIÓN ACTUAL */}
       {hasValidSelection && (
-        <div style={{ 
-          marginBottom: 16, 
-          padding: 12, 
-          backgroundColor: '#f6ffed', 
-          border: '1px solid #b7eb8f', 
-          borderRadius: 6 
+        <div style={{
+          marginBottom: 16,
+          padding: 12,
+          backgroundColor: '#f6ffed',
+          border: '1px solid #b7eb8f',
+          borderRadius: 6
         }}>
           <Text strong style={{ color: '#52c41a' }}>📋 Filtros Seleccionados:</Text>
           <div style={{ marginTop: 4 }}>
@@ -363,7 +365,7 @@ export const AgeRangeSelector: React.FC<AgeRangeSelectorProps> = ({
               ⚠️ Seleccione al menos una edad en años o meses
             </Text>
           )}
-          
+
           {hasValidSelection && (
             <Button
               type="primary"
@@ -377,7 +379,7 @@ export const AgeRangeSelector: React.FC<AgeRangeSelectorProps> = ({
               {isGenerating ? 'Generando Reporte...' : 'Generar Reporte de Inasistentes'}
             </Button>
           )}
-          
+
           {hasValidSelection && !isGenerating && (
             <Button
               icon={<StopOutlined />}
@@ -427,12 +429,12 @@ export const AgeRangeSelector: React.FC<AgeRangeSelectorProps> = ({
 
       {/* ✅ MENSAJE DE AYUDA */}
       {!hasValidSelection && !isGenerating && (
-        <div style={{ 
-          textAlign: 'center', 
-          padding: '20px', 
-          backgroundColor: '#fafafa', 
-          borderRadius: 6, 
-          marginTop: 16 
+        <div style={{
+          textAlign: 'center',
+          padding: '20px',
+          backgroundColor: '#fafafa',
+          borderRadius: 6,
+          marginTop: 16
         }}>
           <Text type="secondary">
             🎯 <strong>Instrucciones:</strong><br />
