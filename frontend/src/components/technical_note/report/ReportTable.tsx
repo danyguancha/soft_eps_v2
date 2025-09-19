@@ -346,7 +346,7 @@ export const ReportTable = memo<ReportTableProps>(({ keywordReport, showTemporal
 
     // ✅ COLUMNA DE PORCENTAJE
     baseColumns.push({
-      title: '%',
+      title: '% de cumplimiento',
       key: 'percentage',
       width: 80,
       align: 'right',
