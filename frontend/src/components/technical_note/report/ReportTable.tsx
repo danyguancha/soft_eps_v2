@@ -1,480 +1,339 @@
-// components/technical-note/report/ReportTable.tsx - ✅ CON MANEJO DE "SIN ESPECIFICAR"
-import React, { memo, useMemo, useCallback } from 'react';
+// components/technical-note/report/ReportTable.tsx
+import { memo, useMemo, useCallback } from 'react';
 import { Table, Typography, Tag, Space, Button, Tooltip, Empty } from 'antd';
 import { CalendarOutlined, ExpandAltOutlined, CompressOutlined } from '@ant-design/icons';
-import type { KeywordAgeReportItem } from '../../../services/TechnicalNoteService';
 import type { ColumnsType } from 'antd/es/table';
+import type { KeywordAgeReportItem } from '../../../services/TechnicalNoteService';
+
 
 const { Text } = Typography;
 
-// ✅ FUNCIÓN DE NORMALIZACIÓN ROBUSTA
-const normalizeSpaces = (str: string): string => {
-  return str.trim().replace(/\s+/g, ' ');
+
+/* ──────────────────────────── utilidades ──────────────────────────── */
+const normalizeSpaces = (s: string) => s.trim().replace(/\s+/g, ' ');
+const normalizeAge = (s: string) =>
+  s === 'Sin especificar' ? s : s.replace(/months?/gi, 'meses').replace(/years?/gi, 'años');
+const makeKey = (c: string, k: string, a: string) =>
+  `${normalizeSpaces(c)}|${normalizeSpaces(k)}|${normalizeAge(a)}`;
+
+
+const KEYWORD_COLORS: Record<string, string> = {
+  medicina: 'blue', enfermeria: 'green', odontologia: 'purple', psicologia: 'orange',
+  nutricion: 'cyan', fisioterapia: 'magenta', vacunacion: 'geekblue',
+  crecimiento: 'gold', desarrollo: 'lime'
+};
+const kwColor = (k: string) => KEYWORD_COLORS[k.toLowerCase()] || 'default';
+
+
+/* 🚦 FUNCIÓN PARA ESTILIZAR SOLO LA CELDA DE SEMAFORIZACIÓN */
+const getSemaforizacionCellStyle = (color?: string, estado?: string) => {
+  // Usar color del backend si está disponible
+  const mainColor = color || '#6c757d'; // fallback gris
+  
+  // Generar color de fondo más suave para la celda
+  const hex = mainColor.replace('#', '');
+  const r = parseInt(hex.substr(0, 2), 16);
+  const g = parseInt(hex.substr(2, 2), 16);
+  const b = parseInt(hex.substr(4, 2), 16);
+  const lightBg = `rgba(${r}, ${g}, ${b}, 0.15)`; // 15% transparencia para fondo suave
+  
+  return {
+    backgroundColor: lightBg,
+    color: mainColor,
+    border: `2px solid ${mainColor}`,
+    padding: '6px 10px',
+    borderRadius: '6px',
+    fontWeight: 600,
+    fontSize: '11px',
+    textAlign: 'center' as const,
+    whiteSpace: 'nowrap' as const,
+    display: 'inline-block',
+    minWidth: '90px',
+    boxShadow: `0 1px 3px ${mainColor}30`
+  };
 };
 
-// ✅ ACTUALIZADA: Manejo de "Sin especificar"
-const normalizeAgeRange = (ageRange: string): string => {
-  if (ageRange === 'Sin especificar') {
-    return 'Sin especificar';
-  }
-  
-  return ageRange
-    .replace(/months?/gi, 'meses')
-    .replace(/years?/gi, 'años');
-};
 
-const buildCleanColumnKey = (column: string, keyword: string, ageRange: string): string => {
-  const normalizedAgeRange = normalizeAgeRange(ageRange);
-  return `${normalizeSpaces(column)}|${normalizeSpaces(keyword)}|${normalizedAgeRange}`;
-};
-
-// ✅ NUEVA: Función para encontrar datos temporales con fallback
-const findTemporalData = (temporalData: Record<string, any>, column: string, keyword: string, ageRange: string) => {
-  // Intentar clave con rango normalizado
-  const normalizedKey = buildCleanColumnKey(column, keyword, ageRange);
-  if (temporalData[normalizedKey]) {
-    console.log(`✅ Encontrado con clave normalizada: "${normalizedKey}"`);
-    return { data: temporalData[normalizedKey], key: normalizedKey };
-  }
-  
-  // ✅ Intentar con "Sin especificar" si no encontramos con el rango específico
-  const fallbackKey = buildCleanColumnKey(column, keyword, 'Sin especificar');
-  if (temporalData[fallbackKey]) {
-    console.log(`✅ Encontrado con clave fallback "Sin especificar": "${fallbackKey}"`);
-    return { data: temporalData[fallbackKey], key: fallbackKey };
-  }
-  
-  // ✅ Buscar por coincidencia parcial (para casos edge)
-  const partialMatches = Object.keys(temporalData).filter(key => 
-    key.includes(column) && key.includes(keyword)
-  );
-  
-  if (partialMatches.length > 0) {
-    console.log(`🔍 Usando coincidencia parcial para "${column}":`, partialMatches[0]);
-    return { data: temporalData[partialMatches[0]], key: partialMatches[0] };
-  }
-  
-  console.log(`❌ No encontrado para "${column}" con ninguna clave`);
+const findTemporal = (data: Record<string, any>, col: string, kw: string, age: string) => {
+  const keys = [
+    makeKey(col, kw, age),
+    makeKey(col, kw, 'Sin especificar'),
+    ...Object.keys(data).filter(k => k.includes(col) && k.includes(kw))
+  ];
+  for (const k of keys) if (data[k]) return { key: k, data: data[k] };
   return null;
 };
 
-// ✅ FUNCIÓN AUXILIAR PARA OBTENER COLOR DE KEYWORD
-const getKeywordColor = (keyword: string): string => {
-  const colors: Record<string, string> = {
-    'medicina': 'blue',
-    'enfermeria': 'green',
-    'odontologia': 'purple',
-    'psicologia': 'orange',
-    'nutricion': 'cyan',
-    'fisioterapia': 'magenta',
-    'vacunacion': 'geekblue',
-    'crecimiento': 'gold',
-    'desarrollo': 'lime'
-  };
-  return colors[keyword.toLowerCase()] || 'default';
-};
 
-interface ReportTableProps {
+/* ──────────────────────────── props ──────────────────────────── */
+interface Props {
   keywordReport: {
     items: KeywordAgeReportItem[];
     totals_by_keyword: Record<string, any>;
     temporal_data?: Record<string, any>;
-    global_statistics?: any;
   } | null;
   showTemporalData: boolean;
 }
 
-export const ReportTable = memo<ReportTableProps>(({ keywordReport, showTemporalData }) => {
+
+export const ReportTable = memo<Props>(({ keywordReport, showTemporalData }) => {
+  if (!keywordReport?.items?.length) {
+    return (
+      <div style={{ padding: 16, textAlign: 'center' }}>
+        <Empty
+          description={!keywordReport ? 'No hay datos de reporte disponibles'
+                                      : 'No se encontraron elementos en el reporte'}
+          image={Empty.PRESENTED_IMAGE_SIMPLE}
+        />
+      </div>
+    );
+  }
+
+
+  const { items, temporal_data = {}, totals_by_keyword } = keywordReport;
+  const hasND = useMemo(() => items.some(i => i.numerador !== undefined && i.denominador !== undefined), [items]);
   
-  // ✅ VERIFICACIONES TEMPRANAS DE SEGURIDAD
-  if (!keywordReport) {
-    return (
-      <div style={{ padding: 24, textAlign: 'center' }}>
-        <Empty 
-          description="No hay datos de reporte disponibles"
-          image={Empty.PRESENTED_IMAGE_SIMPLE}
-        />
-      </div>
-    );
-  }
+  // 🚦 VERIFICAR SI HAY DATOS DE SEMAFORIZACIÓN
+  const hasSemaforizacion = useMemo(() => 
+    items.some(i => i.semaforizacion !== undefined), [items]);
 
-  if (!keywordReport.items || keywordReport.items.length === 0) {
-    return (
-      <div style={{ padding: 24, textAlign: 'center' }}>
-        <Empty 
-          description="No se encontraron elementos en el reporte"
-          image={Empty.PRESENTED_IMAGE_SIMPLE}
-        />
-      </div>
-    );
-  }
 
-  // ✅ DEBUGGING: Verificar datos temporales
-  React.useEffect(() => {
-    console.log('🔍 === DEBUGGING TEMPORAL DATA CON FALLBACK ===');
-    console.log('showTemporalData:', showTemporalData);
-    console.log('temporal_data keys:', keywordReport?.temporal_data ? Object.keys(keywordReport.temporal_data) : 'NO DATA');
-    
-    if (keywordReport?.items && keywordReport.items.length > 0) {
-      console.log('Total items:', keywordReport.items.length);
-      
-      // ✅ DEBUGGING: Probar findTemporalData para cada item
-      keywordReport.items.forEach(item => {
-        const result = findTemporalData(
-          keywordReport.temporal_data || {}, 
-          item.column || '', 
-          item.keyword || '', 
-          item.age_range || ''
-        );
-        console.log(`🔧 BÚSQUEDA TEMPORAL para "${item.column}":`, {
-          age_range_original: item.age_range,
-          result: !!result,
-          key_used: result?.key || 'NINGUNA'
-        });
-      });
-    }
-  }, [keywordReport, showTemporalData]);
-
-  // ✅ USAR DIRECTAMENTE LOS DATOS TEMPORALES
-  const temporalData = keywordReport?.temporal_data || {};
-
-  // ✅ VERIFICAR SI HAY DATOS NUMERADOR/DENOMINADOR
-  const hasNumeradorDenominador = useMemo(() => {
-    if (!keywordReport?.items || keywordReport.items.length === 0) return false;
-    
-    return keywordReport.items.some((item: KeywordAgeReportItem) => 
-      item.numerador !== undefined && item.denominador !== undefined
-    );
-  }, [keywordReport?.items]);
-
-  // ✅ RENDERIZADO EXPANDIDO TEMPORAL ACTUALIZADO
-  const expandedRowRender = useCallback((record: KeywordAgeReportItem) => {
+  /* ──────────────────── EXPANSIÓN TEMPORAL CON CELDA COLORIDA ──────────────────── */
+  const expandedRowRender = useCallback((rec: KeywordAgeReportItem) => {
     if (!showTemporalData) return null;
 
-    // ✅ USAR FUNCIÓN DE BÚSQUEDA CON FALLBACK
-    const result = findTemporalData(
-      temporalData, 
-      record.column || '', 
-      record.keyword || '', 
-      record.age_range || ''
-    );
 
-    console.log('🔍 expandedRowRender:', { 
-      record: record.column, 
-      found: !!result,
-      key_used: result?.key,
-      hasYears: !!result?.data?.years 
-    });
-
-    if (!result || !result.data || !result.data.years) {
+    const res = findTemporal(temporal_data, rec.column ?? '', rec.keyword ?? '', rec.age_range ?? '');
+    if (!res?.data?.years) {
       return (
-        <div style={{ padding: 16, textAlign: 'center', color: '#999' }}>
-          <CalendarOutlined style={{ fontSize: 20, marginBottom: 8 }} />
-          <div>No hay datos temporales disponibles para esta columna</div>
-          <div style={{ fontSize: '11px', marginTop: 4 }}>
-            Columna: {record.column}
-          </div>
+        <div style={{ padding: 12, textAlign: 'center', color: '#999' }}>
+          <CalendarOutlined /> Sin datos temporales
         </div>
       );
     }
 
-    const recordTemporalData = result.data;
-    const temporalRows: any[] = [];
-    const sortedYears = Object.keys(recordTemporalData.years).sort((a, b) => parseInt(b) - parseInt(a));
 
-    sortedYears.forEach(yearKey => {
-      const yearData = recordTemporalData.years[yearKey];
-
-      temporalRows.push({
-        key: `year-${yearKey}`,
-        period_type: 'año',
-        period: yearKey,
-        count: yearData.total,
-        is_year: true
+    /* construir filas CON SEMAFORIZACIÓN EN CELDA */
+    const rows: any[] = [];
+    Object.entries(res.data.years)
+      .sort(([a], [b]) => parseInt(b) - parseInt(a))
+      .forEach(([year, y]: any) => {
+        /* fila año */
+        rows.push({
+          key: `y-${year}`,
+          period: year,
+          num: y.total_num ?? 0,
+          den: y.total_den ?? 0,
+          pct: y.pct ?? 0,
+          semaforizacion: y.semaforizacion ?? 'NA',
+          color: y.color, // 🚦 COLOR DEL BACKEND
+          descripcion: y.descripcion,
+          isYear: true
+        });
+        
+        /* filas mes */
+        Object.entries(y.months ?? {})
+          .sort(([, a]: any, [, b]: any) => a.month - b.month)
+          .forEach(([mName, m]: any) => {
+            rows.push({
+              key: `m-${year}-${m.month}`,
+              period: `${mName} ${year}`,
+              num: m.num, 
+              den: m.den, 
+              pct: m.pct,
+              semaforizacion: m.semaforizacion ?? 'NA',
+              color: m.color, // 🚦 COLOR DEL BACKEND
+              descripcion: m.descripcion,
+              isYear: false
+            });
+          });
       });
 
-      if (yearData.months) {
-        const sortedMonths = Object.entries(yearData.months).sort(([, a], [, b]) =>
-          (a as any).month - (b as any).month
-        );
 
-        sortedMonths.forEach(([monthName, monthData]) => {
-          temporalRows.push({
-            key: `month-${yearKey}-${(monthData as any).month}`,
-            period_type: 'mes',
-            period: `${monthName} ${yearKey}`,
-            count: (monthData as any).count,
-            is_year: false,
-            parent_year: yearKey
-          });
-        });
-      }
-    });
-
-    const temporalColumns = [
-      {
-        title: 'Período',
-        dataIndex: 'period',
-        key: 'period',
-        width: '60%',
-        render: (text: string, record: any) => (
-          <Space>
-            {record.is_year ? (
-              <Tag color="blue" icon={<CalendarOutlined />}>AÑO</Tag>
-            ) : (
-              <Tag color="green">MES</Tag>
-            )}
-            <Text strong={record.is_year}>{text}</Text>
+    const cols = [
+      { title: 'Período', dataIndex: 'period', width: 140,
+        render: (t: string, r: any) => (
+          <Space size={4}>
+            <Tag color={r.isYear ? 'blue' : 'green'}>{r.isYear ? 'AÑO' : 'MES'}</Tag>
+            <Text strong={r.isYear}>{t}</Text>
           </Space>
         )
       },
-      {
-        title: 'Registros',
-        dataIndex: 'count',
-        key: 'count',
-        width: '40%',
-        align: 'right' as const,
-        render: (count: number, record: any) => (
-          <Text
-            strong={record.is_year}
-            style={{ color: record.is_year ? '#1890ff' : '#52c41a' }}
-          >
-            {count.toLocaleString()}
-          </Text>
+      { title: 'Denominador', dataIndex: 'den', width: 90, align:'right' as const,
+        render: (v:number)=><Text style={{color:'#1890ff'}}>{v?.toLocaleString()}</Text> },
+      { title: 'Numerador', dataIndex: 'num', width: 90, align:'right' as const,
+        render: (v:number)=><Text style={{color:'#52c41a'}}>{v?.toLocaleString()}</Text> },
+      { title: '% Cumplimiento', dataIndex:'pct', width: 100, align:'center' as const,
+        render: (v:number)=><Text strong>{v?.toFixed(1)}%</Text> },
+      { title: '🚦 Estado', dataIndex: 'semaforizacion', width: 130, align: 'center' as const,
+        render: (estado: string, record: any) => (
+          <Tooltip title={record.descripcion || estado}>
+            <div style={getSemaforizacionCellStyle(record.color, estado)}>
+              {estado}
+            </div>
+          </Tooltip>
         )
       }
     ];
 
-    return (
-      <div style={{ padding: 16, background: '#fafafa' }}>
-        <div style={{ marginBottom: 12 }}>
-          <Space>
-            <CalendarOutlined style={{ color: '#1890ff' }} />
-            <Text strong>📅 Análisis Temporal: {record.column}</Text>
-            {result.key.includes('Sin especificar') && (
-              <Tag color="orange" >Rango no específico</Tag>
-            )}
-          </Space>
-        </div>
 
+    return (
+      <div style={{ padding: 8, background: '#fafafa' }}>
+        <Space size={4} style={{ marginBottom: 6 }}>
+          <CalendarOutlined style={{ color:'#1890ff' }} />
+          <Text strong>{rec.column}</Text>
+        </Space>
         <Table
-          dataSource={temporalRows}
-          columns={temporalColumns}
-          pagination={false}
+          columns={cols}
+          dataSource={rows}
           size="small"
-          rowClassName={(record) => record.is_year ? 'temporal-year-row' : 'temporal-month-row'}
+          pagination={false}
+          scroll={{ y:180, x: 650 }}
+          rowClassName={r=>r.isYear?'temporal-year-row':'temporal-month-row'}
         />
       </div>
     );
-  }, [temporalData, showTemporalData]);
+  }, [temporal_data, showTemporalData]);
 
-  // ✅ RESTO DE COLUMNAS (sin cambios)
-  const reportColumns: ColumnsType<KeywordAgeReportItem> = useMemo(() => {
-    const baseColumns: ColumnsType<KeywordAgeReportItem> = [
-      {
-        title: 'Columna',
-        dataIndex: 'column',
-        key: 'column',
-        width: 300,
-        ellipsis: true,
-        render: (text: string) => (
-          <Tooltip title={text}>
-            <div style={{ 
-              fontWeight: 500,
-              color: '#1f1f1f',
-              lineHeight: 1.3
-            }}>
-              {text && text.length > 50 ? `${text.substring(0, 50)}...` : text || ''}
+
+  /* ──────────────────── COLUMNAS PRINCIPALES CON CELDA COLORIDA ──────────────────── */
+  const columns: ColumnsType<KeywordAgeReportItem> = useMemo(() => {
+    const base: ColumnsType<KeywordAgeReportItem> = [
+      { title: <div style={{textAlign:'center'}}>Procedimiento/Consulta</div>,
+        dataIndex:'column', width: 200,
+        render:(t:string)=><Tooltip title={t}>
+          <div style={{fontSize:12,fontWeight:500,lineHeight:1.2}}>{t}</div>
+        </Tooltip>,
+        sorter:(a,b)=> (a.column??'').localeCompare(b.column??'')
+      },
+      { title:<div style={{textAlign:'center'}}>Palabra Clave</div>,
+        dataIndex:'keyword', width:90, align:'center',
+        render:(k:string)=><Tag color={kwColor(k)} style={{fontSize:10,fontWeight:500}}>{k?.toUpperCase()}</Tag>
+      }
+    ];
+    
+    if (hasND){
+      base.push(
+        { title:<div style={{textAlign:'center'}}>Denominador</div>, dataIndex:'denominador',
+          width:85,align:'center',
+          render:(v:number)=><Text style={{color:'#1890ff',fontSize:11}}>{v?.toLocaleString()}</Text>,
+          sorter:(a,b)=>(a.denominador??0)-(b.denominador??0)
+        },
+        { title:<div style={{textAlign:'center'}}>Numerador</div>, dataIndex:'numerador',
+          width:85,align:'center',
+          render:(v:number)=><Text style={{color:'#52c41a',fontSize:11}}>{v?.toLocaleString()}</Text>,
+          sorter:(a,b)=>(a.numerador??0)-(b.numerador??0)
+        }
+      );
+    }
+    
+    base.push({
+      title:<div style={{textAlign:'center'}}>% Cumplimiento</div>,
+      width:100,align:'center',
+      render:(_:any,r:KeywordAgeReportItem)=>{
+        let pct:number;
+        if(hasND && r.cobertura_porcentaje!==undefined) pct=r.cobertura_porcentaje;
+        else{
+          const tot=Object.values(totals_by_keyword??{}).reduce((a:any,c:any)=>a+(c.count||0),0);
+          pct=tot? (r.count||0)/tot*100:0;
+        }
+        const color = pct>=70?'#52c41a': pct>=50?'#fa8c16':'#ff4d4f';
+        return <Text strong style={{color,fontSize:11}}>{pct.toFixed(1)}%</Text>;
+      },
+      sorter: (a, b) => {
+        const getPct = (r: KeywordAgeReportItem) => {
+          if (hasND && r.cobertura_porcentaje !== undefined) return r.cobertura_porcentaje;
+          const tot = Object.values(totals_by_keyword ?? {}).reduce((acc: any, c: any) => acc + (c.count || 0), 0);
+          return tot ? (r.count || 0) / tot * 100 : 0;
+        };
+        return getPct(a) - getPct(b);
+      }
+    });
+
+    // 🚦 AGREGAR COLUMNA DE SEMAFORIZACIÓN - SOLO CELDA COLORIDA
+    if (hasSemaforizacion) {
+      base.push({
+        title: <div style={{textAlign:'center'}}>🚦 Estado</div>,
+        dataIndex: 'semaforizacion',
+        width: 140,
+        align: 'center',
+        render: (estado: string, record: KeywordAgeReportItem) => (
+          <Tooltip title={record.descripcion || estado}>
+            <div style={getSemaforizacionCellStyle(record.color, estado)}>
+              {estado}
             </div>
           </Tooltip>
         ),
-        sorter: (a, b) => (a.column || '').localeCompare(b.column || ''),
-      },
-      {
-        title: 'Palabra Clave',
-        dataIndex: 'keyword',
-        key: 'keyword',
-        width: 120,
-        render: (keyword: string) => (
-          <Tag color={getKeywordColor(keyword || '')} style={{ fontWeight: 500 }}>
-            {(keyword || '').toUpperCase()}
-          </Tag>
-        ),
-      },
-      
-    ];
-
-    // ✅ AGREGAR COLUMNAS NUMERADOR/DENOMINADOR SI EXISTEN
-    if (hasNumeradorDenominador) {
-      baseColumns.push(
-        {
-          title: (
-            <Tooltip title="Población total en el rango de edad específico">
-              <span>Denominador</span>
-            </Tooltip>
-          ),
-          dataIndex: 'denominador',
-          key: 'denominador',
-          width: 120,
-          align: 'right',
-          render: (value: number) => (
-            <Text strong style={{ color: '#1890ff' }}>
-              {value ? value.toLocaleString() : '-'}
-            </Text>
-          ),
-          sorter: (a, b) => (a.denominador || 0) - (b.denominador || 0),
-        },
-        {
-          title: (
-            <Tooltip title="Población con datos registrados">
-              <span>Numerador</span>
-            </Tooltip>
-          ),
-          dataIndex: 'numerador',
-          key: 'numerador',
-          width: 120,
-          align: 'right',
-          render: (value: number) => (
-            <Text strong style={{ color: '#52c41a' }}>
-              {value ? value.toLocaleString() : '-'}
-            </Text>
-          ),
-          sorter: (a, b) => (a.numerador || 0) - (b.numerador || 0),
+        sorter: (a, b) => {
+          const estadoOrder = ['Óptimo', 'Aceptable', 'Deficiente', 'Muy Deficiente', 'NA', 'Error'];
+          const aIndex = estadoOrder.indexOf(a.semaforizacion || 'NA');
+          const bIndex = estadoOrder.indexOf(b.semaforizacion || 'NA');
+          return aIndex - bIndex;
         }
-      );
+      });
     }
+    
+    return base;
+  }, [hasND, totals_by_keyword, hasSemaforizacion]);
 
-    // ✅ COLUMNA DE PORCENTAJE
-    baseColumns.push({
-      title: '% de cumplimiento',
-      key: 'percentage',
-      width: 80,
-      align: 'right',
-      render: (_, record: KeywordAgeReportItem) => {
-        if (hasNumeradorDenominador && record.cobertura_porcentaje !== undefined) {
-          const color = record.cobertura_porcentaje >= 70 ? '#52c41a' : 
-                       record.cobertura_porcentaje >= 50 ? '#fa8c16' : '#ff4d4f';
-          return (
-            <Text strong style={{ color }}>
-              {record.cobertura_porcentaje.toFixed(1)}%
-            </Text>
-          );
+
+  /* ──────────────────── helpers ──────────────────── */
+  const rowExpandable = useCallback((r:KeywordAgeReportItem)=>
+      !!findTemporal(temporal_data,r.column??'',r.keyword??'',r.age_range??'')?.data?.years,
+    [temporal_data]);
+
+
+  const rowKey = useCallback((r:KeywordAgeReportItem)=>
+      `${r.column}-${r.keyword}-${r.age_range}`,[]);
+
+
+  /* ──────────────────── render ──────────────────── */
+  return (
+    <>
+      {/* 🚦 ESTILOS CSS BÁSICOS - SIN COLORES DE FILA */}
+      <style>{`
+        .temporal-year-row { background-color: #e6f7ff !important; font-weight: 500; }
+        .temporal-month-row { background-color: #f6ffed !important; }
+        
+        .compact-table .ant-table-tbody > tr > td {
+          padding: 6px 8px !important;
         }
         
-        if (!keywordReport?.totals_by_keyword) return '0.0%';
+        .compact-table .ant-table-thead > tr > th {
+          padding: 8px 8px !important;
+          font-size: 11px !important;
+          font-weight: 600 !important;
+        }
+        
+        .compact-table .ant-table-tbody > tr:hover > td {
+          background-color: rgba(24, 144, 255, 0.05) !important;
+        }
+      `}</style>
 
-        const totalRecords = Object.values(keywordReport.totals_by_keyword).reduce(
-          (acc: number, curr: any) => acc + (curr.count || curr || 0),
-          0
-        );
-
-        const recordCount = record.count || 0;
-        const percentage = totalRecords > 0 ? (recordCount / totalRecords) * 100 : 0;
-        return (
-          <Text style={{ color: '#999' }}>
-            {percentage.toFixed(1)}%
-          </Text>
-        );
-      }
-    });
-
-    return baseColumns;
-  }, [keywordReport?.totals_by_keyword, hasNumeradorDenominador]);
-
-  const getRowKey = (record: KeywordAgeReportItem) => 
-    `${record.column || 'no-column'}-${record.keyword || 'no-keyword'}-${record.age_range || 'no-age'}`;
-
-  return (
-    <div style={{ marginTop: 24 }}>
-      
-
-      {/* ✅ TABLA PRINCIPAL CON EXPANDIBLE ACTUALIZADO */}
       <Table
-        dataSource={keywordReport.items}
-        columns={reportColumns}
-        rowKey={getRowKey}
+        dataSource={items}
+        columns={columns}
+        rowKey={rowKey}
         size="small"
-        scroll={{ x: hasNumeradorDenominador ? 1400 : 800, y: 400 }}
-        
-        expandable={showTemporalData ? {
-          expandedRowRender: expandedRowRender,
-          expandIcon: ({ expanded, onExpand, record }) => {
-            // ✅ USAR FUNCIÓN DE BÚSQUEDA CON FALLBACK
-            const result = findTemporalData(
-              temporalData, 
-              record.column || '', 
-              record.keyword || '', 
-              record.age_range || ''
-            );
-
-            console.log('🔍 expandIcon:', { 
-              column: record.column, 
-              found: !!result,
-              key_used: result?.key,
-              hasYears: !!result?.data?.years 
-            });
-
-            if (!result || !result.data || !result.data.years) {
-              return <span style={{ width: 16, display: 'inline-block' }}></span>;
-            }
-
-            const hasData = Object.keys(result.data.years).length > 0;
-
-            if (!hasData) {
-              return <span style={{ width: 16, display: 'inline-block' }}></span>;
-            }
-
-            console.log('✅ Mostrando botón expand para:', record.column);
-
-            return (
-              <Button
-                type="text"
-                size="small"
-                icon={expanded ? <CompressOutlined /> : <ExpandAltOutlined />}
-                onClick={(e) => {
-                  console.log('🔍 Expand clicked for:', record.column);
-                  onExpand(record, e);
-                }}
-                title={expanded ? 'Contraer desglose' : 'Expandir desglose temporal'}
-                style={{ border: 'none', padding: 0, minWidth: 16, color: '#1890ff' }}
-              />
-            );
-          },
-          expandIconColumnIndex: 0,
-          rowExpandable: (record) => {
-            const result = findTemporalData(
-              temporalData, 
-              record.column || '', 
-              record.keyword || '', 
-              record.age_range || ''
-            );
-            
-            const expandable = !!(result && result.data && result.data.years && Object.keys(result.data.years).length > 0);
-            
-            console.log('🔄 rowExpandable para:', record.column, 'expandable:', expandable);
-            return expandable;
-          }
-        } : undefined}
-        
-        pagination={{
-          pageSize: 15,
-          showSizeChanger: true,
-          showQuickJumper: true,
-          showTotal: (total, range) =>
-            `${range[0]}-${range[1]} de ${total} actividades`,
-          size: 'small'
-        }}
-        locale={{
-          emptyText: (
-            <Empty
-              description="No se encontraron columnas con los filtros especificados"
-              image={Empty.PRESENTED_IMAGE_SIMPLE}
-            />
-          )
-        }}
+        tableLayout="fixed"
+        scroll={{x: hasSemaforizacion ? 670 : 520, y:400}}
+        expandable={showTemporalData?{
+          expandedRowRender, rowExpandable,
+          expandIcon:({expanded,onExpand,record})=> rowExpandable(record)
+            ? (<Button type="text" size="small"
+                       icon={expanded?<CompressOutlined/>:<ExpandAltOutlined/>}
+                       onClick={e=>onExpand(record,e)}
+                       style={{padding:0,fontSize:10,color:'#1890ff'}}/>)
+            : <span style={{width:12,display:'inline-block'}}/>
+        }:undefined}
+        pagination={{pageSize:20,showSizeChanger:true,simple:true}}
+        locale={{emptyText:<Empty description="Sin datos" image={Empty.PRESENTED_IMAGE_SIMPLE}/>}}
+        className="compact-table"
+        style={{fontSize:11}}
       />
-    </div>
+    </>
   );
 });
+
 
 ReportTable.displayName = 'ReportTable';

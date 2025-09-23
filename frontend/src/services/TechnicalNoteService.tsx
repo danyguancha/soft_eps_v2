@@ -80,6 +80,8 @@ export interface ColumnUniqueValues {
 
 // ✅ INTERFACES ACTUALIZADAS PARA NUMERADOR/DENOMINADOR
 export interface KeywordAgeReportItem {
+  color: any;
+  descripcion: string;
   column: string;
   keyword: string;
   age_range: string;
@@ -100,6 +102,7 @@ export interface KeywordAgeReportItem {
     sql_filter: string;
   };
   corte_fecha?: string;
+  semaforizacion:string;
 } 
 
 export interface TemporalMonth {
