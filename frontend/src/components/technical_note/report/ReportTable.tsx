@@ -479,12 +479,6 @@ const ExportControls = memo<ExportControlsProps>(({
                     🔍 Filtros: {selectedKeywords.join(', ')}
                   </Text>
                 )}
-                
-                {hasNumeradorDenominador && globalStats && (
-                  <Text strong style={{ color: '#52c41a' }}>
-                    📈 Cobertura Global: {globalStats.cobertura_global_porcentaje?.toFixed(1) || '0.0'}%
-                  </Text>
-                )}
               </Space>
               
               {geographicFilters?.departamento && (
@@ -535,35 +529,6 @@ const ExportControls = memo<ExportControlsProps>(({
             </Space>
           </Col>
         </Row>
-
-        {/* 📊 ESTADÍSTICAS ADICIONALES SI ESTÁN DISPONIBLES */}
-        {hasNumeradorDenominador && globalStats && (
-          <>
-            <Divider style={{ margin: '12px 0' }} />
-            <Row gutter={16}>
-              <Col span={6}>
-                <Text strong style={{ color: '#1890ff' }}>
-                  📊 Denominador Total: {globalStats.total_denominador_global?.toLocaleString() || '0'}
-                </Text>
-              </Col>
-              <Col span={6}>
-                <Text strong style={{ color: '#52c41a' }}>
-                  ✅ Numerador Total: {globalStats.total_numerador_global?.toLocaleString() || '0'}
-                </Text>
-              </Col>
-              <Col span={6}>
-                <Text strong style={{ color: '#fa8c16' }}>
-                  🎯 Actividades 100%: {globalStats.actividades_100_pct_cobertura || '0'}
-                </Text>
-              </Col>
-              <Col span={6}>
-                <Text strong style={{ color: '#ff4d4f' }}>
-                  ⚠️ Actividades 
-                </Text>
-              </Col>
-            </Row>
-          </>
-        )}
       </div>
 
       {/* 🔧 MODAL DE EXPORTACIÓN AVANZADA COMPLETO */}
