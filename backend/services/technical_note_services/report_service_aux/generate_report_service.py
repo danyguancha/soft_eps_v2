@@ -8,6 +8,7 @@ from services.technical_note_services.report_service_aux.corrected_months import
 from services.technical_note_services.report_service_aux.corrected_years import CorrectedYear
 from services.technical_note_services.report_service_aux.identity_document import IdentityDocument
 from services.technical_note_services.report_service_aux.report_empty import ReportEmpty
+from services.technical_note_services.report_service_aux.report_exporter import ReportExporter
 from services.technical_note_services.report_service_aux.semaforization import Semaforization
 from services.technical_note_services.report_service_aux.statistics import Statistics
 from utils.keywords_NT import KeywordRule
@@ -16,6 +17,8 @@ from .analysis_vaccination import AnalysisVaccination
 
 
 class GenerateReport:
+    def __init__(self):
+        self.exporter = ReportExporter()
     def generate_keyword_age_report(
         self,
         age_extractor,
@@ -492,3 +495,73 @@ class GenerateReport:
         except Exception as e:
             print(f"         Error en fallback: {e}")
             return 1
+    
+    # Metodos de exportacion
+    def export_report_csv(self, report_data: Dict[str, Any], output_path: str, include_temporal: bool = True) -> str:
+        """📄 EXPORTAR REPORTE A CSV"""
+        try:
+            return self.exporter.export_to_csv(report_data, output_path, include_temporal)
+        except Exception as e:
+            print(f"❌ Error exportando CSV: {e}")
+            raise Exception(f"Error en exportación CSV: {e}")
+    
+    def export_report_pdf(self, report_data: Dict[str, Any], output_path: str, include_temporal: bool = True) -> str:
+        """📄 EXPORTAR REPORTE A PDF"""
+        try:
+            return self.exporter.export_to_pdf(report_data, output_path, include_temporal)
+        except Exception as e:
+            print(f"❌ Error exportando PDF: {e}")
+            raise Exception(f"Error en exportación PDF: {e}")
+    
+    def export_report_all_formats(self, report_data: Dict[str, Any], base_filename: str, export_csv: bool = True, export_pdf: bool = True, include_temporal: bool = True) -> Dict[str, str]:
+        """📤 EXPORTAR REPORTE EN TODOS LOS FORMATOS"""
+        try:
+            return self.exporter.export_report(report_data, base_filename, export_csv, export_pdf, include_temporal)
+        except Exception as e:
+            print(f"❌ Error exportando reporte: {e}")
+            raise Exception(f"Error en exportación: {e}")
+
+    def generate_and_export_report(
+        self,
+        age_extractor, data_source: str, filename: str,
+        keywords: Optional[List[str]] = None, min_count: int = 0,
+        include_temporal: bool = True, geographic_filters: Optional[Dict[str, Optional[str]]] = None,
+        corte_fecha: str = "2025-07-31", export_csv: bool = True,
+        export_pdf: bool = True, base_export_path: str = "exports/reporte"
+    ) -> Dict[str, Any]:
+        """🚀 MÉTODO COMPLETO: Generar reporte y exportar"""
+        try:
+            # 1. Generar el reporte
+            print("🔄 Generando reporte...")
+            report_data = self.generate_keyword_age_report(
+                age_extractor, data_source, filename, keywords, min_count,
+                include_temporal, geographic_filters, corte_fecha
+            )
+            
+            # 2. Exportar en los formatos especificados
+            exported_files = {}
+            if export_csv or export_pdf:
+                print("📤 Exportando archivos...")
+                exported_files = self.export_report_all_formats(
+                    report_data, base_export_path, export_csv, export_pdf, include_temporal
+                )
+            
+            # 3. Retornar reporte + archivos exportados
+            result = {
+                "report": report_data,
+                "exported_files": exported_files,
+                "success": True,
+                "message": "Reporte generado y exportado exitosamente"
+            }
+            
+            print(f"✅ Proceso completado:")
+            print(f"   📊 Reporte: {report_data.get('success', False)}")
+            print(f"   📄 Archivos: {list(exported_files.keys())}")
+            
+            return result
+            
+        except Exception as e:
+            print(f"❌ Error en proceso completo: {e}")
+            import traceback
+            traceback.print_exc()
+            raise Exception(f"Error en generación y exportación: {e}")

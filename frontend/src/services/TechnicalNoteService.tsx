@@ -1,4 +1,4 @@
-// services/TechnicalNoteService.tsx - ✅ CON NUMERADOR/DENOMINADOR COMPLETO
+// services/TechnicalNoteService.tsx - ✅ COMPLETO CON NUMERADOR/DENOMINADOR Y REPORTES AVANZADOS
 import api from '../Api';
 import type { InasistentesReportResponse } from '../interfaces/IAbsentUser';
 import type { AgeRangesResponse } from '../interfaces/IAge';
@@ -102,18 +102,33 @@ export interface KeywordAgeReportItem {
     sql_filter: string;
   };
   corte_fecha?: string;
-  semaforizacion:string;
-} 
+  semaforizacion: string;
+}
 
 export interface TemporalMonth {
   month: number;
   month_name: string;
   count: number;
+  numerador?: number;
+  denominador?: number;
+  pct?: number;
+  cobertura_porcentaje?: number;
+  semaforizacion?: string;
+  color?: string;
+  color_name?: string;
+  descripcion?: string;
 }
 
 export interface TemporalYear {
   year: number;
   total: number;
+  total_num?: number;
+  total_den?: number;
+  pct?: number;
+  semaforizacion?: string;
+  color?: string;
+  color_name?: string;
+  descripcion?: string;
   months: Record<string, TemporalMonth>;
 }
 
@@ -194,6 +209,64 @@ export interface KeywordAgeReport {
   data_source_used?: string;
   message?: string;
   temporal_columns?: number;
+}
+
+// 🆕 INTERFACES PARA REPORTES AVANZADOS
+
+export interface AdvancedGeographicFilters {
+  departamento?: string;
+  municipio?: string;
+  ips?: string;
+}
+
+export interface AdvancedReportRequest {
+  data_source: string;
+  filename: string;
+  keywords?: string[];
+  min_count?: number;
+  include_temporal?: boolean;
+  geographic_filters?: AdvancedGeographicFilters;
+  corte_fecha?: string;
+}
+
+export interface AdvancedExportOptions {
+  export_csv?: boolean;
+  export_pdf?: boolean;
+  include_temporal?: boolean;
+}
+
+export interface AdvancedReportResponse {
+  success: boolean;
+  message: string;
+  report_id?: string;
+  data?: KeywordAgeReport;
+  execution_time_seconds?: number;
+}
+
+export interface AdvancedExportResponse {
+  success: boolean;
+  message: string;
+  files: Record<string, string>;
+  download_links: Record<string, string>;
+}
+
+export interface AdvancedReportHistoryItem {
+  report_id: string;
+  filename: string;
+  data_source: string;
+  keywords: string[];
+  created_at: string;
+  items_count: number;
+  has_temporal: boolean;
+  has_semaforization?: boolean;
+}
+
+export interface AdvancedReportsHistoryResponse {
+  success: boolean;
+  reports: AdvancedReportHistoryItem[];
+  total_reports: number;
+  limit: number;
+  offset: number;
 }
 
 export class TechnicalNoteService {
@@ -612,11 +685,517 @@ export class TechnicalNoteService {
       throw error;
     }
   }
+
+  // ===========================
+  // 🆕 MÉTODOS DE REPORTES AVANZADOS CON EXPORTACIÓN
+  // ===========================
+
+  /**
+   * 🆕 GENERAR REPORTE AVANZADO CON SEMAFORIZACIÓN
+   */
+  static async generateAdvancedReport(
+    request: AdvancedReportRequest
+  ): Promise<AdvancedReportResponse> {
+    try {
+      console.log('🚀 Generando reporte avanzado:', request);
+
+      const response = await api.post(
+        '/technical-note/reports/generate',
+        request,
+        {
+          timeout: 60000
+        }
+      );
+
+      const result = response.data;
+      
+      console.log(`✅ Reporte avanzado generado:`);
+      console.log(`   📊 Items: ${result.data?.items?.length || 0}`);
+      console.log(`   ⏱️ Tiempo: ${result.execution_time_seconds?.toFixed(2)}s`);
+      console.log(`   🆔 ID: ${result.report_id}`);
+      
+      // Log de semaforización si está disponible
+      const globalStats = result.data?.global_statistics;
+      if (globalStats) {
+        console.log(`   📊 DENOMINADOR: ${globalStats.total_denominador_global?.toLocaleString()}`);
+        console.log(`   ✅ NUMERADOR: ${globalStats.total_numerador_global?.toLocaleString()}`);
+        console.log(`   📈 COBERTURA: ${globalStats.cobertura_global_porcentaje}%`);
+      }
+
+      return result;
+    } catch (error) {
+      console.error('❌ Error generando reporte avanzado:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 🚀 GENERAR Y EXPORTAR REPORTE AVANZADO EN UN SOLO PASO
+   */
+  // TechnicalNoteService.tsx - Agregar debug completo
+// TechnicalNoteService.tsx - Actualizar el método
+static async generateAndExportAdvancedReport(
+  request: AdvancedReportRequest,
+  exportOptions: AdvancedExportOptions
+): Promise<AdvancedExportResponse> {
+  try {
+    console.log('🚀 Generando y exportando reporte avanzado:', { request, exportOptions });
+
+    const response = await api.post(
+      '/technical-note/reports/generate-and-export',
+      {
+        ...request,
+        ...exportOptions
+      },
+      {
+        timeout: 120000
+      }
+    );
+
+    const result = response.data;
+    
+    console.log(`✅ Reporte avanzado generado y exportado:`);
+    console.log(`   📄 Archivos: ${Object.keys(result.files || {}).join(', ')}`);
+    console.log(`   🔗 Enlaces:`, result.download_links);
+
+    // ✅ Verificar que la respuesta tiene la estructura esperada
+    if (!result.success) {
+      throw new Error(result.message || 'Error en la generación del reporte');
+    }
+
+    return result;
+  } catch (error) {
+    console.error('❌ Error generando y exportando reporte avanzado:', error);
+    throw error;
+  }
+}
+
+
+
+  /**
+   * 📤 EXPORTAR REPORTE AVANZADO EXISTENTE
+   */
+  static async exportAdvancedReport(
+    reportId: string,
+    exportOptions: AdvancedExportOptions
+  ): Promise<AdvancedExportResponse> {
+    try {
+      console.log(`📤 Exportando reporte avanzado existente: ${reportId}`, exportOptions);
+
+      const response = await api.post(
+        `/technical-note/reports/export/${reportId}`,
+        exportOptions,
+        {
+          timeout: 90000
+        }
+      );
+
+      const result = response.data;
+      
+      console.log(`✅ Reporte avanzado ${reportId} exportado:`);
+      console.log(`   📄 Archivos: ${Object.keys(result.files || {}).join(', ')}`);
+
+      return result;
+    } catch (error) {
+      console.error(`❌ Error exportando reporte avanzado ${reportId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * 📥 DESCARGAR ARCHIVO DE REPORTE AVANZADO
+   */
+  static async downloadAdvancedReportFile(fileId: string): Promise<Blob> {
+    try {
+      console.log(`📥 Descargando archivo de reporte avanzado: ${fileId}`);
+
+      const response = await api.get(
+        `/technical-note/reports/download/${fileId}`,
+        {
+          responseType: 'blob',
+          timeout: 60000
+        }
+      );
+
+      console.log(`✅ Archivo de reporte avanzado descargado: ${fileId}`);
+      return response.data;
+    } catch (error) {
+      console.error(`❌ Error descargando archivo ${fileId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * 📋 OBTENER HISTORIAL DE REPORTES AVANZADOS
+   */
+  static async getAdvancedReportsHistory(
+    limit: number = 20,
+    offset: number = 0
+  ): Promise<AdvancedReportsHistoryResponse> {
+    try {
+      console.log(`📋 Obteniendo historial de reportes avanzados (${limit}, ${offset})`);
+
+      const params = new URLSearchParams({
+        limit: limit.toString(),
+        offset: offset.toString()
+      });
+
+      const response = await api.get(
+        `/technical-note/reports/history?${params}`,
+        {
+          timeout: 15000
+        }
+      );
+
+      const result = response.data;
+      
+      console.log(`✅ Historial obtenido: ${result.reports?.length || 0} reportes`);
+
+      return result;
+    } catch (error) {
+      console.error('❌ Error obteniendo historial de reportes avanzados:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 🗑️ ELIMINAR REPORTE AVANZADO
+   */
+  static async deleteAdvancedReport(reportId: string): Promise<{ success: boolean; message: string }> {
+    try {
+      console.log(`🗑️ Eliminando reporte avanzado: ${reportId}`);
+
+      const response = await api.delete(
+        `/technical-note/reports/reports/${reportId}`,
+        {
+          timeout: 10000
+        }
+      );
+
+      console.log(`✅ Reporte avanzado ${reportId} eliminado`);
+      return response.data;
+    } catch (error) {
+      console.error(`❌ Error eliminando reporte avanzado ${reportId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * 🏥 VERIFICAR ESTADO DEL SERVICIO DE REPORTES AVANZADOS
+   */
+  static async getAdvancedReportsHealth(): Promise<{
+    status: string;
+    service: string;
+    version: string;
+    timestamp: string;
+    active_reports: number;
+    temp_files: number;
+    features: string[];
+  }> {
+    try {
+      const response = await api.get(
+        '/technical-note/reports/health',
+        {
+          timeout: 5000
+        }
+      );
+
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error verificando estado de reportes avanzados:', error);
+      throw error;
+    }
+  }
+
+  // ===========================
+  // 🛠️ MÉTODOS AUXILIARES PARA EXPORTACIÓN Y DESCARGA
+  // ===========================
+
+  /**
+   * 📥 DESCARGAR ARCHIVO DESDE BLOB CON NOMBRE ESPECÍFICO
+   */
+  static downloadBlobAsFile(blob: Blob, filename: string): void {
+    try {
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      console.log(`✅ Archivo descargado: ${filename}`);
+    } catch (error) {
+      console.error(`❌ Error descargando archivo ${filename}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * 📥 DESCARGAR ARCHIVO DESDE URL DE DESCARGA
+   */
+  static async downloadFromLink(downloadLink: string, filename?: string): Promise<void> {
+    try {
+      console.log(`📥 Descargando desde enlace: ${downloadLink}`);
+
+      const response = await api.get(downloadLink, {
+        responseType: 'blob',
+        timeout: 60000
+      });
+
+      // Extraer nombre del archivo del header Content-Disposition si está disponible
+      const contentDisposition = response.headers['content-disposition'];
+      let finalFilename = filename;
+      
+      if (!finalFilename && contentDisposition) {
+        const match = contentDisposition.match(/filename[^;=\n]*=(['"]?)([^'"\n]*?)\1/);
+        if (match && match[2]) {
+          finalFilename = match[2];
+        }
+      }
+
+      if (!finalFilename) {
+        finalFilename = `archivo_${new Date().getTime()}`;
+      }
+
+      this.downloadBlobAsFile(response.data, finalFilename);
+    } catch (error) {
+      console.error(`❌ Error descargando desde enlace ${downloadLink}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * 🚀 GENERAR, EXPORTAR Y DESCARGAR REPORTE COMPLETO
+   */
+  static async generateExportAndDownloadReport(
+    request: AdvancedReportRequest,
+    exportOptions: AdvancedExportOptions = { export_csv: true, export_pdf: true }
+  ): Promise<void> {
+    try {
+      console.log('🚀 Proceso completo: Generar, exportar y descargar');
+      
+      // 1. Generar y exportar
+      const exportResult = await this.generateAndExportAdvancedReport(request, exportOptions);
+      
+      if (!exportResult.success) {
+        throw new Error(exportResult.message || 'Error en la exportación');
+      }
+
+      // 2. Descargar archivos automáticamente
+      const downloadPromises = Object.entries(exportResult.download_links).map(
+        async ([format, link]) => {
+          const filename = `${request.filename}_${format.toUpperCase()}_${new Date().toISOString().split('T')[0]}.${format}`;
+          await this.downloadFromLink(link, filename);
+        }
+      );
+
+      await Promise.all(downloadPromises);
+      
+      console.log(`✅ Proceso completo finalizado: ${Object.keys(exportResult.download_links).length} archivos descargados`);
+      
+    } catch (error) {
+      console.error('❌ Error en proceso completo de reporte:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 📊 OBTENER RESUMEN DE CAPACIDADES DE REPORTES
+   */
+  static getAdvancedReportingCapabilities(): {
+    features: string[];
+    formats: string[];
+    semaforization_levels: string[];
+    temporal_analysis: boolean;
+    excel_logic: boolean;
+  } {
+    return {
+      features: [
+        'Semaforización automática por desempeño',
+        'Numeradores y denominadores por rango de edad',
+        'Análisis temporal mensual y anual',
+        'Lógica Excel para cálculo de denominadores',
+        'Filtros geográficos avanzados',
+        'Exportación CSV con codificación Latin1',
+        'Exportación PDF personalizable'
+      ],
+      formats: ['CSV', 'PDF'],
+      semaforization_levels: ['Óptimo', 'Aceptable', 'Deficiente', 'Muy Deficiente', 'NA'],
+      temporal_analysis: true,
+      excel_logic: true
+    };
+  }
+
+  // ===========================
+  // 🔄 MÉTODOS AUXILIARES ADICIONALES
+  // ===========================
+
+  /**
+   * 📥 DESCARGAR MÚLTIPLES ARCHIVOS DE FORMA SECUENCIAL
+   */
+  static async downloadMultipleFiles(
+    downloadLinks: Record<string, string>,
+    baseFilename: string = 'reporte',
+    delayBetweenDownloads: number = 1000
+  ): Promise<void> {
+    try {
+      console.log(`📥 Descargando ${Object.keys(downloadLinks).length} archivos de forma secuencial`);
+      
+      for (const [format, link] of Object.entries(downloadLinks)) {
+        const filename = `${baseFilename}_${format.toUpperCase()}_${new Date().toISOString().split('T')[0]}.${format}`;
+        
+        await this.downloadFromLink(link, filename);
+        
+        // Esperar entre descargas para evitar problemas de navegador
+        if (delayBetweenDownloads > 0) {
+          await new Promise(resolve => setTimeout(resolve, delayBetweenDownloads));
+        }
+      }
+      
+      console.log(`✅ Todas las descargas completadas`);
+    } catch (error) {
+      console.error('❌ Error descargando múltiples archivos:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 📊 VALIDAR ESTRUCTURA DE REPORTE AVANZADO
+   */
+  static validateAdvancedReportRequest(request: AdvancedReportRequest): {
+    isValid: boolean;
+    errors: string[];
+  } {
+    const errors: string[] = [];
+
+    if (!request.data_source || request.data_source.trim() === '') {
+      errors.push('data_source es requerido');
+    }
+
+    if (!request.filename || request.filename.trim() === '') {
+      errors.push('filename es requerido');
+    }
+
+    if (request.min_count !== undefined && request.min_count < 0) {
+      errors.push('min_count debe ser mayor o igual a 0');
+    }
+
+    if (request.corte_fecha) {
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (!dateRegex.test(request.corte_fecha)) {
+        errors.push('corte_fecha debe tener formato YYYY-MM-DD');
+      }
+    }
+
+    if (request.keywords && request.keywords.length === 0) {
+      errors.push('keywords no puede ser un array vacío, usar undefined si no hay keywords');
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors
+    };
+  }
+
+  /**
+   * 🔧 CONSTRUIR URL DE DESCARGA COMPLETA
+   */
+  static buildDownloadUrl(baseUrl: string, fileId: string): string {
+    return `${baseUrl}/technical-note/reports/download/${fileId}`;
+  }
+
+  /**
+   * 📊 FORMATEAR ESTADÍSTICAS GLOBALES PARA MOSTRAR
+   */
+  static formatGlobalStatistics(globalStats: GlobalStatistics): {
+    denominador: string;
+    numerador: string;
+    cobertura: string;
+    actividades_optimas: string;
+    actividades_deficientes: string;
+    mejor_cobertura: string;
+    peor_cobertura: string;
+  } {
+    return {
+      denominador: globalStats.total_denominador_global?.toLocaleString() || '0',
+      numerador: globalStats.total_numerador_global?.toLocaleString() || '0',
+      cobertura: `${globalStats.cobertura_global_porcentaje?.toFixed(1) || '0.0'}%`,
+      actividades_optimas: globalStats.actividades_100_pct_cobertura?.toString() || '0',
+      actividades_deficientes: globalStats.actividades_menos_50_pct_cobertura?.toString() || '0',
+      mejor_cobertura: `${globalStats.mejor_cobertura?.toFixed(1) || '0.0'}%`,
+      peor_cobertura: `${globalStats.peor_cobertura?.toFixed(1) || '0.0'}%`
+    };
+  }
+
+  /**
+   * 🎨 OBTENER COLOR DE SEMAFORIZACIÓN
+   */
+  static getSemaforoColor(estado: string): string {
+    const colores = {
+      'Óptimo': '#4CAF50',
+      'Aceptable': '#FF9800', 
+      'Deficiente': '#FF5722',
+      'Muy Deficiente': '#F44336',
+      'NA': '#9E9E9E'
+    };
+    return colores[estado as keyof typeof colores] || '#9E9E9E';
+  }
+
+  /**
+   * 📈 CALCULAR TENDENCIA DE COBERTURA
+   */
+  static calculateCoverageTrend(temporalData: TemporalColumnData[]): {
+    trend: 'ascending' | 'descending' | 'stable';
+    variation: number;
+  } {
+    if (!temporalData || temporalData.length === 0) {
+      return { trend: 'stable', variation: 0 };
+    }
+
+    const coverages: number[] = [];
+    
+    temporalData.forEach(item => {
+      Object.values(item.years).forEach(year => {
+        if (year.pct !== undefined) {
+          coverages.push(year.pct);
+        }
+      });
+    });
+
+    if (coverages.length < 2) {
+      return { trend: 'stable', variation: 0 };
+    }
+
+    const firstValue = coverages[0];
+    const lastValue = coverages[coverages.length - 1];
+    const variation = lastValue - firstValue;
+
+    let trend: 'ascending' | 'descending' | 'stable' = 'stable';
+    
+    if (variation > 2) {
+      trend = 'ascending';
+    } else if (variation < -2) {
+      trend = 'descending';
+    }
+
+    return { trend, variation: Math.abs(variation) };
+  }
 }
 
 export const TechnicalNoteHelpers = {
   formatFileSize: TechnicalNoteService.formatFileSize,
   isLargeFile: TechnicalNoteService.isLargeFile,
   getRecommendedPageSize: TechnicalNoteService.getRecommendedPageSize,
-  calculateTotalPages: TechnicalNoteService.calculateTotalPages
+  calculateTotalPages: TechnicalNoteService.calculateTotalPages,
+  downloadBlobAsFile: TechnicalNoteService.downloadBlobAsFile,
+  downloadFromLink: TechnicalNoteService.downloadFromLink,
+  getAdvancedReportingCapabilities: TechnicalNoteService.getAdvancedReportingCapabilities,
+  downloadMultipleFiles: TechnicalNoteService.downloadMultipleFiles,
+  validateAdvancedReportRequest: TechnicalNoteService.validateAdvancedReportRequest,
+  buildDownloadUrl: TechnicalNoteService.buildDownloadUrl,
+  formatGlobalStatistics: TechnicalNoteService.formatGlobalStatistics,
+  getSemaforoColor: TechnicalNoteService.getSemaforoColor,
+  calculateCoverageTrend: TechnicalNoteService.calculateCoverageTrend
 };

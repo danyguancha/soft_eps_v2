@@ -1,10 +1,57 @@
 # api/technical_note_routes.py - COMPLETO CON DEBUG
-from fastapi import APIRouter, HTTPException, Query
-from typing import Any, Dict, Optional
+from datetime import datetime
+import os
+import tempfile
+import uuid
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
+from typing import Any, Dict, List, Optional
 import json
+
+from fastapi.responses import FileResponse
+from pydantic import BaseModel, Field, validator
+from controllers.technical_note_controller.age_range_extractor import AgeRangeExtractor
 from controllers.technical_note_controller.technical_note import technical_note_controller
+from services.technical_note_services.report_service_aux.report_exporter import ReportExporter
+
+
+report_exporter = ReportExporter()
+age_extractor = AgeRangeExtractor()
 
 router = APIRouter()
+reports_router = APIRouter(prefix="/reports", tags=["Advanced Reports"])
+
+temp_reports: Dict[str, Dict[str, Any]] = {}
+temp_files: Dict[str, Dict[str, Any]] = {}
+
+class GeographicFiltersModel(BaseModel):
+    """🗺️ Filtros geográficos para el reporte"""
+    departamento: Optional[str] = Field(None, description="Departamento específico o 'Todos'")
+    municipio: Optional[str] = Field(None, description="Municipio específico o 'Todos'")
+    ips: Optional[str] = Field(None, description="IPS específica o 'Todos'")
+
+class AdvancedReportRequestModel(BaseModel):
+    """📄 Modelo de solicitud para generar reporte avanzado"""
+    data_source: str = Field(..., description="Nombre de la tabla/fuente de datos (filename)")
+    filename: str = Field(..., description="Nombre base del archivo de salida")
+    keywords: Optional[List[str]] = Field(default=[], description="Lista de palabras clave a buscar")
+    min_count: int = Field(default=0, description="Conteo mínimo para incluir resultados")
+    include_temporal: bool = Field(default=True, description="Incluir análisis temporal")
+    geographic_filters: Optional[GeographicFiltersModel] = Field(default=None, description="Filtros geográficos")
+    corte_fecha: str = Field(default="2025-07-31", description="Fecha de corte en formato YYYY-MM-DD")
+    
+    @validator('corte_fecha')
+    def validate_corte_fecha(cls, v):
+        try:
+            datetime.strptime(v, '%Y-%m-%d')
+            return v
+        except ValueError:
+            raise ValueError('corte_fecha debe estar en formato YYYY-MM-DD')
+
+class ExportOptionsModel(BaseModel):
+    """📤 Opciones de exportación"""
+    export_csv: bool = Field(default=True, description="Exportar en formato CSV")
+    export_pdf: bool = Field(default=True, description="Exportar en formato PDF")
+    include_temporal: bool = Field(default=True, description="Incluir datos temporales en la exportación")
 
 @router.get("/available")
 def get_available_technical_files():
@@ -444,3 +491,69 @@ def export_inasistentes_csv(
     except Exception as e:
         print(f"❌ Error en /export-csv/{filename}: {e}")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+@reports_router.post("/generate-and-export")
+async def generate_and_export_advanced_report(
+    request_data: dict,
+    background_tasks: BackgroundTasks,
+):
+    try:
+        start_time = datetime.now()
+        
+        # ✅ Extraer parámetros
+        data_source = request_data.get('data_source')
+        filename = request_data.get('filename', 'reporte')
+        export_csv = request_data.get('export_csv', True)
+        export_pdf = request_data.get('export_pdf', True)
+        
+        # ✅ Generar reporte con controlador
+        report_data = technical_note_controller.get_keyword_age_report(
+            filename=data_source,
+            keywords=request_data.get('keywords'),
+            min_count=request_data.get('min_count', 0),
+            include_temporal=request_data.get('include_temporal', True),
+            departamento=request_data.get('geographic_filters', {}).get('departamento'),
+            municipio=request_data.get('geographic_filters', {}).get('municipio'),
+            ips=request_data.get('geographic_filters', {}).get('ips'),
+            corte_fecha=request_data.get('corte_fecha', '2025-07-31')
+        )
+        
+        # ✅ USAR SERVICIO DE EXPORTACIÓN
+        export_result = report_exporter.export_report(
+            report_data=report_data,
+            base_filename=filename,
+            export_csv=export_csv,
+            export_pdf=export_pdf,
+            include_temporal=True
+        )
+        
+        # ✅ Programar limpieza
+        background_tasks.add_task(report_exporter.cleanup_old_temp_files, 30)
+        
+        return export_result
+        
+    except Exception as e:
+        print(f"❌ Error en endpoint: {e}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+@router.get("/reports/download/{file_id}")
+async def download_report_file(file_id: str):
+    """Descargar archivo usando el servicio"""
+    try:
+        file_info = report_exporter.get_temp_file(file_id)
+        
+        if not file_info:
+            raise HTTPException(status_code=404, detail="Archivo no encontrado")
+        
+        return FileResponse(
+            path=file_info['file_path'],
+            filename=file_info['original_name'],
+            media_type="application/octet-stream"
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+
+router.include_router(reports_router)

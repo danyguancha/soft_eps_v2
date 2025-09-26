@@ -1,0 +1,24 @@
+{
+  "pdf_config": {
+    "title": "Reporte de Indicadores de Salud",
+    "subtitle": "Análisis de Cobertura por Edad y Procedimientos",
+    "organization": "Sistema de Salud - Análisis Epidemiológico",
+    "description": "Este reporte presenta el análisis detallado de los indicadores de salud segmentados por grupos de edad específicos, incluyendo numeradores, denominadores y porcentajes de cobertura con semaforización por desempeño.",
+    "methodology": "La metodología utilizada se basa en la lógica de Excel donde el denominador mensual incluye tanto los registros del mes específico como los registros vacíos de la población elegible. El denominador anual se calcula como la suma de registros de todo el año más los registros vacíos contados una sola vez.",
+    "interpretation": {
+      "Óptimo": "Desempeño excelente (≥90%). Cumplimiento óptimo de los indicadores.",
+      "Aceptable": "Buen desempeño (75-89%). Cumplimiento aceptable con oportunidades de mejora.",
+      "Deficiente": "Desempeño bajo (60-74%). Requiere intervención inmediata.",
+      "Muy Deficiente": "Desempeño muy bajo (<60%). Requiere intervención urgente y prioritaria.",
+      "NA": "Sin datos disponibles para el análisis."
+    },
+    "footer_text": "Reporte generado automáticamente por el Sistema de Análisis de Indicadores de Salud",
+    "contact_info": "Para más información contacte al área de epidemiología"
+  },
+  "csv_config": {
+    "separator": ";",
+    "encoding": "latin1",
+    "include_temporal": true,
+    "include_semaforization": true
+  }
+}
