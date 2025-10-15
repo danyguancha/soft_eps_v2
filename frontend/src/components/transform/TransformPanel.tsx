@@ -2,15 +2,11 @@
 import React, { useState, useCallback } from 'react';
 import { Card, Col, Row, Space, Modal, Button, Upload, message, Divider } from 'antd';
 import { 
-  LinkOutlined, 
-  FileTextOutlined, 
   UploadOutlined, 
   InboxOutlined,
   FileExcelOutlined,
   DeleteOutlined
 } from '@ant-design/icons';
-import { TransformButton } from './TransformButton';
-import FileCrossManager from '../cross/FileCrossManager';
 import { FileService } from '../../services/FileService';
 import type { FileInfo } from '../../types/api.types';
 
@@ -26,12 +22,10 @@ interface Props {
 
 export const TransformPanel: React.FC<Props> = ({ 
   isMobile, 
-  onSelectOp,
   availableFiles = [],
   onRefreshFiles,
   onFileUploaded
 }) => {
-  const [crossModalVisible, setCrossModalVisible] = useState(false);
   const [uploadModalVisible, setUploadModalVisible] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();

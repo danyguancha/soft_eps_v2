@@ -127,7 +127,7 @@ class TransformRequest(BaseModel):
 class AIRequest(BaseModel):
     question: str
     file_context: Optional[str] = None  # ID del archivo para contexto específico
-    
+    session_id: Optional[str] = "default_session"
     class Config:
         schema_extra = {
             "example": {

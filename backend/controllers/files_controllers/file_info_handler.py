@@ -1,5 +1,8 @@
 # controllers/file_info_handler.py
+import os
 from typing import Dict, Any, List
+
+import pandas as pd
 from controllers.files_controllers.storage_manager import FileStorageManager
 
 class FileInfoHandler:
@@ -12,13 +15,48 @@ class FileInfoHandler:
         if not file_info:
             raise ValueError("Archivo no encontrado")
         
+        # ✅ Si no tiene columnas guardadas, cargarlas del archivo físico
+        if "columns" not in file_info:
+            file_path = file_info.get("path")
+            if file_path and os.path.exists(file_path):
+                try:
+                    # Cargar el archivo para obtener las columnas
+                    if file_path.endswith('.csv'):
+                        # ✅ SOLUCIÓN 1: Detectar automáticamente el delimitador
+                        df = pd.read_csv(file_path, nrows=0, sep=None, engine='python')
+                        columns = df.columns.tolist()
+                        
+                        # ✅ SOLUCIÓN 2 (Alternativa): Especificar punto y coma
+                        # df = pd.read_csv(file_path, nrows=0, sep=';')
+                        # columns = df.columns.tolist()
+                        
+                    elif file_path.endswith(('.xlsx', '.xls')):
+                        df = pd.read_excel(file_path, nrows=0)
+                        columns = df.columns.tolist()
+                    else:
+                        columns = []
+                    
+                    # Actualizar file_info con las columnas
+                    file_info["columns"] = columns
+                    
+                    # Guardar en storage para próximas veces
+                    self.storage_manager.store_file_info(file_id, file_info)
+                except Exception as e:
+                    print(f"⚠️ Error leyendo columnas de {file_id}: {e}")
+                    columns = []
+            else:
+                columns = []
+        else:
+            columns = file_info["columns"]
+        
         return {
             "file_id": file_id,
-            "original_name": file_info["original_name"],
-            "columns": file_info["columns"],
-            "sheets": file_info["sheets"],
-            "total_rows": file_info["total_rows"]
+            "original_name": file_info.get("original_name", file_id),
+            "columns": columns,
+            "sheets": file_info.get("sheets", []),
+            "total_rows": file_info.get("total_rows", 0)
         }
+
     
     def list_all_files(self) -> Dict[str, Any]:
         """Lista todos los archivos cargados"""

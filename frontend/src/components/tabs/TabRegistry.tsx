@@ -10,9 +10,8 @@ import { CrossTab } from './crossTab/CrossTab';
 import { TransformOutlined } from '@mui/icons-material';
 import { WelcomeTab } from './welcomeTab/WelcomeTab';
 import TechnicalNoteViewer from '../technical_note/TechnicalNoteViewer'
-import { UploadTab } from './uploadTab/UploadTab';
 export const TAB_REGISTRY: Record<string, TabConfig> = {
-   welcome: {  // ✅ Nuevo tab de bienvenida
+   welcome: {  
     key: 'welcome',
     label: 'Inicio',
     icon: <HomeOutlined />,

@@ -13,7 +13,7 @@ export const DataTable: React.FC<DataTableProps> = ({
   data,
   columns,
   loading,
-  filename: rawFilename, // ✅ Renombrar para procesar
+  filename: rawFilename, // Renombrar para procesar
   pagination,
   onPaginationChange,
   onFiltersChange,
@@ -21,7 +21,7 @@ export const DataTable: React.FC<DataTableProps> = ({
   onDeleteRows,
   onSearch
 }) => {
-  // ✅ Normalizar filename para evitar undefined
+  // Normalizar filename para evitar undefined
   const filename: string | null = rawFilename ?? null;
 
   const {
@@ -47,7 +47,7 @@ export const DataTable: React.FC<DataTableProps> = ({
     isLocalFiltering,
     clearAllFilters
   } = useDataTable(
-    filename, // ✅ Ahora es string | null limpio
+    filename, // Ahora es string | null limpio
     data,
     pagination,
     onPaginationChange,
@@ -106,7 +106,7 @@ export const DataTable: React.FC<DataTableProps> = ({
             filter={excelFilters[columnName]}
             onClose={close}
             onLoadUniqueValues={loadUniqueValues}
-            onUpdateFilter={(columnName: string, selectedValues: string[]) => { // ✅ Tipado explícito
+            onUpdateFilter={(columnName: string, selectedValues: string[]) => { // Tipado explícito
               setExcelFilters(prev => ({
                 ...prev,
                 [columnName]: {
@@ -136,7 +136,7 @@ export const DataTable: React.FC<DataTableProps> = ({
     columnWidth: 30,
   };
 
-  // ✅ Menu correctamente tipado
+  // Menu correctamente tipado
   const actionsMenu: MenuProps = {
     items: [
       {
@@ -150,7 +150,7 @@ export const DataTable: React.FC<DataTableProps> = ({
         icon: <ClearOutlined />,
       },
     ],
-    onClick: ({ key }: { key: string }) => { // ✅ Tipado explícito del destructuring
+    onClick: ({ key }: { key: string }) => { // Tipado explícito del destructuring
       switch (key) {
         case 'clear-filters':
           clearAllFilters();
@@ -187,7 +187,7 @@ export const DataTable: React.FC<DataTableProps> = ({
                   <Tag 
                     color="blue" 
                     closable 
-                    onClose={(e: React.MouseEvent) => { // ✅ Tipado explícito
+                    onClose={(e: React.MouseEvent) => { // Tipado explícito
                       e.preventDefault();
                       clearAllFilters();
                     }}

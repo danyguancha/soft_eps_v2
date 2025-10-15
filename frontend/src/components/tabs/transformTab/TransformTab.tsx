@@ -15,7 +15,7 @@ export const TransformTab: React.FC<TabProps> = ({ isMobile, onOpenCrossModal })
     <div className="content-container">
       <TransformPanel
         isMobile={isMobile}
-        onSelectOp={() => {}}
+        onSelectOp={() => { }}
         availableFiles={files || []}
         onRefreshFiles={loadFiles}
         onFileUploaded={handleFileUploadedFromTransform}
@@ -35,7 +35,15 @@ export const TransformTab: React.FC<TabProps> = ({ isMobile, onOpenCrossModal })
             type="primary"
             icon={<SwapOutlined />}
             size="large"
-            onClick={onOpenCrossModal}
+            onClick={() => {
+              console.log('onOpenCrossModal:', onOpenCrossModal);
+              if (onOpenCrossModal) {
+                onOpenCrossModal();
+              } else {
+                console.error('onOpenCrossModal no está definido');
+              }
+            }}
+
             disabled={!files || files.length < 2}
           >
             {isMobile ? 'Cruzar' : 'Iniciar Cruce de Archivos'}

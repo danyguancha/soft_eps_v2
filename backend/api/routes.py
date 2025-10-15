@@ -1,4 +1,4 @@
-# api/routes.py - VERSIÓN SEGURA CON FALLBACKS Y MANEJO ROBUSTO
+
 import os
 import traceback
 import threading
@@ -18,7 +18,7 @@ from services.cross_service import CrossService
 from services.export_service import ExportService
 from controllers.cross_controller import cross_controller
 
-# ✅ IMPORTAR WRAPPER SEGURO DE DUCKDB
+# IMPORTAR WRAPPER SEGURO DE DUCKDB
 try:
     from services.duckdb_service_wrapper import safe_duckdb_service as duckdb_service
     
@@ -76,14 +76,13 @@ def execute_with_timeout(func, timeout_seconds=30, *args, **kwargs):
 
 @router.post("/upload", response_model=FileUploadResponse)
 async def upload_file(file: UploadFile = File(...)):
-    """Carga archivo con detección completa de hojas Excel - VERSIÓN SEGURA"""
+    """Carga archivo con detección completa de hojas en archivos Excel"""
     try:        
         result = await execute_with_timeout(
             file_controller.upload_file, 
-            timeout_seconds=300,  # 5 minutos para uploads grandes
+            timeout_seconds=300,
             file=file
         )
-        
         # Validar que todas las propiedades estén presentes
         response_data = {
             "message": "Archivo cargado exitosamente",
@@ -115,7 +114,7 @@ async def upload_file(file: UploadFile = File(...)):
 
 @router.post("/data")
 def get_data(request: DataRequest):
-    """Obtiene datos con filtros, ordenamiento y paginación - VERSIÓN SEGURA"""
+    """Obtiene datos con filtros, ordenamiento y paginación"""
     try:
         return execute_with_timeout(
             file_controller.get_data,
@@ -129,7 +128,7 @@ def get_data(request: DataRequest):
 
 @router.post("/transform")
 def transform_data(request: TransformRequest):
-    """Aplica transformaciones a los datos - VERSIÓN SEGURA"""
+    """Aplica transformaciones a los datos"""
     try:
         return execute_with_timeout(
             file_controller.transform_data,
@@ -143,7 +142,7 @@ def transform_data(request: TransformRequest):
 
 @router.get("/file/{file_id}")
 def get_file_info(file_id: str):
-    """Obtiene información básica del archivo - VERSIÓN SEGURA"""
+    """Obtiene información básica del archivo"""
     try:
         return file_controller.get_file_info(file_id)
     except Exception as e:
@@ -151,7 +150,7 @@ def get_file_info(file_id: str):
 
 @router.delete("/file/{file_id}")
 def delete_file(file_id: str):
-    """Elimina un archivo del sistema - VERSIÓN SEGURA"""
+    """Elimina un archivo del sistema"""
     try:
         return file_controller.delete_file(file_id)
     except Exception as e:
@@ -159,7 +158,7 @@ def delete_file(file_id: str):
 
 @router.post("/cross")
 def cross_files(request: FileCrossRequest):
-    """Realiza cruce entre dos archivos - VERSIÓN SEGURA"""
+    """Realiza cruce entre dos archivos"""
     try:        
         return execute_with_timeout(
             cross_controller.perform_cross,
@@ -431,7 +430,7 @@ async def health_check():
 
 @router.get("/excel/diagnostic/{file_id}")
 def excel_diagnostic(file_id: str):
-    """Diagnóstico completo de archivo Excel - VERSIÓN SEGURA"""
+    """Diagnóstico completo de archivo Excel"""
     try:
         file_info = file_controller.get_file_info(file_id)
         
@@ -474,7 +473,7 @@ def excel_diagnostic(file_id: str):
 
 @router.get("/sheets/{file_id}")
 def get_file_sheets(file_id: str):
-    """Obtiene hojas disponibles de un archivo Excel ya subido - VERSIÓN SEGURA"""
+    """Obtiene hojas disponibles de un archivo Excel ya subido"""
     try:        
         file_info = file_controller.get_file_info(file_id)
         
@@ -519,7 +518,7 @@ def get_file_sheets(file_id: str):
 
 @router.post("/sheets/{file_id}/redetect")
 def redetect_file_sheets(file_id: str):
-    """Redetecta hojas de un archivo Excel - VERSIÓN SEGURA"""
+    """Redetecta hojas de un archivo Excel"""
     try:        
         file_info = file_controller.get_file_info(file_id)
         if not file_info:
@@ -601,7 +600,7 @@ async def ask_ai(request: AIRequest):
 
 @router.get("/files")
 def list_files():
-    """Lista todos los archivos cargados - VERSIÓN SEGURA"""
+    """Lista todos los archivos cargados"""
     try:
         return file_controller.list_all_files()
     except Exception as e:
@@ -609,7 +608,7 @@ def list_files():
 
 @router.get("/columns/{file_id}")
 def get_columns(file_id: str, sheet_name: Optional[str] = Query(None, description="Hoja específica de Excel")):
-    """Obtiene columnas con soporte para hojas específicas - VERSIÓN SEGURA"""
+    """Obtiene columnas con soporte para hojas específicas"""
     try:
         result = execute_with_timeout(
             file_controller.get_columns,
@@ -642,7 +641,7 @@ def get_columns(file_id: str, sheet_name: Optional[str] = Query(None, descriptio
 
 @router.post("/export", response_model=ExportResponse)
 def export_data(request: ExportRequest):
-    """Exporta datos procesados - VERSIÓN SEGURA"""
+    """Exporta datos procesados"""
     try:
         result = execute_with_timeout(
             file_controller.export_processed_data,
@@ -663,7 +662,7 @@ def export_data(request: ExportRequest):
 
 @router.get("/download/{filename}")
 def download_exported_file(filename: str):
-    """Descarga un archivo exportado - VERSIÓN SEGURA"""
+    """Descarga un archivo exportado"""
     try:
         export_info = ExportService.get_export_info(filename)
         return FileResponse(
@@ -680,7 +679,7 @@ def download_exported_file(filename: str):
 
 @router.delete("/rows", response_model=DeleteResponse)
 def delete_rows(request: DeleteRowsRequest):
-    """Elimina filas específicas por índices - VERSIÓN SEGURA"""
+    """Elimina filas específicas por índices"""
     try:
         result = execute_with_timeout(
             file_controller.delete_specific_rows,
@@ -699,7 +698,7 @@ def delete_rows(request: DeleteRowsRequest):
 
 @router.delete("/rows/filter", response_model=DeleteResponse)
 def delete_rows_by_filter(request: DeleteRowsByFilterRequest):
-    """Elimina filas que cumplan con filtros específicos - VERSIÓN SEGURA"""
+    """Elimina filas que cumplan con filtros específicos"""
     try:
         result = execute_with_timeout(
             file_controller.delete_rows_by_filter,
@@ -718,7 +717,7 @@ def delete_rows_by_filter(request: DeleteRowsByFilterRequest):
 
 @router.delete("/rows/bulk", response_model=DeleteResponse)
 def bulk_delete(request: BulkDeleteRequest):
-    """Eliminación masiva con confirmación obligatoria - VERSIÓN SEGURA"""
+    """Eliminación masiva con confirmación obligatoria"""
     try:
         result = execute_with_timeout(
             file_controller.bulk_delete_operation,
@@ -742,7 +741,7 @@ def remove_duplicates(
     keep: str = Query('first', regex='^(first|last|False)$'),
     sheet_name: Optional[str] = None
 ):
-    """Elimina filas duplicadas - VERSIÓN SEGURA"""
+    """Elimina filas duplicadas"""
     try:
         result = execute_with_timeout(
             file_controller.delete_duplicates,
@@ -798,7 +797,7 @@ cross_handler_instance = CrossService()
 
 @router.post("/cross-download")
 def cross_files_download(request: FileCrossRequest):
-    """Realiza cruce y descarga resultado como CSV - VERSIÓN SEGURA"""
+    """Realiza cruce y descarga resultado como CSV"""
     try:        
         result = execute_with_timeout(
             cross_handler_instance.perform_cross_for_streaming,
@@ -820,7 +819,7 @@ def cross_files_download(request: FileCrossRequest):
 
 @router.get("/columns/{file_id}/sheet/{sheet_name}")
 def get_columns_from_specific_sheet(file_id: str, sheet_name: str):
-    """Obtiene columnas de una hoja específica de Excel - VERSIÓN SEGURA"""
+    """Obtiene columnas de una hoja específica de Excel"""
     try:        
         file_info = file_controller.get_file_info(file_id)
         if not file_info:
@@ -878,7 +877,7 @@ def get_sheet_preview(
     sheet_name: str,
     max_rows: int = Query(5, ge=1, le=20, description="Máximo número de filas para preview")
 ):
-    """Preview de datos de una hoja específica - VERSIÓN SEGURA"""
+    """Preview de datos de una hoja específica"""
     try:
         file_info = file_controller.get_file_info(file_id)
         if not file_info:

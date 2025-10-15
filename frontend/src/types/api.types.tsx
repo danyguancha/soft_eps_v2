@@ -47,12 +47,11 @@ export interface FileData {
 export type TabKey = 'welcome' | 'upload' | 'transform' | 'chat' | 'export' | 'cross' | 'technical_note';
 
 export interface TabProps {
-  fileData?: FileData | null;  // ← Cambiar undefined por null
+  fileData?: FileData | null;  
   isMobile: boolean;
-  isTablet: boolean;  // ← Quitar undefined innecesario
+  isTablet: boolean;  
   onTabChange: (tab: string) => void;
   onOpenCrossModal?: () => void;
-  // Props específicos para CrossTab
   crossResult?: any;
   crossTableState?: CrossTableState;
   processedCrossData?: any[];

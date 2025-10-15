@@ -2,7 +2,6 @@
 import React from 'react';
 import { Card, Spin, Typography, Space, Alert, Button } from 'antd';
 import { BarChartOutlined, CloudUploadOutlined } from '@ant-design/icons';
-import { DataTable } from '../dataTable/DataTable';
 import { Report } from './report/Report';
 
 const { Title, Text } = Typography;

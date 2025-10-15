@@ -14,7 +14,7 @@ import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { DynamicTabRouter } from './components/routing/DynamicTabRouter';
 
 import { useFileOperations } from './hooks/useFileOperations';
-import { useCrossData } from './hooks/useCrossData';
+import { CrossDataProvider, useCrossDataContext } from './contexts/CrossDataContext';
 import type { TabKey } from './types/api.types';
 import 'antd/dist/reset.css';
 import './App.css';
@@ -38,7 +38,7 @@ const AppContent: React.FC = () => {
   const isTablet = !!(screens.md && !screens.lg);
 
   const fileOperations = useFileOperations();
-  const crossData = useCrossData();
+  const crossData = useCrossDataContext();
 
   const [ui, setUI] = useState<UIState>({
     collapsed: isMobile,
@@ -122,10 +122,33 @@ const AppContent: React.FC = () => {
                       {/* Rutas dinámicas para cada tab del registro */}
                       <Route path="/welcome" element={<DynamicTabRouter tabKey="welcome" />} />
                       <Route path="/upload" element={<DynamicTabRouter tabKey="upload" />} />
-                      <Route path="/transform" element={<DynamicTabRouter tabKey="transform" />} />
+                      <Route 
+                        path="/transform" 
+                        element={
+                          <DynamicTabRouter 
+                            tabKey="transform" 
+                            onOpenCrossModal={() => setUI(p => ({ ...p, crossModalVisible: true }))}
+                          />
+                        } 
+                      />
                       <Route path="/export" element={<DynamicTabRouter tabKey="export" />} />
                       <Route path="/chat" element={<DynamicTabRouter tabKey="chat" />} />
-                      <Route path="/cross" element={<DynamicTabRouter tabKey="cross" />} />
+                      
+                      {/* ✅ ÚNICA RUTA QUE NECESITA LAS PROPS DE CROSS */}
+                      <Route 
+                        path="/cross" 
+                        element={
+                          <DynamicTabRouter 
+                            tabKey="cross"
+                            crossResult={crossData.crossResult}
+                            processedCrossData={crossData.processedCrossData}
+                            crossDataTotal={crossData.crossDataTotal}
+                            onExportCrossResult={crossData.handleExportCrossResult}
+                            onClearCrossResult={crossData.handleClearCrossResult}
+                          />
+                        } 
+                      />
+                      
                       <Route path="/technical_note" element={<DynamicTabRouter tabKey="technical_note" />} />
                       
                       {/* Rutas anidadas para nota técnica con grupos etarios */}
@@ -168,7 +191,7 @@ const AppContent: React.FC = () => {
             open={ui.crossModalVisible}
             onCancel={() => setUI((p) => ({ ...p, crossModalVisible: false }))}
             footer={null}
-            width="95%"
+            width="85%"
             style={{ top: 20 }}
             className="cross-modal"
           >
@@ -176,8 +199,20 @@ const AppContent: React.FC = () => {
               availableFiles={fileOperations.files || []}
               onRefreshFiles={fileOperations.loadFiles}
               onCrossComplete={(result) => {
+                console.log('🎯 Cruce completado, resultado:', result);
+                
+                // Actualizar estado
                 crossData.handleCrossComplete(result);
+                
+                // Cerrar modal
                 setUI(p => ({ ...p, crossModalVisible: false }));
+                
+                // Solo navegar si NO fue descarga automática
+                if (!result.download_completed) {
+                  setTimeout(() => {
+                    navigate('/cross');
+                  }, 300);
+                }
               }}
               onComplete={() => setUI((p) => ({ ...p, crossModalVisible: false }))}
             />
@@ -192,7 +227,9 @@ const AppContent: React.FC = () => {
 const App: React.FC = () => {
   return (
     <BrowserRouter>
+      <CrossDataProvider>
       <AppContent />
+      </CrossDataProvider>
     </BrowserRouter>
   );
 };

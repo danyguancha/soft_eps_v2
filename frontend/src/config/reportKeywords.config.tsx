@@ -16,19 +16,19 @@ export interface KeywordConfig {
   searchTerms?: string[];
 }
 
-// ✅ ICONOS PRE-RENDERIZADOS - CRÍTICO PARA PERFORMANCE
+//ICONOS PRE-RENDERIZADOS - CRÍTICO PARA PERFORMANCE
 const MEDICINE_ICON = <MedicineBoxOutlined />;
 const HEART_ICON = <HeartOutlined />;
 const SMILE_ICON = <SmileOutlined />;
 const HEART_FILLED_ICON = <HeartFilled />;
 
-// ✅ CONFIGURACIÓN OPTIMIZADA CON TUS PALABRAS CLAVE EXACTAS
+//CONFIGURACIÓN OPTIMIZADA CON TUS PALABRAS CLAVE EXACTAS
 export const REPORT_KEYWORDS: KeywordConfig[] = [
   {
     key: 'medicina',
     label: 'Medicina',
     color: '#1890ff',
-    icon: MEDICINE_ICON, // ✅ Icono estático pre-renderizado
+    icon: MEDICINE_ICON,
     synonyms: ['medicina', 'médica', 'médico', 'medical'],
     searchTerms: ['medicina', 'medica', 'medico', 'medical']
   },
@@ -36,7 +36,7 @@ export const REPORT_KEYWORDS: KeywordConfig[] = [
     key: 'enfermería',
     label: 'Enfermería', 
     color: '#52c41a',
-    icon: HEART_ICON, // ✅ Icono estático pre-renderizado
+    icon: HEART_ICON,
     synonyms: ['enfermería', 'enfermería', 'enfermero', 'nurse'],
     searchTerms: ['enfermería', 'enfermería', 'enfermero', 'nurse']
   },
@@ -44,7 +44,7 @@ export const REPORT_KEYWORDS: KeywordConfig[] = [
     key: 'odontológica',
     label: 'Odontología',
     color: '#722ed1',
-    icon: SMILE_ICON, // ✅ Icono estático pre-renderizado
+    icon: SMILE_ICON,
     synonyms: ['odontologia', 'odontológica', 'dental', 'dentista', 'odontolígica'],
     searchTerms: ['odontologia', 'odontológica', 'dental', 'dentista', 'dientes']
   },
@@ -52,7 +52,7 @@ export const REPORT_KEYWORDS: KeywordConfig[] = [
     key: 'flúor',
     label: 'Flúor',
     color: '#22c0f5ff',
-    icon: HEART_FILLED_ICON, // ✅ Icono estático pre-renderizado
+    icon: HEART_FILLED_ICON,
     synonyms: ['fluor', 'flúor', 'barniz'],
     searchTerms: ['fluor', 'flúor', 'barniz']
   },
@@ -60,7 +60,7 @@ export const REPORT_KEYWORDS: KeywordConfig[] = [
     key: 'placa',
     label: 'Placa',
     color: '#fa541cff',
-    icon: SMILE_ICON, // ✅ Icono estático pre-renderizado
+    icon: SMILE_ICON,
     synonyms: ['placa', 'profilaxis', 'limpieza', 'bacteriana'],
     searchTerms: ['placa', 'profilaxis', 'limpieza', 'bacteriana']
   },
@@ -68,7 +68,7 @@ export const REPORT_KEYWORDS: KeywordConfig[] = [
     key: 'detartraje',
     label: 'Detartraje',
     color: '#fa541cff',
-    icon: SMILE_ICON, // ✅ Icono estático pre-renderizado
+    icon: SMILE_ICON, 
     synonyms: ['detartraje', 'profilaxis', 'limpieza'],
     searchTerms: ['detartraje', 'profilaxis', 'limpieza' ]
   },
@@ -76,7 +76,7 @@ export const REPORT_KEYWORDS: KeywordConfig[] = [
     key: 'sellantes',
     label: 'Sellantes',
     color: '#b0c604ff',
-    icon: SMILE_ICON, // ✅ Icono estático pre-renderizado
+    icon: SMILE_ICON, 
     synonyms: ['sellantes', 'selladores', 'Sellantes'],
     searchTerms: ['sellante', 'selladores', 'Sellantes']
   },
@@ -84,20 +84,18 @@ export const REPORT_KEYWORDS: KeywordConfig[] = [
     key: 'vacunación',
     label: 'Vacunación',
     color: '#1c6afaff',
-    icon: SMILE_ICON, // ✅ Icono estático pre-renderizado
+    icon: SMILE_ICON, 
     synonyms: ['vacunacion', 'vacunación', 'vacuna', 'Vacunación'],
     searchTerms: ['vacunacion', 'vacunación', 'vacuna', 'Vacunación']
   }
 ];
 
-// ✅ OPCIONES PRE-MEMOIZADAS PARA SELECT - MUY IMPORTANTE PARA PERFORMANCE
 export const SELECT_OPTIONS = REPORT_KEYWORDS.map(keyword => ({
   key: keyword.key,
   value: keyword.key,
   label: keyword.label,
 }));
 
-// ✅ UTILIDADES PARA ACCESO A LA CONFIGURACIÓN
 export const getKeywordConfig = (key: string): KeywordConfig | undefined => {
   return REPORT_KEYWORDS.find(kw => kw.key === key);
 };
@@ -125,5 +123,4 @@ export const getKeywordIcon = (key: string): ReactNode | undefined => {
   return config?.icon;
 };
 
-// ✅ CONFIGURACIÓN POR DEFECTO
 export const DEFAULT_KEYWORDS = ['medicina'];

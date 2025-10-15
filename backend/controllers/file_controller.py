@@ -28,9 +28,8 @@ class FileController:
         self.delete_handler = DeleteHandler(self.storage_manager)
         self.file_info_handler = FileInfoHandler(self.storage_manager)
     
-    # MODIFICADO: Operaciones de Upload con hilos automáticos
     async def upload_file(self, file: UploadFile) -> Dict[str, Any]:
-        """MODIFICADO: Procesa la carga de archivo CON HILOS AUTOMÁTICOS"""
+        """Procesa la carga de archivo"""
         return await self.upload_handler.upload_file(file)
     
     # MODIFICADO: Operaciones de Datos con hilos para archivos grandes
@@ -114,7 +113,6 @@ class FileController:
         """Elimina filas duplicadas"""
         return self.delete_handler.delete_duplicates(file_id, columns, keep, sheet_name)
     
-    # MANTENER OPERACIONES DE INFORMACIÓN SIN CAMBIOS
     def get_file_info(self, file_id: str) -> Dict[str, Any]:
         """Obtiene información básica del archivo"""
         return self.file_info_handler.get_file_info(file_id)
