@@ -1,4 +1,4 @@
-# controllers/aux_ai_controller/prompt_builder.py
+# controllers/aux:ai_controller/prompt_builder.py
 from typing import Dict, Any
 
 
@@ -31,16 +31,15 @@ Eres un asistente de análisis de datos amigable y profesional.
 CONTEXTO DE ARCHIVOS:
 {context}
 
-INSTRUCCIONES:
-- Saluda de forma BREVE y amigable (máximo 2-3 líneas)
-- Si hay conversación previa, reconócela brevemente
+INSTRUCCIONES ESTRICTAS:
+- Saluda de forma BREVE (máximo 2 líneas)
 - Menciona cuántos archivos hay disponibles
 - Pregunta en qué puedes ayudar
-- NO des explicaciones largas en el saludo
+- NO des explicaciones largas
 
 PREGUNTA: {question}
 
-RESPUESTA (breve y directa):
+RESPUESTA BREVE:
 """
     
     def _build_structure_prompt(self, context: str, question: str, query_analysis: Dict, conversation_context: str) -> str:
@@ -58,58 +57,110 @@ CONTEXTO DEL ARCHIVO:
 ARCHIVO A ANALIZAR: {target_file}
 
 INSTRUCCIONES CRÍTICAS:
-1. El archivo YA ESTÁ CARGADO y listo para análisis
-2. Muestra la información DIRECTAMENTE sin decir que vas a cargar nada
-3. Lista las columnas con numeración clara
-4. Describe el tipo de datos que contiene
-5. Menciona total de filas y columnas
-6. Sé específico y directo
-7. NO inventes código Python ni análisis simulados
+1. El archivo YA ESTÁ CARGADO
+2. Muestra SOLO la información que está en el CONTEXTO
+3. Lista las columnas numeradas
+4. NO inventes datos ni estadísticas
+5. Si el contexto no tiene información específica, di "Para ver estadísticas detalladas, usa la sección Análisis de la aplicación"
+6. Sé directo y preciso
 
 PREGUNTA: {question}
 
-RESPUESTA (muestra los datos reales que tienes en el contexto):
+RESPUESTA (usa solo datos del contexto):
 """
     
     def _build_statistical_prompt(self, context: str, question: str, conversation_context: str) -> str:
         """Prompt para análisis estadístico"""
-        return f"""
+        
+        # Detectar si hay estadísticas calculadas en el contexto
+        has_calculated_stats = "ESTADÍSTICAS CALCULADAS" in context
+        
+        if has_calculated_stats:
+            return f"""
 Eres un asistente experto en estadística y análisis de datos.
+
+{conversation_context}
+
+CONTEXTO DEL ARCHIVO CON ESTADÍSTICAS CALCULADAS:
+{context}
+
+PREGUNTA: {question}
+
+INSTRUCCIONES:
+1. Las estadísticas YA ESTÁN CALCULADAS en el contexto
+2. Presenta los valores de forma clara y organizada
+3. Usa formato Markdown para mejor legibilidad:
+   - Usa **negritas** para números importantes
+   - Usa listas con bullets (•) para organizar
+   - Separa por secciones (columnas numéricas y categóricas)
+4. Interpreta brevemente los resultados (qué significan los valores)
+5. Sé conciso y directo
+6. NO agregues sugerencias de usar otras secciones (ya tienes los datos)
+
+FORMATO DE RESPUESTA ESPERADO:
+
+📊 **Estadísticas de [nombre archivo]**
+
+**Análisis de Columnas Numéricas:**
+
+• **[Nombre columna]**
+  - Promedio: **[valor]**
+  - Mediana: **[valor]**
+  - Rango: [mínimo] a [máximo]
+  - Desviación Estándar: [valor]
+  - Total registros: [cantidad]
+
+**Análisis de Columnas Categóricas:**
+
+• **[Nombre columna]** ([X] valores únicos)
+  - [Valor más frecuente]: [cantidad] registros ([porcentaje]%)
+  - [Segundo valor]: [cantidad] registros ([porcentaje]%)
+  - [Tercer valor]: [cantidad] registros ([porcentaje]%)
+
+**Interpretación:**
+[Breve análisis de qué revelan estos números sobre los datos]
+
+RESPUESTA (usa los valores calculados del contexto):
+"""
+        else:
+            return f"""
+Eres un asistente experto en estadística.
 
 {conversation_context}
 
 CONTEXTO:
 {context}
 
-INSTRUCCIONES:
-1. Identifica las columnas relevantes para el análisis solicitado
-2. Describe qué tipo de estadísticas se pueden calcular
-3. Sugiere usar las herramientas de la sección "Análisis"
-4. Sé específico sobre qué columnas usar
-5. NO inventes datos ni resultados
-6. Si el contexto de conversación indica un archivo específico, úsalo
-
 PREGUNTA: {question}
 
-RESPUESTA:
+INSTRUCCIONES CRÍTICAS:
+1. NO inventes valores estadísticos (promedios, medianas, etc.)
+2. NO uses placeholders como [Valor Promedio] o [Valor Mínimo]
+3. Si no tienes los datos reales, di claramente: "No tengo acceso a los valores calculados en este momento"
+4. Sugiere usar la sección "Análisis" de la aplicación para ver estadísticas reales
+5. Identifica qué columnas son relevantes para el análisis solicitado
+6. Explica qué tipo de análisis se puede hacer, pero NO inventes resultados
+
+RESPUESTA (sin inventar valores):
 """
     
     def _build_filtering_prompt(self, context: str, question: str, conversation_context: str) -> str:
         """Prompt para filtrado"""
         return f"""
-Eres un asistente que ayuda con búsquedas y filtros en datos.
+Eres un asistente que ayuda con búsquedas y filtros.
 
 {conversation_context}
 
 CONTEXTO:
 {context}
 
+PREGUNTA: {question}
+
 INSTRUCCIONES:
 - Explica cómo realizar el filtro solicitado
 - Menciona las herramientas disponibles
 - Sugiere columnas relevantes
-
-PREGUNTA: {question}
+- NO inventes datos
 
 RESPUESTA:
 """
@@ -117,23 +168,24 @@ RESPUESTA:
     def _build_general_prompt(self, context: str, question: str, conversation_context: str) -> str:
         """Prompt general"""
         return f"""
-Eres un asistente de análisis de datos útil y preciso.
+Eres un asistente de análisis de datos útil y honesto.
 
 {conversation_context}
 
 CONTEXTO:
 {context}
 
-INSTRUCCIONES:
-1. Mantén continuidad con la conversación anterior
-2. Si hay un archivo activo, úsalo para responder
-3. Responde de forma directa y útil
-4. Proporciona información accionable
-5. Sé conciso pero completo
-
 PREGUNTA: {question}
 
-RESPUESTA:
+INSTRUCCIONES CRÍTICAS:
+1. Mantén continuidad con la conversación anterior
+2. Si hay un archivo activo, úsalo
+3. NO inventes datos, valores o estadísticas
+4. Si no tienes información específica, sé honesto y di que no la tienes
+5. Sugiere usar las herramientas de la aplicación cuando sea apropiado
+6. Sé conciso y directo
+
+RESPUESTA (sin inventar información):
 """
 
 

@@ -47,11 +47,12 @@ class ContextBuilder:
             return "Contexto no disponible."
     
     async def get_available_files(self) -> List[Dict[str, Any]]:
-        """Lee metadatos de archivos disponibles"""
+        """Lee todos los archivos de metadatos disponibles"""
         try:
             available_files = []
             
             if not os.path.exists(self.metadata_cache_path):
+                print(f"⚠️ Carpeta {self.metadata_cache_path} no encontrada")
                 return []
             
             metadata_files = glob.glob(os.path.join(self.metadata_cache_path, "*.json"))
@@ -69,17 +70,17 @@ class ContextBuilder:
                         'total_rows': metadata.get('total_rows', 0),
                         'file_size_mb': metadata.get('original_size_mb', 0),
                         'cached_at': metadata.get('cached_at', ''),
-                        'parquet_path': metadata.get('parquet_path', ''),
+                        'parquet_path': metadata.get('parquet_path', ''),  # ✅ Incluir parquet_path
                         'sample_data': metadata.get('sample_data', [])
                     }
                     
                     available_files.append(file_info)
                     
-                except Exception as e:
-                    print(f"⚠️ Error leyendo {metadata_file}: {e}")
+                except Exception as file_error:
+                    print(f"⚠️ Error leyendo {metadata_file}: {file_error}")
                     continue
             
-            print(f"📁 Encontrados {len(available_files)} archivos")
+            print(f"📁 Encontrados {len(available_files)} archivos en metadata_cache")
             return available_files
             
         except Exception as e:
@@ -89,7 +90,7 @@ class ContextBuilder:
     async def build_file_context(self, file_id: str, available_files: List[Dict]) -> str:
         """Construye contexto detallado de un archivo"""
         try:
-            # Buscar archivo (por file_id o por nombre)
+            # Buscar archivo
             file_info = None
             for f in available_files:
                 if f['file_id'] == file_id or f['original_name'] == file_id or file_id in f['original_name']:
@@ -113,14 +114,20 @@ class ContextBuilder:
                 for i, col in enumerate(file_info['columns'], 1):
                     context_parts.append(f"  {i}. {col}")
             
-            # Muestra de datos si está disponible
+            # ✅ AGREGAR MUESTRA DE DATOS SI ESTÁ DISPONIBLE
             if file_info.get('sample_data'):
-                context_parts.append(f"\n**MUESTRA DE DATOS (primeras filas):**")
-                sample_data = file_info['sample_data'][:3]  # Solo 3 filas
-                for row in sample_data:
-                    context_parts.append(f"  {row}")
+                context_parts.append(f"\n**MUESTRA DE DATOS (primeras 3 filas):**")
+                sample_data = file_info['sample_data'][:3]
+                
+                # Formatear como tabla simple
+                if sample_data and isinstance(sample_data[0], dict):
+                    for idx, row in enumerate(sample_data, 1):
+                        context_parts.append(f"\nFila {idx}:")
+                        for key, value in row.items():
+                            context_parts.append(f"  - {key}: {value}")
             
             context_parts.append(f"\n✅ **Estado:** Archivo cargado y listo para análisis")
+            context_parts.append(f"\n⚠️ **Nota:** Para estadísticas calculadas (promedios, medianas, etc.), usa la sección Análisis de la aplicación")
             
             return "\n".join(context_parts)
             

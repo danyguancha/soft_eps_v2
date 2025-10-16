@@ -1,5 +1,6 @@
 # controllers/aux_ai_controller/response_processor.py
 from typing import Dict, Any
+import re
 
 
 class ResponseProcessor:
@@ -12,6 +13,9 @@ class ResponseProcessor:
         
         # Limpiar respuesta
         processed = self._clean_response(ai_response)
+        
+        # Eliminar placeholders inventados
+        processed = self._remove_placeholders(processed)
         
         # Agregar sugerencias según el tipo
         if query_type == 'structure_analysis':
@@ -31,33 +35,61 @@ class ResponseProcessor:
             "Voy a cargar",
             "Necesito cargar",
             "Para proporcionarte",
-            "Con gusto te ayudo"
+            "Con gusto te ayudo",
+            "te mostraré",
+            "voy a procesar"
         ]
         
         for phrase in remove_phrases:
-            if phrase in response:
-                # Eliminar la oración completa que contiene la frase
+            if phrase.lower() in response.lower():
                 sentences = response.split('.')
-                response = '. '.join([s for s in sentences if phrase not in s])
+                response = '. '.join([s for s in sentences if phrase.lower() not in s.lower()])
         
         return response.strip()
     
+    def _remove_placeholders(self, response: str) -> str:
+        """Elimina placeholders inventados como [Valor Promedio]"""
+        # Detectar y eliminar placeholders entre corchetes
+        patterns = [
+            r'\[Valor.*?\]',
+            r'\[.*?Promedio.*?\]',
+            r'\[.*?Mínimo.*?\]',
+            r'\[.*?Máximo.*?\]',
+            r'\[.*?Mediana.*?\]',
+            r'\[.*?Desviación.*?\]',
+        ]
+        
+        for pattern in patterns:
+            response = re.sub(pattern, '**[dato no disponible]**', response, flags=re.IGNORECASE)
+        
+        # Si hay muchos placeholders, agregar aviso
+        if response.count('[dato no disponible]') > 3:
+            response = response.replace('[dato no disponible]', '')
+            response += "\n\n⚠️ **Nota:** Los valores estadísticos específicos no están disponibles en este momento. Para ver estadísticas calculadas en tiempo real, usa la sección **Análisis** de la aplicación."
+        
+        return response
+    
     def _add_structure_suggestions(self, response: str) -> str:
         """Agrega sugerencias para análisis de estructura"""
-        suggestions = """
+        if "columnas" in response.lower() or "estructura" in response.lower():
+            suggestions = """
 
 💡 **Próximos pasos:**
-• Usa los filtros para buscar datos específicos
-• Genera estadísticas en la sección "Análisis"
-• Exporta los datos en formato CSV o Excel
+• Usa los **filtros de tabla** para buscar datos específicos
+• Ve a **Análisis** para estadísticas automáticas
+• Exporta en **CSV o Excel** cuando lo necesites
 """
-        return response + suggestions
+            return response + suggestions
+        return response
     
     def _add_statistical_suggestions(self, response: str) -> str:
         """Agrega sugerencias para estadísticas"""
         suggestions = """
 
-💡 **Sugerencia:** Ve a la sección "Análisis" para estadísticas automáticas.
+💡 **Sugerencia:** Para ver estadísticas reales calculadas, ve a la sección **Análisis** de la aplicación donde encontrarás:
+• Promedios, medianas y desviaciones estándar
+• Distribuciones y frecuencias
+• Gráficos interactivos
 """
         return response + suggestions
     
@@ -65,7 +97,7 @@ class ResponseProcessor:
         """Agrega sugerencias para filtrado"""
         suggestions = """
 
-💡 **Sugerencia:** Usa la barra de búsqueda y filtros en la tabla de datos.
+💡 **Sugerencia:** Usa la **barra de búsqueda** y los **filtros de columna** en la tabla de datos.
 """
         return response + suggestions
 

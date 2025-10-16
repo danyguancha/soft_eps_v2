@@ -1,4 +1,4 @@
-# controllers/ai_controller.py
+# controllers/ai_controller.py - Agregar ejecución de SQL
 import google.generativeai as genai
 import asyncio
 from typing import Dict, Any
@@ -9,9 +9,10 @@ from controllers.aux_ai_controller.prompt_builder import PromptBuilder
 from controllers.aux_ai_controller.response_processor import ResponseProcessor
 from controllers.aux_ai_controller.data_retriever import DataRetriever
 from controllers.aux_ai_controller.conversation_manager import ConversationManager
+from controllers.aux_ai_controller.sql_executor import SQLExecutor 
 
 genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel('gemini-2.5-flash')
+model = genai.GenerativeModel('gemini-2.0-flash-exp')
 
 
 class AIController:
@@ -24,11 +25,11 @@ class AIController:
         self.response_processor = ResponseProcessor()
         self.data_retriever = DataRetriever()
         self.conversation_manager = ConversationManager()
+        self.sql_executor = SQLExecutor() 
     
     async def ask_ai(self, request) -> Dict[str, Any]:
         """Procesa consulta del usuario"""
         try:
-            # Generar session_id si no existe
             session_id = getattr(request, 'session_id', 'default_session')
             
             print(f"🤖 Pregunta: {request.question}")
@@ -45,7 +46,7 @@ class AIController:
             query_analysis = self.query_analyzer.analyze(request.question, available_files)
             print(f"📊 Análisis: {query_analysis}")
             
-            # 4. Determinar archivo objetivo (considerando contexto conversacional)
+            # 4. Determinar archivo objetivo
             target_file = self.conversation_manager.extract_file_context(
                 session_id, 
                 request.question, 
@@ -54,13 +55,46 @@ class AIController:
             
             print(f"🎯 Archivo objetivo: {target_file}")
             
-            # 5. Construir contexto del archivo
+            # 5. ✅ SI ES CONSULTA ESTADÍSTICA Y HAY ARCHIVO, CALCULAR VALORES REALES
+            calculated_stats = None
+            if query_analysis['type'] == 'statistical' and target_file:
+                print(f"🔢 Calculando estadísticas para {target_file}...")
+                
+                # Obtener información del archivo incluyendo la ruta del parquet
+                file_info = None
+                for f in available_files:
+                    if f['file_id'] == target_file or target_file in f['original_name']:
+                        file_info = f
+                        break
+                
+                if file_info and file_info.get('columns'):
+                    # ✅ Obtener la ruta del parquet
+                    parquet_path = file_info.get('parquet_path')
+                    
+                    if not parquet_path:
+                        print(f"⚠️ No se encontró parquet_path para {target_file}")
+                    else:
+                        print(f"📂 Ruta del parquet: {parquet_path}")
+                        
+                        calculated_stats = await self.sql_executor.calculate_statistics(
+                            file_info['file_id'],
+                            file_info['columns'],
+                            parquet_path  # ✅ Pasar la ruta del parquet
+                        )
+                        print(f"✅ Estadísticas calculadas: {len(calculated_stats)} tipos")
+            
+            # 6. Construir contexto del archivo
             context = await self.context_builder.build_context(target_file)
             
-            # 6. Construir contexto conversacional
+            # 7. ✅ SI HAY ESTADÍSTICAS CALCULADAS, AGREGARLAS AL CONTEXTO
+            if calculated_stats:
+                context += "\n\n=== ESTADÍSTICAS CALCULADAS ===\n"
+                context += self._format_statistics(calculated_stats)
+            
+            # 8. Construir contexto conversacional
             conversation_context = self.conversation_manager.build_conversation_context(session_id)
             
-            # 7. Construir prompt con contexto conversacional
+            # 9. Construir prompt
             prompt = self.prompt_builder.build(
                 context, 
                 request.question, 
@@ -68,17 +102,17 @@ class AIController:
                 conversation_context
             )
             
-            # 8. Generar respuesta
+            # 10. Generar respuesta
             ai_response = await self._generate_response(prompt)
             
-            # 9. Procesar respuesta
+            # 11. Procesar respuesta
             final_response = self.response_processor.process(
                 ai_response,
                 query_analysis,
                 target_file
             )
             
-            # 10. Guardar respuesta del asistente
+            # 12. Guardar respuesta del asistente
             self.conversation_manager.add_message(
                 session_id, 
                 'assistant', 
@@ -91,7 +125,8 @@ class AIController:
                 "response": final_response,
                 "query_type": query_analysis['type'],
                 "target_file": target_file,
-                "session_id": session_id
+                "session_id": session_id,
+                "has_calculated_stats": bool(calculated_stats)
             }
             
         except Exception as e:
@@ -103,6 +138,34 @@ class AIController:
                 "response": f"Lo siento, ocurrió un error: {str(e)}",
                 "error": str(e)
             }
+    
+    def _format_statistics(self, stats: Dict[str, Any]) -> str:
+        """Formatea estadísticas calculadas para el contexto"""
+        formatted = []
+        
+        # Estadísticas numéricas
+        if 'numeric' in stats and stats['numeric']:
+            formatted.append("\n**COLUMNAS NUMÉRICAS:**")
+            for col, values in stats['numeric'].items():
+                formatted.append(f"\n📊 **{col}:**")
+                formatted.append(f"  - Promedio: {values['promedio']}")
+                formatted.append(f"  - Mediana: {values['mediana']}")
+                formatted.append(f"  - Mínimo: {values['minimo']}")
+                formatted.append(f"  - Máximo: {values['maximo']}")
+                formatted.append(f"  - Desviación Estándar: {values['desviacion_std']}")
+                formatted.append(f"  - Conteo: {values['count']}")
+        
+        # Estadísticas categóricas
+        if 'categorical' in stats and stats['categorical']:
+            formatted.append("\n\n**COLUMNAS CATEGÓRICAS:**")
+            for col, values in stats['categorical'].items():
+                formatted.append(f"\n📋 **{col}:**")
+                formatted.append(f"  - Valores únicos: {values['valores_unicos']}")
+                formatted.append(f"  - Top 5 más frecuentes:")
+                for item in values['top_5']:
+                    formatted.append(f"    • {item['value']}: {item['frequency']} ({item['percentage']}%)")
+        
+        return "\n".join(formatted)
     
     async def _generate_response(self, prompt: str) -> str:
         """Genera respuesta con Gemini"""

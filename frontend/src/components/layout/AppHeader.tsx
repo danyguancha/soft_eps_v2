@@ -47,10 +47,10 @@ export const AppHeader: React.FC<Props> = ({
 
         <Title level={isMobile ? 4 : 3} className="app-title">
           {isMobile
-            ? 'Procesador'
+            ? 'EvalNote'
             : isTablet
-            ? 'Procesador Archivos'
-            : 'Evaluación de Nota Técnica'}
+            ? 'EvalNote'
+            : 'EvalNote'}
         </Title>
         
         {currentFile && (

@@ -1,8 +1,9 @@
-// src/components/chatbot/ChatBot.tsx - CON EMOJI PICKER FUNCIONAL
+// src/components/chatbot/ChatBot.tsx
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Input, Button, message, Avatar } from 'antd';
 import { SendOutlined, RobotOutlined, SmileOutlined } from '@ant-design/icons';
 import EmojiPicker, { type EmojiClickData, EmojiStyle, SkinTones } from 'emoji-picker-react';
+import ReactMarkdown from 'react-markdown';
 import { AIService } from '../../services/AIService';
 import './ChatBot.css';
 
@@ -22,14 +23,13 @@ export const ChatBot: React.FC<ChatBotProps> = ({ fileContext }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false); // ✅ Estado para emoji picker
-  const [cursorPosition, setCursorPosition] = useState(0); // ✅ Posición del cursor
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [cursorPosition, setCursorPosition] = useState(0);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<any>(null); // ✅ Ref para el textarea
-  const emojiPickerRef = useRef<HTMLDivElement>(null); // ✅ Ref para el emoji picker
+  const textareaRef = useRef<any>(null);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll al último mensaje
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -38,7 +38,6 @@ export const ChatBot: React.FC<ChatBotProps> = ({ fileContext }) => {
     scrollToBottom();
   }, [messages]);
 
-  // Mensaje de bienvenida inicial
   useEffect(() => {
     const welcomeMessage: ChatMessage = {
       id: 'welcome',
@@ -50,7 +49,6 @@ export const ChatBot: React.FC<ChatBotProps> = ({ fileContext }) => {
     setMessages([welcomeMessage]);
   }, []);
 
-  // ✅ CERRAR EMOJI PICKER AL HACER CLICK FUERA
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target as Node)) {
@@ -66,19 +64,16 @@ export const ChatBot: React.FC<ChatBotProps> = ({ fileContext }) => {
     }
   }, [showEmojiPicker]);
 
-  // ✅ GUARDAR POSICIÓN DEL CURSOR
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInputValue(e.target.value);
     setCursorPosition(e.target.selectionStart || 0);
   }, []);
 
-  // ✅ ACTUALIZAR POSICIÓN DEL CURSOR AL HACER CLICK O MOVER
   const handleInputClick = useCallback((e: React.MouseEvent<HTMLTextAreaElement>) => {
     const target = e.target as HTMLTextAreaElement;
     setCursorPosition(target.selectionStart || 0);
   }, []);
 
-  // ✅ MANEJAR SELECCIÓN DE EMOJI
   const handleEmojiClick = useCallback((emojiData: EmojiClickData) => {
     const emoji = emojiData.emoji;
     const newValue = inputValue.slice(0, cursorPosition) + emoji + inputValue.slice(cursorPosition);
@@ -86,7 +81,6 @@ export const ChatBot: React.FC<ChatBotProps> = ({ fileContext }) => {
     setInputValue(newValue);
     setShowEmojiPicker(false);
     
-    // ✅ ENFOCAR EL TEXTAREA Y POSICIONAR EL CURSOR DESPUÉS DEL EMOJI
     setTimeout(() => {
       if (textareaRef.current) {
         const textarea = textareaRef.current.resizableTextArea?.textArea;
@@ -100,11 +94,9 @@ export const ChatBot: React.FC<ChatBotProps> = ({ fileContext }) => {
     }, 0);
   }, [inputValue, cursorPosition]);
 
-  // ✅ TOGGLE EMOJI PICKER
   const toggleEmojiPicker = useCallback(() => {
     setShowEmojiPicker(!showEmojiPicker);
     
-    // Si se abre el picker, actualizar la posición del cursor
     if (!showEmojiPicker && textareaRef.current) {
       const textarea = textareaRef.current.resizableTextArea?.textArea;
       if (textarea) {
@@ -186,7 +178,6 @@ export const ChatBot: React.FC<ChatBotProps> = ({ fileContext }) => {
     }
   };
 
-  // Agrupar mensajes por fecha
   const groupedMessages = messages.reduce((groups, message) => {
     const dateKey = message.timestamp.toDateString();
     if (!groups[dateKey]) {
@@ -198,7 +189,6 @@ export const ChatBot: React.FC<ChatBotProps> = ({ fileContext }) => {
 
   return (
     <div className="whatsapp-chat-container">
-      {/* Header del Chat */}
       <div className="whatsapp-header">
         <div className="whatsapp-header-info">
           <Avatar 
@@ -208,14 +198,13 @@ export const ChatBot: React.FC<ChatBotProps> = ({ fileContext }) => {
           />
           <div className="whatsapp-header-text">
             <div className="whatsapp-contact-name">Asistente IA</div>
-            <div className="whatsapp-status">
+            <div className={`whatsapp-status ${loading ? 'typing' : 'online'}`}>
               {loading ? 'escribiendo...' : 'en línea'}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Área de Mensajes */}
       <div className="whatsapp-messages-area">
         {Object.entries(groupedMessages).map(([dateKey, dayMessages]) => (
           <div key={dateKey}>
@@ -225,14 +214,14 @@ export const ChatBot: React.FC<ChatBotProps> = ({ fileContext }) => {
               </span>
             </div>
 
-            {dayMessages.map((message) => (
+            {dayMessages.map((msg) => (
               <div
-                key={message.id}
+                key={msg.id}
                 className={`whatsapp-message ${
-                  message.type === 'user' ? 'whatsapp-message-sent' : 'whatsapp-message-received'
+                  msg.type === 'user' ? 'whatsapp-message-sent' : 'whatsapp-message-received'
                 }`}
               >
-                {message.type === 'ai' && (
+                {msg.type === 'ai' && (
                   <Avatar 
                     size={32} 
                     icon={<RobotOutlined />} 
@@ -241,20 +230,81 @@ export const ChatBot: React.FC<ChatBotProps> = ({ fileContext }) => {
                 )}
                 
                 <div className={`whatsapp-bubble ${
-                  message.type === 'user' ? 'whatsapp-bubble-sent' : 'whatsapp-bubble-received'
+                  msg.type === 'user' ? 'whatsapp-bubble-sent' : 'whatsapp-bubble-received'
                 }`}>
                   <div className="whatsapp-message-content">
-                    {message.content}
+                    {msg.type === 'ai' ? (
+                      <ReactMarkdown
+                        components={{
+                          p: ({node, ...props}) => <p style={{margin: '0.2em 0', lineHeight: '1.4'}} {...props} />,
+                          h1: ({node, ...props}) => <h3 style={{margin: '0.3em 0 0.2em', fontSize: '1.1em', fontWeight: 600, color: 'inherit'}} {...props} />,
+                          h2: ({node, ...props}) => <h4 style={{margin: '0.3em 0 0.2em', fontSize: '1.05em', fontWeight: 600, color: 'inherit'}} {...props} />,
+                          h3: ({node, ...props}) => <h5 style={{margin: '0.3em 0 0.2em', fontSize: '1em', fontWeight: 600, color: 'inherit'}} {...props} />,
+                          ul: ({node, ...props}) => <ul style={{margin: '0.2em 0', paddingLeft: '1.2em'}} {...props} />,
+                          ol: ({node, ...props}) => <ol style={{margin: '0.2em 0', paddingLeft: '1.2em'}} {...props} />,
+                          li: ({node, ...props}) => <li style={{marginBottom: '0.1em', lineHeight: '1.4'}} {...props} />,
+                          code: ({node, inline, ...props}: any) => 
+                            inline ? (
+                              <code style={{
+                                backgroundColor: 'var(--whatsapp-overlay-bg)',
+                                padding: '2px 5px',
+                                borderRadius: '3px',
+                                fontSize: '0.9em'
+                              }} {...props} />
+                            ) : (
+                              <code style={{
+                                display: 'block',
+                                backgroundColor: 'var(--whatsapp-overlay-bg)',
+                                padding: '8px',
+                                borderRadius: '6px',
+                                overflowX: 'auto',
+                                fontSize: '0.85em',
+                                margin: '0.3em 0'
+                              }} {...props} />
+                            ),
+                          pre: ({node, ...props}) => <pre style={{margin: 0}} {...props} />,
+                          blockquote: ({node, ...props}) => (
+                            <blockquote style={{
+                              borderLeft: '3px solid var(--whatsapp-accent-color)',
+                              paddingLeft: '0.8em',
+                              margin: '0.3em 0',
+                              fontStyle: 'italic',
+                              opacity: 0.85
+                            }} {...props} />
+                          ),
+                          a: ({node, ...props}) => (
+                            <a style={{
+                              color: 'var(--whatsapp-accent-color)',
+                              textDecoration: 'underline'
+                            }} target="_blank" rel="noopener noreferrer" {...props} />
+                          ),
+                          strong: ({node, ...props}) => <strong style={{fontWeight: 600}} {...props} />,
+                          em: ({node, ...props}) => <em style={{fontStyle: 'italic'}} {...props} />,
+                          hr: ({node, ...props}) => (
+                            <hr style={{
+                              margin: '0.5em 0',
+                              border: 'none',
+                              borderTop: '1px solid var(--whatsapp-border-color)',
+                              opacity: 0.3
+                            }} {...props} />
+                          ),
+                        }}
+                      >
+                        {msg.content}
+                      </ReactMarkdown>
+                    ) : (
+                      msg.content
+                    )}
                   </div>
                   <div className="whatsapp-message-time">
-                    {formatTime(message.timestamp)}
-                    {message.type === 'user' && (
+                    {formatTime(msg.timestamp)}
+                    {msg.type === 'user' && (
                       <span className={`whatsapp-status-icon ${
-                        message.status === 'sending' ? 'sending' : 
-                        message.status === 'error' ? 'error' : 'sent'
+                        msg.status === 'sending' ? 'sending' : 
+                        msg.status === 'error' ? 'error' : 'sent'
                       }`}>
-                        {message.status === 'sending' ? '🕒' : 
-                         message.status === 'error' ? '❗' : '✓'}
+                        {msg.status === 'sending' ? '🕒' : 
+                         msg.status === 'error' ? '❗' : '✓'}
                       </span>
                     )}
                   </div>
@@ -284,9 +334,7 @@ export const ChatBot: React.FC<ChatBotProps> = ({ fileContext }) => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Área de Input */}
       <div className="whatsapp-input-area">
-        {/* ✅ EMOJI PICKER */}
         {showEmojiPicker && (
           <div className="whatsapp-emoji-picker-container" ref={emojiPickerRef}>
             <EmojiPicker
