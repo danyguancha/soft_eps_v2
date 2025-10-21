@@ -1,7 +1,7 @@
-from typing import Any, Dict, List, Optional
-
+# services/technical_note_services/report_service_aux/generate_report_service.py - CORRECCIÓN COMPLETA
+from typing import Dict, Any, List, Optional
 from services.duckdb_service.duckdb_service import duckdb_service
-from services.keyword_age_report import ColumnKeywordReportService
+from services.keyword_age_report import ColumnKeywordReportService, KeywordRule
 from services.technical_note_services.report_service_aux.analysis_breakdown_temporal import AnalysisBreakdownTemporal
 from services.technical_note_services.report_service_aux.analysis_numerador_denominador import AnalysisNumeratorDenominator
 from services.technical_note_services.report_service_aux.corrected_months import CorrectedMonths
@@ -15,10 +15,10 @@ from utils.keywords_NT import KeywordRule
 from .analysis_temporal import AnalysisTemporal
 from .analysis_vaccination import AnalysisVaccination
 
-
 class GenerateReport:
     def __init__(self):
         self.exporter = ReportExporter()
+    
     def generate_keyword_age_report(
         self,
         age_extractor,
@@ -28,12 +28,18 @@ class GenerateReport:
         min_count: int = 0,
         include_temporal: bool = True,
         geographic_filters: Optional[Dict[str, Optional[str]]] = None,
-        corte_fecha: str = "2025-07-31",
+        corte_fecha: str = None,
     ) -> Dict[str, Any]:
         """
-        🆕 Genera reporte CON NUMERADOR Y DENOMINADOR POR RANGO DE EDAD ESPECÍFICO + SEMAFORIZACIÓN
+        🆕 Genera reporte CON NUMERADOR Y DENOMINADOR CON FECHA DINÁMICA
         """
-        try:            
+        try:
+            if not corte_fecha:
+                raise ValueError("El parámetro 'corte_fecha' es obligatorio y debe venir desde el frontend")
+            
+            print(f"\n📊 ========== GENERANDO REPORTE CON FECHA DINÁMICA ==========")
+            print(f"🗓️ Fecha de corte RECIBIDA: {corte_fecha}")
+            
             geographic_filters = geographic_filters or {}
             departamento = geographic_filters.get('departamento')
             municipio = geographic_filters.get('municipio') 
@@ -48,23 +54,23 @@ class GenerateReport:
             if not matches:
                 return ReportEmpty().build_empty_report(filename, keywords, geographic_filters)
             
-            # PASO 2: GENERAR REPORTES CON NUMERADOR/DENOMINADOR POR RANGO ESPECÍFICO
+            # PASO 2: GENERAR REPORTES CON NUMERADOR/DENOMINADOR CON FECHA DINÁMICA
             items_with_numerator_denominator = AnalysisNumeratorDenominator().execute_numerator_denominator_analysis(
                 data_source, matches, departamento, municipio, ips, min_count, corte_fecha, age_extractor
             )
             
-            # PASO 3: ANÁLISIS TEMPORAL (OPCIONAL)
+            # PASO 3: ANÁLISIS TEMPORAL (OPCIONAL) CON FECHA DINÁMICA
             temporal_breakdown_data = {}
             combined_temporal_data = {}
 
             if include_temporal and items_with_numerator_denominator:
                 
-                # NUEVO: Desglose temporal con N/D por mes/año
+                # Desglose temporal con N/D por mes/año con fecha dinámica
                 temporal_breakdown_data = AnalysisBreakdownTemporal().execute_temporal_breakdown_analysis(
                     data_source, matches, departamento, municipio, ips, corte_fecha, age_extractor
                 )
 
-                # EXISTENTE: Análisis temporal tradicional
+                # Análisis temporal tradicional
                 temporal_data = AnalysisTemporal().execute_temporal_analysis(
                     service, data_source, matches, departamento, municipio, ips
                 )
@@ -90,7 +96,6 @@ class GenerateReport:
                 age_range = breakdown_data.get('age_range')
                 temporal_breakdown = breakdown_data.get('temporal_breakdown', {})
                 
-                # Crear la estructura que espera el frontend tradicional
                 combined_temporal_data[key] = {
                     "column": column,
                     "keyword": keyword,
@@ -115,15 +120,16 @@ class GenerateReport:
                             "cobertura_porcentaje": month_data.get("cobertura_porcentaje", 0.0)
                         }
 
-            # ✅ DEFINIR VARIABLES NECESARIAS
+            # ✅ DEFINIR VARIABLES NECESARIAS CON FECHA DINÁMICA
             try:
                 document_field = IdentityDocument().get_document_field(data_source)
                 edad_meses_field = CorrectedMonths().get_age_months_field_corrected(data_source, corte_fecha)
                 edad_años_field = CorrectedYear().get_age_years_field_corrected(data_source, corte_fecha)
             except Exception as e:
+                print(f"⚠️ Usando campos por defecto: {e}")
                 document_field = '"Nro Identificación"'
-                edad_meses_field = f"date_diff('month', strptime(\"Fecha Nacimiento\", '%d/%m/%Y'), DATE '{corte_fecha}')"
-                edad_años_field = 'TRY_CAST("Edad" AS INTEGER)'
+                edad_meses_field = f"date_sub('month', strptime(\"Fecha Nacimiento\", '%d/%m/%Y'), DATE '{corte_fecha}')"
+                edad_años_field = f"date_sub('year', strptime(\"Fecha Nacimiento\", '%d/%m/%Y'), DATE '{corte_fecha}')"
 
             # ✅ CONSTRUIR FILTROS GEOGRÁFICOS
             geo_conditions = []
@@ -135,8 +141,7 @@ class GenerateReport:
                 geo_conditions.append(f'"Nombre IPS" = \'{ips}\'')
             geo_filter = " AND ".join(geo_conditions) if geo_conditions else "1=1"
 
-            # 🔧 CORRECCIÓN DEFINITIVA: LÓGICA DE EXCEL + SEMAFORIZACIÓN
-            
+            # 🔧 CORRECCIÓN DEFINITIVA: LÓGICA DE EXCEL + SEMAFORIZACIÓN CON FECHA DINÁMICA
             for key, data in combined_temporal_data.items():
                 if 'years' in data:
                     column_name = data.get('column', '')
@@ -151,7 +156,7 @@ class GenerateReport:
                                 mes_num = month_data.get('month')
                                 if mes_num:
                                     
-                                    # USAR LÓGICA DE EXCEL: registros del mes + vacíos
+                                    # ✅ USAR LÓGICA DE EXCEL CON FECHA DINÁMICA
                                     denominador_mensual = self._calculate_denominator_excel_logic(
                                         data_source, age_range_obj, document_field, geo_filter,
                                         int(year_str), mes_num, edad_meses_field, corte_fecha, column_name
@@ -185,7 +190,7 @@ class GenerateReport:
                                     # Sumar numerador para total anual
                                     total_numerador_anual += numerador_mensual
                             
-                     
+                            # ✅ CALCULAR DENOMINADOR ANUAL CON FECHA DINÁMICA
                             denominador_anual_correcto = self._calculate_denominador_anual_correcto(
                                 data_source, age_range_obj, document_field, geo_filter,
                                 int(year_str), edad_meses_field, corte_fecha, column_name
@@ -210,7 +215,7 @@ class GenerateReport:
                             year_data['color_name'] = semaforizacion_anual['color_name']
                             year_data['descripcion'] = semaforizacion_anual['descripcion']
                             
-       
+            # SEMAFORIZACIÓN DE ITEMS PRINCIPALES
             for item in items_with_numerator_denominator:
                 numerador = item.get('numerador', 0)
                 denominador = item.get('denominador', 0)
@@ -229,6 +234,8 @@ class GenerateReport:
                 item['color_name'] = semaforizacion['color_name']
                 item['descripcion'] = semaforizacion['descripcion']
 
+            print(f"✅ Reporte generado exitosamente con fecha: {corte_fecha}")
+
             return AnalysisNumeratorDenominator().build_success_report_with_numerator_denominator(
                 filename, keywords, geographic_filters, 
                 items_with_numerator_denominator, totals_by_keyword, 
@@ -237,7 +244,7 @@ class GenerateReport:
             )
             
         except Exception as e:
-            print(f"Error generando reporte numerador/denominador: {e}")
+            print(f"❌ Error generando reporte: {e}")
             import traceback
             traceback.print_exc()
             raise Exception(f"Error en generación de reporte: {e}")
@@ -259,30 +266,18 @@ class GenerateReport:
             return None
         return [KeywordRule(name=k, synonyms=(k.lower(),)) for k in keywords]
     
-    
-    
     def _parse_date_flexible(self, date_field: str) -> str:
         """
-        🔧 FUNCIÓN AUXILIAR: Parser de fechas flexible que maneja múltiples formatos
-        
-        Maneja:
-        - DD/MM/YYYY (formato original)  
-        - YYYY-MM-DD (formato ISO)
-        - DD-MM-YYYY 
-        - Otros formatos comunes
+        🔧 Parser de fechas flexible que maneja múltiples formatos
         """
         return f"""
         CASE
-            -- Formato DD/MM/YYYY
             WHEN {date_field} ~ '^[0-9]{{1,2}}/[0-9]{{1,2}}/[0-9]{{4}}$' 
                 THEN TRY_CAST(strptime({date_field}, '%d/%m/%Y') AS DATE)
-            -- Formato YYYY-MM-DD (ISO)
             WHEN {date_field} ~ '^[0-9]{{4}}-[0-9]{{1,2}}-[0-9]{{1,2}}$'
                 THEN TRY_CAST(strptime({date_field}, '%Y-%m-%d') AS DATE)
-            -- Formato DD-MM-YYYY
             WHEN {date_field} ~ '^[0-9]{{1,2}}-[0-9]{{1,2}}-[0-9]{{4}}$'
                 THEN TRY_CAST(strptime({date_field}, '%d-%m-%Y') AS DATE)
-            -- Formato MM/DD/YYYY (estadounidense)
             WHEN {date_field} ~ '^[0-9]{{1,2}}/[0-9]{{1,2}}/[0-9]{{4}}$' AND 
                  CAST(split_part({date_field}, '/', 1) AS INTEGER) > 12
                 THEN TRY_CAST(strptime({date_field}, '%m/%d/%Y') AS DATE)
@@ -295,69 +290,151 @@ class GenerateReport:
         año: int, mes: int, edad_meses_field: str, corte_fecha: str, column_name: str
     ) -> int:
         """
-        MÉTODO MENSUAL: Lógica exacta como Excel CON MANEJO FLEXIBLE DE FECHAS
+        ✅ DENOMINADOR MENSUAL CORRECTO (OPCIÓN A):
         
-        DENOMINADOR MENSUAL = Registros del mes + Registros vacíos
-        Filtrados por edad según age_range_obj
+        Cuenta personas que:
+        1. Tienen la edad correcta al final del mes de corte
+        2. Tienen consulta en ese mes específico, O
+        3. NO tienen consulta (vacío)
+        
+        EXCLUYE:
+        - Personas con consulta en otros meses
         """
         try:
-            # Obtener parámetros del age_range_obj
             min_age = getattr(age_range_obj, 'min_age', 1)
             max_age = getattr(age_range_obj, 'max_age', min_age)
             unit = getattr(age_range_obj, 'unit', 'months')
             
-            # Construir filtro de edad
+            print(f"\n   🔍 Calculando DENOMINADOR MENSUAL {año}/{mes:02d}")
+            print(f"      Rango edad: {min_age}-{max_age} {unit}")
+            print(f"      Fecha corte: {corte_fecha}")
+            
+            # ✅ FILTRO DE EDAD usando la fecha de corte global (no el fin del mes)
             if unit.lower() == 'months':
-                edad_filter = f"{edad_meses_field} >= {min_age} AND {edad_meses_field} <= {max_age}"
+                edad_filter = f"""(
+                    (date_part('year', DATE '{corte_fecha}') - date_part('year', strptime("Fecha Nacimiento", '%d/%m/%Y'))) * 12
+                    + (date_part('month', DATE '{corte_fecha}') - date_part('month', strptime("Fecha Nacimiento", '%d/%m/%Y')))
+                    + CASE 
+                        WHEN date_part('day', strptime("Fecha Nacimiento", '%d/%m/%Y')) <= date_part('day', DATE '{corte_fecha}')
+                        THEN 0
+                        ELSE -1
+                    END
+                ) BETWEEN {min_age} AND {max_age}"""
             else:
-                # Convertir años a meses
+                # Para años, convertir a meses
                 min_months = min_age * 12
-                max_months = max_age * 12 + 11
-                edad_filter = f"{edad_meses_field} >= {min_months} AND {edad_meses_field} <= {max_months}"
+                max_months = (max_age + 1) * 12 - 1
+                edad_filter = f"""(
+                    (date_part('year', DATE '{corte_fecha}') - date_part('year', strptime("Fecha Nacimiento", '%d/%m/%Y'))) * 12
+                    + (date_part('month', DATE '{corte_fecha}') - date_part('month', strptime("Fecha Nacimiento", '%d/%m/%Y')))
+                    + CASE 
+                        WHEN date_part('day', strptime("Fecha Nacimiento", '%d/%m/%Y')) <= date_part('day', DATE '{corte_fecha}')
+                        THEN 0
+                        ELSE -1
+                    END
+                ) BETWEEN {min_months} AND {max_months}"""
             
-            # Nombre de columna seguro para SQL
+            # ✅ PARSER DE FECHA FLEXIBLE
             column_safe = f'"{column_name}"' if not column_name.startswith('"') else column_name
-            
-            # PARSER FLEXIBLE DE FECHAS
             date_parser = self._parse_date_flexible(column_safe)
             
-            # SQL ESTILO EXCEL CON PARSER FLEXIBLE: Registros del mes + Registros vacíos
+            print(f"      📅 Filtro: Consultas en {año}/{mes:02d} O vacías")
+            
+            # ✅ DENOMINADOR MENSUAL: Edad correcta + (Consulta en ese mes O vacío)
             denominador_sql = f"""
-            SELECT COUNT(DISTINCT {document_field}) as denominador_mensual
+            SELECT COUNT({document_field}) as denominador_mensual
             FROM {data_source}
             WHERE 
-                "Fecha Nacimiento" IS NOT NULL 
+                ({edad_filter})
+                AND "Fecha Nacimiento" IS NOT NULL 
+                AND TRIM("Fecha Nacimiento") != ''
                 AND TRY_CAST(strptime("Fecha Nacimiento", '%d/%m/%Y') AS DATE) IS NOT NULL
                 AND strptime("Fecha Nacimiento", '%d/%m/%Y') <= DATE '{corte_fecha}'
                 AND {document_field} IS NOT NULL
-                AND {document_field} != ''
+                AND TRIM({document_field}) != ''
                 AND {geo_filter}
-                AND ({edad_filter})
                 AND (
-                    -- CASO 1: Registros con fecha en el mes específico (PARSER FLEXIBLE)
+                    -- OPCIÓN 1: Consulta en el mes/año específico
                     (
                         {column_safe} IS NOT NULL 
-                        AND {column_safe} != '' 
-                        AND {column_safe} != 'No'
+                        AND TRIM(CAST({column_safe} AS VARCHAR)) != ''
+                        AND TRIM(CAST({column_safe} AS VARCHAR)) NOT IN ('NULL', 'null', 'None', 'none', 'NaN', 'nan', 'N/A', 'n/a', '-', 'No')
                         AND ({date_parser}) IS NOT NULL
                         AND date_part('year', {date_parser}) = {año}
                         AND date_part('month', {date_parser}) = {mes}
                     )
                     OR
-                    -- CASO 2: Registros vacíos (población elegible sin consulta)
+                    -- OPCIÓN 2: Sin consulta (vacío)
                     (
                         {column_safe} IS NULL 
-                        OR {column_safe} = '' 
-                        OR {column_safe} = 'No'
+                        OR TRIM(CAST({column_safe} AS VARCHAR)) = ''
+                        OR TRIM(CAST({column_safe} AS VARCHAR)) IN ('NULL', 'null', 'None', 'none', 'NaN', 'nan', 'N/A', 'n/a', '-', 'No')
                     )
                 )
             """
             
+            print(f"      🔍 SQL (primeros 300 chars):")
+            print(f"         {denominador_sql[:300]}...")
+            
             result = duckdb_service.conn.execute(denominador_sql).fetchone()
             denominador_mensual = int(result[0]) if result and result[0] else 0
             
-            # Fallback si es 0
+            print(f"      ✅ DENOMINADOR {año}/{mes:02d}: {denominador_mensual:,}")
+            
+            # Debug adicional
+            if denominador_mensual > 0:
+                # Contar cuántos tienen consulta vs cuántos están vacíos
+                debug_sql = f"""
+                SELECT 
+                    COUNT(CASE 
+                        WHEN {column_safe} IS NOT NULL 
+                            AND TRIM(CAST({column_safe} AS VARCHAR)) != ''
+                            AND TRIM(CAST({column_safe} AS VARCHAR)) NOT IN ('NULL', 'null', 'None', 'none', 'NaN', 'nan', 'N/A', 'n/a', '-', 'No')
+                            AND ({date_parser}) IS NOT NULL
+                            AND date_part('year', {date_parser}) = {año}
+                            AND date_part('month', {date_parser}) = {mes}
+                        THEN 1 END) as con_consulta,
+                    COUNT(CASE 
+                        WHEN {column_safe} IS NULL 
+                            OR TRIM(CAST({column_safe} AS VARCHAR)) = ''
+                            OR TRIM(CAST({column_safe} AS VARCHAR)) IN ('NULL', 'null', 'None', 'none', 'NaN', 'nan', 'N/A', 'n/a', '-', 'No')
+                        THEN 1 END) as sin_consulta
+                FROM {data_source}
+                WHERE 
+                    ({edad_filter})
+                    AND "Fecha Nacimiento" IS NOT NULL 
+                    AND {document_field} IS NOT NULL
+                    AND {geo_filter}
+                    AND (
+                        (
+                            {column_safe} IS NOT NULL 
+                            AND TRIM(CAST({column_safe} AS VARCHAR)) != ''
+                            AND TRIM(CAST({column_safe} AS VARCHAR)) NOT IN ('NULL', 'null', 'None', 'none', 'NaN', 'nan', 'N/A', 'n/a', '-', 'No')
+                            AND ({date_parser}) IS NOT NULL
+                            AND date_part('year', {date_parser}) = {año}
+                            AND date_part('month', {date_parser}) = {mes}
+                        )
+                        OR
+                        (
+                            {column_safe} IS NULL 
+                            OR TRIM(CAST({column_safe} AS VARCHAR)) = ''
+                            OR TRIM(CAST({column_safe} AS VARCHAR)) IN ('NULL', 'null', 'None', 'none', 'NaN', 'nan', 'N/A', 'n/a', '-', 'No')
+                        )
+                    )
+                """
+                
+                try:
+                    debug_result = duckdb_service.conn.execute(debug_sql).fetchone()
+                    con_consulta = debug_result[0] if debug_result else 0
+                    sin_consulta = debug_result[1] if debug_result else 0
+                    print(f"         📊 Con consulta en {mes}/{año}: {con_consulta:,}")
+                    print(f"         📊 Sin consulta: {sin_consulta:,}")
+                    print(f"         📊 TOTAL: {con_consulta + sin_consulta:,}")
+                except Exception as debug_error:
+                    print(f"         ⚠️ Error en debug: {debug_error}")
+            
             if denominador_mensual == 0:
+                print(f"      ⚠️ Denominador = 0, usando fallback")
                 denominador_mensual = self._calculate_fallback_denominator(
                     data_source, age_range_obj, document_field, geo_filter, 
                     edad_meses_field, corte_fecha
@@ -366,79 +443,102 @@ class GenerateReport:
             return denominador_mensual
             
         except Exception as e:
-            print(f"         Error calculando denominador mensual: {e}")
+            print(f"         ❌ Error calculando denominador mensual: {e}")
             import traceback
             traceback.print_exc()
             return 0
+
 
     def _calculate_denominador_anual_correcto(
         self, data_source: str, age_range_obj, document_field: str, geo_filter: str,
         año: int, edad_meses_field: str, corte_fecha: str, column_name: str
     ) -> int:
         """
-        MÉTODO ANUAL CORRECTO: Denominador anual = Registros de TODO el año + Registros vacíos (UNA SOLA VEZ)
+        ✅ CORREGIDO: Calcular denominador ANUAL específico
         
-        LÓGICA CORRECTA:
-        - Registros con fecha en cualquier mes del año
-        - + Registros vacíos (sin duplicar)
-        - Filtrado por edad específica
+        El denominador anual debe contar TODAS las personas que en ALGÚN MES
+        del año especificado tuvieron la edad del rango.
+        
+        IMPORTANTE: Es la UNIÓN de todos los meses, no la suma.
         """
         try:
-            # Obtener parámetros del age_range_obj
             min_age = getattr(age_range_obj, 'min_age', 1)
             max_age = getattr(age_range_obj, 'max_age', min_age)
             unit = getattr(age_range_obj, 'unit', 'months')
             
-            # Construir filtro de edad
+            print(f"\n   🔍 Calculando DENOMINADOR ANUAL {año}")
+            print(f"      Rango edad: {min_age}-{max_age} {unit}")
+            
+            # ✅ USAR FECHA DE FIN DE AÑO COMO REFERENCIA
+            ultimo_dia_año = f"{año}-12-31"
+            
+            print(f"      📅 Fecha referencia año: {ultimo_dia_año}")
+            
+            # ✅ CONSTRUIR FILTRO DE EDAD PARA EL AÑO
             if unit.lower() == 'months':
-                edad_filter = f"{edad_meses_field} >= {min_age} AND {edad_meses_field} <= {max_age}"
+                edad_filter_año = f"""(
+                    (date_part('year', DATE '{ultimo_dia_año}') - date_part('year', strptime("Fecha Nacimiento", '%d/%m/%Y'))) * 12
+                    + (date_part('month', DATE '{ultimo_dia_año}') - date_part('month', strptime("Fecha Nacimiento", '%d/%m/%Y')))
+                    + CASE 
+                        WHEN date_part('day', strptime("Fecha Nacimiento", '%d/%m/%Y')) <= date_part('day', DATE '{ultimo_dia_año}')
+                        THEN 0
+                        ELSE -1
+                    END
+                ) <= {max_age}
+                AND 
+                (
+                    (date_part('year', DATE '{año}-01-01') - date_part('year', strptime("Fecha Nacimiento", '%d/%m/%Y'))) * 12
+                    + (date_part('month', DATE '{año}-01-01') - date_part('month', strptime("Fecha Nacimiento", '%d/%m/%Y')))
+                    + CASE 
+                        WHEN date_part('day', strptime("Fecha Nacimiento", '%d/%m/%Y')) <= date_part('day', DATE '{año}-01-01')
+                        THEN 0
+                        ELSE -1
+                    END
+                ) >= {min_age}"""
             else:
-                # Convertir años a meses
+                # Para años
                 min_months = min_age * 12
-                max_months = max_age * 12 + 11
-                edad_filter = f"{edad_meses_field} >= {min_months} AND {edad_meses_field} <= {max_months}"
+                max_months = (max_age + 1) * 12 - 1
+                edad_filter_año = f"""(
+                    (date_part('year', DATE '{ultimo_dia_año}') - date_part('year', strptime("Fecha Nacimiento", '%d/%m/%Y'))) * 12
+                    + (date_part('month', DATE '{ultimo_dia_año}') - date_part('month', strptime("Fecha Nacimiento", '%d/%m/%Y')))
+                    + CASE 
+                        WHEN date_part('day', strptime("Fecha Nacimiento", '%d/%m/%Y')) <= date_part('day', DATE '{ultimo_dia_año}')
+                        THEN 0
+                        ELSE -1
+                    END
+                ) <= {max_months}
+                AND 
+                (
+                    (date_part('year', DATE '{año}-01-01') - date_part('year', strptime("Fecha Nacimiento", '%d/%m/%Y'))) * 12
+                    + (date_part('month', DATE '{año}-01-01') - date_part('month', strptime("Fecha Nacimiento", '%d/%m/%Y')))
+                    + CASE 
+                        WHEN date_part('day', strptime("Fecha Nacimiento", '%d/%m/%Y')) <= date_part('day', DATE '{año}-01-01')
+                        THEN 0
+                        ELSE -1
+                    END
+                ) >= {min_months}"""
             
-            # Nombre de columna seguro para SQL
-            column_safe = f'"{column_name}"' if not column_name.startswith('"') else column_name
-            
-            # PARSER FLEXIBLE DE FECHAS
-            date_parser = self._parse_date_flexible(column_safe)
-            
-            # SQL CORRECTO PARA DENOMINADOR ANUAL
+            # ✅ DENOMINADOR ANUAL: Personas que tuvieron esa edad en algún momento del año
             denominador_anual_sql = f"""
-            SELECT COUNT(DISTINCT {document_field}) as denominador_anual
+            SELECT COUNT({document_field}) as denominador_anual
             FROM {data_source}
             WHERE 
-                "Fecha Nacimiento" IS NOT NULL 
+                {edad_filter_año}
+                AND "Fecha Nacimiento" IS NOT NULL 
+                AND TRIM("Fecha Nacimiento") != ''
                 AND TRY_CAST(strptime("Fecha Nacimiento", '%d/%m/%Y') AS DATE) IS NOT NULL
-                AND strptime("Fecha Nacimiento", '%d/%m/%Y') <= DATE '{corte_fecha}'
+                AND strptime("Fecha Nacimiento", '%d/%m/%Y') <= DATE '{ultimo_dia_año}'
                 AND {document_field} IS NOT NULL
-                AND {document_field} != ''
+                AND TRIM({document_field}) != ''
                 AND {geo_filter}
-                AND ({edad_filter})
-                AND (
-                    -- CASO 1: Registros con fecha en CUALQUIER MES del año específico
-                    (
-                        {column_safe} IS NOT NULL 
-                        AND {column_safe} != '' 
-                        AND {column_safe} != 'No'
-                        AND ({date_parser}) IS NOT NULL
-                        AND date_part('year', {date_parser}) = {año}
-                    )
-                    OR
-                    -- CASO 2: Registros vacíos (población elegible sin consulta - UNA SOLA VEZ)
-                    (
-                        {column_safe} IS NULL 
-                        OR {column_safe} = '' 
-                        OR {column_safe} = 'No'
-                    )
-                )
             """
             
             result = duckdb_service.conn.execute(denominador_anual_sql).fetchone()
             denominador_anual = int(result[0]) if result and result[0] else 0
             
-            # Fallback si es 0
+            print(f"      ✅ DENOMINADOR ANUAL {año}: {denominador_anual:,}")
+            
             if denominador_anual == 0:
                 denominador_anual = self._calculate_fallback_denominator(
                     data_source, age_range_obj, document_field, geo_filter, 
@@ -448,26 +548,25 @@ class GenerateReport:
             return denominador_anual
             
         except Exception as e:
-            print(f"         Error calculando denominador anual: {e}")
+            print(f"         ❌ Error calculando denominador anual: {e}")
             import traceback
             traceback.print_exc()
             return 0
+
 
     def _calculate_fallback_denominator(
         self, data_source: str, age_range_obj, document_field: str, geo_filter: str,
         edad_meses_field: str, corte_fecha: str
     ) -> int:
-        """🔄 Fallback: Calcular denominador usando población total de esa edad"""
+        """🔄 Fallback: Población total del rango de edad"""
         try:
             min_age = getattr(age_range_obj, 'min_age', 1)
             max_age = getattr(age_range_obj, 'max_age', min_age)
             unit = getattr(age_range_obj, 'unit', 'months')
             
-            # Usar el filtro de edad general
             if unit.lower() == 'months':
                 edad_filter = f"{edad_meses_field} >= {min_age} AND {edad_meses_field} <= {max_age}"
             else:
-                # Convertir años a meses
                 min_months = min_age * 12
                 max_months = max_age * 12 + 11
                 edad_filter = f"{edad_meses_field} >= {min_months} AND {edad_meses_field} <= {max_months}"
@@ -488,15 +587,15 @@ class GenerateReport:
             result = duckdb_service.conn.execute(fallback_sql).fetchone()
             total_poblacion = int(result[0]) if result and result[0] else 0
             
-            # Estimar denominador mensual (dividir por 12)
-            denominador_estimado = max(1, total_poblacion // 12) if total_poblacion > 0 else 1            
-            return denominador_estimado
+            print(f"         🔄 Fallback: {total_poblacion:,} personas en el rango")
+            
+            return total_poblacion if total_poblacion > 0 else 1
             
         except Exception as e:
-            print(f"         Error en fallback: {e}")
+            print(f"         ❌ Error en fallback: {e}")
             return 1
     
-    # Metodos de exportacion
+    # Métodos de exportación
     def export_report_csv(self, report_data: Dict[str, Any], output_path: str, include_temporal: bool = True) -> str:
         """📄 EXPORTAR REPORTE A CSV"""
         try:
@@ -526,19 +625,21 @@ class GenerateReport:
         age_extractor, data_source: str, filename: str,
         keywords: Optional[List[str]] = None, min_count: int = 0,
         include_temporal: bool = True, geographic_filters: Optional[Dict[str, Optional[str]]] = None,
-        corte_fecha: str = "2025-07-31", export_csv: bool = True,
+        corte_fecha: str = None,
+        export_csv: bool = True,
         export_pdf: bool = True, base_export_path: str = "exports/reporte"
     ) -> Dict[str, Any]:
-        """🚀 MÉTODO COMPLETO: Generar reporte y exportar"""
+        """🚀 MÉTODO COMPLETO: Generar reporte y exportar CON FECHA DINÁMICA"""
         try:
-            # 1. Generar el reporte
-            print("🔄 Generando reporte...")
+            if not corte_fecha:
+                raise ValueError("El parámetro 'corte_fecha' es obligatorio")
+            
+            print(f"🔄 Generando reporte con fecha: {corte_fecha}")
             report_data = self.generate_keyword_age_report(
                 age_extractor, data_source, filename, keywords, min_count,
                 include_temporal, geographic_filters, corte_fecha
             )
             
-            # 2. Exportar en los formatos especificados
             exported_files = {}
             if export_csv or export_pdf:
                 print("📤 Exportando archivos...")
@@ -546,17 +647,15 @@ class GenerateReport:
                     report_data, base_export_path, export_csv, export_pdf, include_temporal
                 )
             
-            # 3. Retornar reporte + archivos exportados
             result = {
                 "report": report_data,
                 "exported_files": exported_files,
                 "success": True,
-                "message": "Reporte generado y exportado exitosamente"
+                "message": "Reporte generado y exportado exitosamente",
+                "corte_fecha_usado": corte_fecha
             }
             
-            print(f"✅ Proceso completado:")
-            print(f"   📊 Reporte: {report_data.get('success', False)}")
-            print(f"   📄 Archivos: {list(exported_files.keys())}")
+            print(f"✅ Proceso completado con fecha: {corte_fecha}")
             
             return result
             

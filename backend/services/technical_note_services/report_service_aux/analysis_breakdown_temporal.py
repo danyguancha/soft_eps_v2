@@ -1,24 +1,22 @@
-
-
+# services/technical_note_services/report_service_aux/analysis_breakdown_temporal.py - FECHA DINÁMICA
 from typing import Any, Dict, List, Optional
-
 from services.duckdb_service.duckdb_service import duckdb_service
 from services.technical_note_services.report_service_aux.corrected_months import CorrectedMonths
 from services.technical_note_services.report_service_aux.corrected_years import CorrectedYear
 from services.technical_note_services.report_service_aux.identity_document import IdentityDocument
 
-
 class AnalysisBreakdownTemporal:
     def execute_temporal_breakdown_analysis(
         self, data_source: str, matches: List[Dict], 
         departamento: Optional[str], municipio: Optional[str], ips: Optional[str],
-        corte_fecha: str,
+        corte_fecha: str,  # ✅ FECHA DINÁMICA
         age_extractor
     ) -> Dict[str, Any]:
-        """🆕 NUEVO: Ejecuta análisis temporal con numerador y denominador por mes y año"""
+        """🆕 MODIFICADO: Ejecuta análisis temporal CON FECHA DINÁMICA"""
         temporal_breakdown = {}
         
         try:
+            print(f"🗓️ Análisis temporal usando fecha de corte DINÁMICA: {corte_fecha}")
             document_field = IdentityDocument().get_document_field(data_source)
             edad_meses_field = CorrectedMonths().get_age_months_field_corrected(data_source, corte_fecha)
             edad_años_field = CorrectedYear().get_age_years_field_corrected(data_source, corte_fecha)
@@ -47,6 +45,7 @@ class AnalysisBreakdownTemporal:
                 specific_age_filter = age_range_obj.get_age_filter_sql(edad_meses_field, edad_años_field)
                 age_description = age_range_obj.get_description()
                 
+                # ✅ EXTRAER DATOS TEMPORALES CON FECHA DINÁMICA
                 temporal_data = self._extract_temporal_data_from_column_correct(
                     data_source, column_name, document_field, specific_age_filter, 
                     edad_meses_field, edad_años_field, geo_filter, corte_fecha
@@ -59,7 +58,8 @@ class AnalysisBreakdownTemporal:
                         "keyword": keyword,
                         "age_range": age_description,
                         "temporal_breakdown": temporal_data,
-                        "metodo": "TEMPORAL_NUMERADOR_DENOMINADOR_CORRECTO"
+                        "metodo": "TEMPORAL_NUMERADOR_DENOMINADOR_FECHA_DINAMICA",
+                        "corte_fecha": corte_fecha  # ✅ FECHA DINÁMICA
                     }
                 
             except Exception as e:
@@ -71,18 +71,19 @@ class AnalysisBreakdownTemporal:
     def _extract_temporal_data_from_column_correct(
         self, data_source: str, column_name: str, document_field: str,
         specific_age_filter: str, edad_meses_field: str, edad_años_field: str,
-        geo_filter: str, corte_fecha: str
+        geo_filter: str, corte_fecha: str  # ✅ FECHA DINÁMICA
     ) -> Dict[str, Any]:
         """
-        🎯 VERSIÓN FINAL: Extrae datos temporales CON FILTRO DE EDAD CORRECTO
+        🎯 VERSIÓN FINAL: Extrae datos temporales CON FECHA DINÁMICA
         """
         try:
             escaped_column = duckdb_service.escape_identifier(column_name)
             date_format = self._detect_date_format(data_source, column_name)
             
             print(f"      📅 Formato detectado: {date_format}")
+            print(f"      🗓️ Usando fecha de corte: {corte_fecha}")
             
-            # PASO 1: OBTENER AÑOS/MESES CON FILTRO DE EDAD (CONSULTA CORREGIDA)
+            # ✅ PASO 1: OBTENER AÑOS/MESES CON FILTRO DE EDAD Y FECHA DINÁMICA
             fechas_con_edad_sql = f"""
             SELECT DISTINCT
                 date_part('year', TRY_CAST(strptime(TRIM({escaped_column}), '{date_format}') AS DATE)) as año,
@@ -97,7 +98,7 @@ class AnalysisBreakdownTemporal:
                 AND strptime("Fecha Nacimiento", '%d/%m/%Y') <= DATE '{corte_fecha}'
                 AND {document_field} IS NOT NULL
                 AND {geo_filter}
-                -- DESPUÉS VALIDAR CONSULTA CON FILTROS MEJORADOS
+                -- DESPUÉS VALIDAR CONSULTA
                 AND {escaped_column} IS NOT NULL 
                 AND TRIM(CAST({escaped_column} AS VARCHAR)) != ''
                 AND TRIM(CAST({escaped_column} AS VARCHAR)) NOT IN ('NULL', 'null', 'None', 'none', 'NaN', 'nan', 'N/A', 'n/a', '-')
@@ -137,7 +138,7 @@ class AnalysisBreakdownTemporal:
                             "months": {}
                         }
                     
-                    # CALCULAR NUMERADOR/DENOMINADOR CORRECTO
+                    # ✅ CALCULAR NUMERADOR/DENOMINADOR CON FECHA DINÁMICA
                     mes_data = self._calculate_temporal_numerator_denominator_correct(
                         data_source, column_name, document_field, specific_age_filter,
                         edad_meses_field, edad_años_field, geo_filter, corte_fecha, 
@@ -179,13 +180,12 @@ class AnalysisBreakdownTemporal:
         geo_filter: str, corte_fecha: str, año: int, mes: int, date_format: str
     ) -> Dict[str, Any]:
         """
-        🎯 LÓGICA CORREGIDA: Calcular denominador con registros vacíos incluidos
+        🎯 LÓGICA CORREGIDA CON FECHA DINÁMICA: Calcular denominador con registros vacíos incluidos
         """
         try:
             escaped_column = duckdb_service.escape_identifier(column_name)
             
-            # ✅ DENOMINADOR TEMPORAL CORREGIDO:
-            # Población de edad específica (incluye los que tienen consulta + los que NO tienen)
+            # ✅ DENOMINADOR TEMPORAL CON FECHA DINÁMICA
             denominator_sql = f"""
             SELECT COUNT(DISTINCT {document_field}) as denominador
             FROM {data_source}
@@ -196,14 +196,12 @@ class AnalysisBreakdownTemporal:
                 AND strptime("Fecha Nacimiento", '%d/%m/%Y') <= DATE '{corte_fecha}'
                 AND {document_field} IS NOT NULL
                 AND {geo_filter}
-                -- ✅ SIN FILTROS ADICIONALES - solo edad y geografía
             """
             
             denominator_result = duckdb_service.conn.execute(denominator_sql).fetchone()
             denominador = int(denominator_result[0]) if denominator_result and denominator_result[0] else 0
             
-            # ✅ NUMERADOR TEMPORAL (igual que antes):
-            # Solo población de edad específica QUE SÍ tuvo consulta en ese mes/año específico
+            # ✅ NUMERADOR TEMPORAL CON FECHA DINÁMICA
             numerator_sql = f"""
             SELECT COUNT(DISTINCT {document_field}) as numerador
             FROM {data_source}
@@ -214,7 +212,7 @@ class AnalysisBreakdownTemporal:
                 AND strptime("Fecha Nacimiento", '%d/%m/%Y') <= DATE '{corte_fecha}'
                 AND {document_field} IS NOT NULL
                 AND {geo_filter}
-                -- ✅ CON consulta en el período específico (no vacías)
+                -- ✅ CON consulta en el período específico
                 AND {escaped_column} IS NOT NULL 
                 AND TRIM(CAST({escaped_column} AS VARCHAR)) != ''
                 AND TRIM(CAST({escaped_column} AS VARCHAR)) NOT IN ('NULL', 'null', 'None', 'none', 'NaN', 'nan', 'N/A', 'n/a', '-')
@@ -247,6 +245,7 @@ class AnalysisBreakdownTemporal:
         except Exception as e:
             print(f"         ❌ Error calculando {año}/{mes}: {e}")
             return {"numerador": 0, "denominador": 0, "cobertura_porcentaje": 0.0, "sin_datos": 0}
+    
     def _detect_date_format(self, data_source: str, column_name: str) -> str:
         """🔍 DETECTA AUTOMÁTICAMENTE EL FORMATO DE FECHA DE UNA COLUMNA"""
         try:

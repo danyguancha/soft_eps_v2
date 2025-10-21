@@ -1,4 +1,4 @@
-// services/TechnicalNoteService.tsx - ✅ COMPLETO CON NUMERADOR/DENOMINADOR Y REPORTES AVANZADOS
+// services/TechnicalNoteService.tsx - ✅ CON FECHA DE CORTE OBLIGATORIA
 import api from '../Api';
 import type { InasistentesReportResponse } from '../interfaces/IAbsentUser';
 import type { AgeRangesResponse } from '../interfaces/IAge';
@@ -87,14 +87,12 @@ export interface KeywordAgeReportItem {
   age_range: string;
   count: number;
   
-  // ✅ NUEVOS CAMPOS NUMERADOR/DENOMINADOR
   numerador?: number;
   denominador?: number;
   cobertura_porcentaje?: number;
   sin_datos?: number;
   metodo?: string;
   
-  // ✅ NUEVOS CAMPOS TÉCNICOS
   age_range_extracted?: {
     min_age: number;
     max_age: number;
@@ -144,7 +142,6 @@ export interface GeographicFilters {
   departamento?: string | null;
   municipio?: string | null;
   ips?: string | null;
-  corte_fecha?: string;  // ✅ NUEVO
 }
 
 export interface GeographicValuesResponse {
@@ -157,18 +154,14 @@ export interface GeographicValuesResponse {
   engine: string;
 }
 
-// ✅ NUEVA INTERFAZ: TotalsByKeyword actualizada
 export interface TotalsByKeyword {
   count: number;
-  
-  // ✅ NUEVOS CAMPOS
   numerador?: number;
   denominador?: number;
   actividades?: number;
   cobertura_promedio?: number;
 }
 
-// ✅ NUEVA INTERFAZ: GlobalStatistics
 export interface GlobalStatistics {
   total_actividades: number;
   total_denominador_global: number;
@@ -182,11 +175,10 @@ export interface GlobalStatistics {
   cobertura_promedio: number;
 }
 
-// ✅ INTERFAZ PRINCIPAL ACTUALIZADA
 export interface KeywordAgeReport {
   success: boolean;
   filename: string;
-  corte_fecha?: string;  // ✅ NUEVO
+  corte_fecha: string; // ✅ OBLIGATORIO
   rules: {
     keywords: string[];
   };
@@ -197,13 +189,11 @@ export interface KeywordAgeReport {
   totals_by_keyword: Record<string, TotalsByKeyword>;
   temporal_data: Record<string, TemporalColumnData>;
   
-  // ✅ NUEVOS CAMPOS
   global_statistics?: GlobalStatistics;
   metodo?: string;
   version?: string;
   caracteristicas?: string[];
   
-  // Campos existentes
   ultra_fast?: boolean;
   engine?: string;
   data_source_used?: string;
@@ -226,7 +216,7 @@ export interface AdvancedReportRequest {
   min_count?: number;
   include_temporal?: boolean;
   geographic_filters?: AdvancedGeographicFilters;
-  corte_fecha?: string;
+  corte_fecha: string; // ✅ OBLIGATORIO
 }
 
 export interface AdvancedExportOptions {
@@ -259,6 +249,7 @@ export interface AdvancedReportHistoryItem {
   items_count: number;
   has_temporal: boolean;
   has_semaforization?: boolean;
+  corte_fecha?: string; // ✅ AGREGAR
 }
 
 export interface AdvancedReportsHistoryResponse {
@@ -392,21 +383,34 @@ export class TechnicalNoteService {
     }
   }
 
-  // ✅ MÉTODO PRINCIPAL ACTUALIZADO: Reporte con numerador/denominador
+  /**
+   * ✅ MÉTODO PRINCIPAL: Reporte con numerador/denominador
+   * @param filename - Nombre del archivo a analizar
+   * @param cutoffDate - Fecha de corte OBLIGATORIA en formato YYYY-MM-DD
+   * @param keywords - Palabras clave para filtrar columnas
+   * @param minCount - Conteo mínimo para incluir en resultados
+   * @param includeTemporal - Incluir análisis temporal
+   * @param geographicFilters - Filtros geográficos opcionales
+   */
   static async getKeywordAgeReport(
     filename: string,
+    cutoffDate: string, // ✅ PARÁMETRO REORDENADO Y OBLIGATORIO
     keywords?: string[],
     minCount: number = 0,
     includeTemporal: boolean = true,
-    geographicFilters: GeographicFilters = {},
-    corteFecha: string = "2025-07-31"  // ✅ NUEVO PARÁMETRO
+    geographicFilters: GeographicFilters = {}
   ): Promise<KeywordAgeReport> {
+    // ✅ VALIDACIÓN: Fecha de corte obligatoria
+    if (!cutoffDate) {
+      throw new Error('❌ Fecha de corte es obligatoria para generar el reporte');
+    }
+
     try {
       const params = new URLSearchParams({
+        corte_fecha: cutoffDate, // ✅ PRIMER PARÁMETRO
         ...(keywords && keywords.length > 0 && { keywords: keywords.join(',') }),
         min_count: minCount.toString(),
-        include_temporal: includeTemporal.toString(),
-        corte_fecha: corteFecha  // ✅ NUEVO PARÁMETRO
+        include_temporal: includeTemporal.toString()
       });
 
       // ✅ AGREGAR FILTROS GEOGRÁFICOS
@@ -420,6 +424,8 @@ export class TechnicalNoteService {
         params.append('ips', geographicFilters.ips);
       }
 
+      console.log(`📊 Generando reporte con fecha de corte: ${cutoffDate}`);
+
       const response = await api.get(
         `/technical-note/report/${filename}?${params}`,
         {
@@ -430,7 +436,6 @@ export class TechnicalNoteService {
       const itemsCount = response.data.items?.length || 0;
       const temporalCount = response.data.temporal_columns || 0;
       
-      // ✅ NUEVOS LOGS PARA NUMERADOR/DENOMINADOR
       const globalStats = response.data.global_statistics || {};
       const totalDenominador = globalStats.total_denominador_global || 0;
       const totalNumerador = globalStats.total_numerador_global || 0;
@@ -443,9 +448,8 @@ export class TechnicalNoteService {
       console.log(`   ✅ NUMERADOR GLOBAL: ${totalNumerador.toLocaleString()}`);
       console.log(`   📈 COBERTURA GLOBAL: ${coberturaGlobal}%`);
       console.log(`   🎯 Método: ${metodo}`);
-      console.log(`   🗓️ Fecha corte: ${corteFecha}`);
+      console.log(`   🗓️ Fecha corte: ${cutoffDate}`);
       
-      // Log adicional de actividades con 100% y <50% cobertura
       if (globalStats.actividades_100_pct_cobertura !== undefined) {
         console.log(`   ✅ Actividades 100%: ${globalStats.actividades_100_pct_cobertura}`);
         console.log(`   ⚠️ Actividades <50%: ${globalStats.actividades_menos_50_pct_cobertura}`);
@@ -549,16 +553,25 @@ export class TechnicalNoteService {
     return Math.ceil(totalRows / pageSize);
   }
 
-  // ✅ MÉTODO DE EDADES ACTUALIZADO
+  /**
+   * ✅ MÉTODO DE RANGOS DE EDAD
+   * @param filename - Nombre del archivo
+   * @param cutoffDate - Fecha de corte OBLIGATORIA en formato YYYY-MM-DD
+   */
   static async getAgeRanges(
     filename: string,
-    corteFecha: string = "2025-07-31"
+    cutoffDate: string // ✅ OBLIGATORIO
   ): Promise<AgeRangesResponse> {
+    // ✅ VALIDACIÓN
+    if (!cutoffDate) {
+      throw new Error('❌ Fecha de corte es obligatoria para obtener rangos de edad');
+    }
+
     try {
-      console.log(`📅 Obteniendo rangos de edades: ${filename} con corte ${corteFecha}`);
+      console.log(`📅 Obteniendo rangos de edades: ${filename} con corte ${cutoffDate}`);
 
       const params = new URLSearchParams({
-        corte_fecha: corteFecha
+        corte_fecha: cutoffDate
       });
 
       const response = await api.get(
@@ -571,7 +584,7 @@ export class TechnicalNoteService {
       const yearsCount = response.data.age_ranges?.years?.length || 0;
       const monthsCount = response.data.age_ranges?.months?.length || 0;
 
-      console.log(`✅ Rangos obtenidos: ${yearsCount} años, ${monthsCount} meses`);
+      console.log(`✅ Rangos obtenidos: ${yearsCount} años, ${monthsCount} meses (corte: ${cutoffDate})`);
 
       return response.data;
     } catch (error) {
@@ -580,21 +593,34 @@ export class TechnicalNoteService {
     }
   }
 
-  // ✅ MÉTODO DE INASISTENTES ACTUALIZADO
+  /**
+   * ✅ MÉTODO DE REPORTE DE INASISTENTES
+   * @param filename - Nombre del archivo
+   * @param cutoffDate - Fecha de corte OBLIGATORIA en formato YYYY-MM-DD
+   * @param selectedMonths - Meses seleccionados para filtrar
+   * @param selectedYears - Años seleccionados para filtrar
+   * @param selectedKeywords - Palabras clave para buscar actividades
+   * @param geographicFilters - Filtros geográficos opcionales
+   */
   static async getInasistentesReport(
     filename: string,
+    cutoffDate: string, // ✅ SEGUNDO PARÁMETRO OBLIGATORIO
     selectedMonths: number[],
     selectedYears: number[] = [],
     selectedKeywords: string[] = [],
-    corteFecha: string = "2025-07-31",
     geographicFilters: GeographicFilters = {}
   ): Promise<InasistentesReportResponse> {
+    // ✅ VALIDACIÓN
+    if (!cutoffDate) {
+      throw new Error('❌ Fecha de corte es obligatoria para generar reporte de inasistentes');
+    }
+
     try {
       console.log(`🏥 Generando reporte DINÁMICO de inasistentes: ${filename}`);
       console.log(`📅 Filtros edad:`, { selectedMonths, selectedYears });
       console.log(`🔑 Palabras clave:`, selectedKeywords);
       console.log(`🗺️ Filtros geo:`, geographicFilters);
-      console.log(`🗓️ Fecha corte: ${corteFecha}`);
+      console.log(`🗓️ Fecha corte: ${cutoffDate}`);
 
       const requestBody = {
         selectedMonths,
@@ -606,7 +632,7 @@ export class TechnicalNoteService {
       };
 
       const params = new URLSearchParams({
-        corte_fecha: corteFecha
+        corte_fecha: cutoffDate
       });
 
       const response = await api.post(
@@ -617,7 +643,6 @@ export class TechnicalNoteService {
         }
       );
 
-      // ✅ LOGS ACTUALIZADOS PARA NUEVA ESTRUCTURA
       const totalInasistentes = response.data.resumen_general?.total_inasistentes_global || 0;
       const totalActividades = response.data.resumen_general?.total_actividades_evaluadas || 0;
       const actividadesConInasistentes = response.data.resumen_general?.actividades_con_inasistentes || 0;
@@ -626,8 +651,8 @@ export class TechnicalNoteService {
       console.log(`   👥 ${totalInasistentes} inasistentes totales`);
       console.log(`   📋 ${totalActividades} actividades evaluadas`);
       console.log(`   🎯 ${actividadesConInasistentes} actividades con inasistencias`);
+      console.log(`   🗓️ Fecha corte: ${cutoffDate}`);
 
-      // Log de columnas descubiertas
       if (response.data.columnas_descubiertas) {
         console.log(`🔍 Columnas descubiertas:`, response.data.columnas_descubiertas);
       }
@@ -639,18 +664,31 @@ export class TechnicalNoteService {
     }
   }
 
-  // ✅ MÉTODO DE EXPORTACIÓN CSV ACTUALIZADO
+  /**
+   * ✅ MÉTODO DE EXPORTACIÓN CSV
+   * @param filename - Nombre del archivo
+   * @param cutoffDate - Fecha de corte OBLIGATORIA en formato YYYY-MM-DD
+   * @param selectedMonths - Meses seleccionados
+   * @param selectedYears - Años seleccionados
+   * @param selectedKeywords - Palabras clave
+   * @param geographicFilters - Filtros geográficos
+   */
   static async exportInasistentesCSV(
     filename: string,
+    cutoffDate: string, // ✅ SEGUNDO PARÁMETRO OBLIGATORIO
     selectedMonths: number[],
     selectedYears: number[] = [],
     selectedKeywords: string[] = [],
-    corteFecha: string = "2025-07-31",
     geographicFilters: GeographicFilters = {}
   ): Promise<Blob> {
+    // ✅ VALIDACIÓN
+    if (!cutoffDate) {
+      throw new Error('❌ Fecha de corte es obligatoria para exportar CSV');
+    }
+
     try {
-      console.log(`📥 Exportando reporte CSV con caracteres especiales: ${filename}`);
-      console.log(`🗓️ Fecha corte: ${corteFecha}`);
+      console.log(`📥 Exportando reporte CSV: ${filename}`);
+      console.log(`🗓️ Fecha corte: ${cutoffDate}`);
 
       const requestBody = {
         selectedMonths,
@@ -662,7 +700,7 @@ export class TechnicalNoteService {
       };
 
       const params = new URLSearchParams({
-        corte_fecha: corteFecha
+        corte_fecha: cutoffDate
       });
 
       const response = await api.post(
@@ -670,14 +708,14 @@ export class TechnicalNoteService {
         requestBody,
         {
           timeout: 120000,
-          responseType: 'blob', // ✅ CRÍTICO: Blob para preservar encoding
+          responseType: 'blob',
           headers: {
-            'Accept': 'text/csv; charset=utf-8' // ✅ Especificar encoding esperado
+            'Accept': 'text/csv; charset=utf-8'
           }
         }
       );
 
-      console.log(`✅ CSV con caracteres especiales exportado exitosamente`);
+      console.log(`✅ CSV exportado exitosamente (fecha: ${cutoffDate})`);
       return response.data;
 
     } catch (error) {
@@ -692,12 +730,18 @@ export class TechnicalNoteService {
 
   /**
    * 🆕 GENERAR REPORTE AVANZADO CON SEMAFORIZACIÓN
+   * @param request - Configuración del reporte (DEBE incluir corte_fecha)
    */
   static async generateAdvancedReport(
     request: AdvancedReportRequest
   ): Promise<AdvancedReportResponse> {
+    // ✅ VALIDACIÓN
+    if (!request.corte_fecha) {
+      throw new Error('❌ Fecha de corte es obligatoria en AdvancedReportRequest');
+    }
+
     try {
-      console.log('🚀 Generando reporte avanzado:', request);
+      console.log('🚀 Generando reporte avanzado con fecha:', request.corte_fecha);
 
       const response = await api.post(
         '/technical-note/reports/generate',
@@ -713,8 +757,8 @@ export class TechnicalNoteService {
       console.log(`   📊 Items: ${result.data?.items?.length || 0}`);
       console.log(`   ⏱️ Tiempo: ${result.execution_time_seconds?.toFixed(2)}s`);
       console.log(`   🆔 ID: ${result.report_id}`);
+      console.log(`   🗓️ Fecha corte: ${request.corte_fecha}`);
       
-      // Log de semaforización si está disponible
       const globalStats = result.data?.global_statistics;
       if (globalStats) {
         console.log(`   📊 DENOMINADOR: ${globalStats.total_denominador_global?.toLocaleString()}`);
@@ -730,47 +774,54 @@ export class TechnicalNoteService {
   }
 
   /**
-   * 🚀 GENERAR Y EXPORTAR REPORTE AVANZADO EN UN SOLO PASO
+   * 🚀 GENERAR Y EXPORTAR REPORTE AVANZADO
+   * @param request - Configuración del reporte (DEBE incluir corte_fecha)
+   * @param exportOptions - Opciones de exportación
    */
-  // TechnicalNoteService.tsx - Agregar debug completo
-// TechnicalNoteService.tsx - Actualizar el método
-static async generateAndExportAdvancedReport(
-  request: AdvancedReportRequest,
-  exportOptions: AdvancedExportOptions
-): Promise<AdvancedExportResponse> {
-  try {
-    console.log('🚀 Generando y exportando reporte avanzado:', { request, exportOptions });
-
-    const response = await api.post(
-      '/technical-note/reports/generate-and-export',
-      {
-        ...request,
-        ...exportOptions
-      },
-      {
-        timeout: 120000
-      }
-    );
-
-    const result = response.data;
-    
-    console.log(`✅ Reporte avanzado generado y exportado:`);
-    console.log(`   📄 Archivos: ${Object.keys(result.files || {}).join(', ')}`);
-    console.log(`   🔗 Enlaces:`, result.download_links);
-
-    // ✅ Verificar que la respuesta tiene la estructura esperada
-    if (!result.success) {
-      throw new Error(result.message || 'Error en la generación del reporte');
+  static async generateAndExportAdvancedReport(
+    request: AdvancedReportRequest,
+    exportOptions: AdvancedExportOptions
+  ): Promise<AdvancedExportResponse> {
+    // ✅ VALIDACIÓN
+    if (!request.corte_fecha) {
+      throw new Error('❌ Fecha de corte es obligatoria para exportar reporte avanzado');
     }
 
-    return result;
-  } catch (error) {
-    console.error('❌ Error generando y exportando reporte avanzado:', error);
-    throw error;
+    try {
+      console.log('🚀 Generando y exportando reporte avanzado:', { 
+        ...request, 
+        fecha: request.corte_fecha,
+        exportOptions 
+      });
+
+      const response = await api.post(
+        '/technical-note/reports/generate-and-export',
+        {
+          ...request,
+          ...exportOptions
+        },
+        {
+          timeout: 120000
+        }
+      );
+
+      const result = response.data;
+      
+      console.log(`✅ Reporte avanzado generado y exportado:`);
+      console.log(`   📄 Archivos: ${Object.keys(result.files || {}).join(', ')}`);
+      console.log(`   🔗 Enlaces:`, result.download_links);
+      console.log(`   🗓️ Fecha corte: ${request.corte_fecha}`);
+
+      if (!result.success) {
+        throw new Error(result.message || 'Error en la generación del reporte');
+      }
+
+      return result;
+    } catch (error) {
+      console.error('❌ Error generando y exportando reporte avanzado:', error);
+      throw error;
+    }
   }
-}
-
-
 
   /**
    * 📤 EXPORTAR REPORTE AVANZADO EXISTENTE
@@ -944,7 +995,6 @@ static async generateAndExportAdvancedReport(
         timeout: 60000
       });
 
-      // Extraer nombre del archivo del header Content-Disposition si está disponible
       const contentDisposition = response.headers['content-disposition'];
       let finalFilename = filename;
       
@@ -968,25 +1018,30 @@ static async generateAndExportAdvancedReport(
 
   /**
    * 🚀 GENERAR, EXPORTAR Y DESCARGAR REPORTE COMPLETO
+   * @param request - Configuración del reporte (DEBE incluir corte_fecha)
+   * @param exportOptions - Opciones de exportación
    */
   static async generateExportAndDownloadReport(
     request: AdvancedReportRequest,
     exportOptions: AdvancedExportOptions = { export_csv: true, export_pdf: true }
   ): Promise<void> {
+    // ✅ VALIDACIÓN
+    if (!request.corte_fecha) {
+      throw new Error('❌ Fecha de corte es obligatoria para el proceso completo');
+    }
+
     try {
-      console.log('🚀 Proceso completo: Generar, exportar y descargar');
+      console.log('🚀 Proceso completo con fecha:', request.corte_fecha);
       
-      // 1. Generar y exportar
       const exportResult = await this.generateAndExportAdvancedReport(request, exportOptions);
       
       if (!exportResult.success) {
         throw new Error(exportResult.message || 'Error en la exportación');
       }
 
-      // 2. Descargar archivos automáticamente
       const downloadPromises = Object.entries(exportResult.download_links).map(
         async ([format, link]) => {
-          const filename = `${request.filename}_${format.toUpperCase()}_${new Date().toISOString().split('T')[0]}.${format}`;
+          const filename = `${request.filename}_${format.toUpperCase()}_${request.corte_fecha}.${format}`;
           await this.downloadFromLink(link, filename);
         }
       );
@@ -1010,9 +1065,11 @@ static async generateAndExportAdvancedReport(
     semaforization_levels: string[];
     temporal_analysis: boolean;
     excel_logic: boolean;
+    requires_cutoff_date: boolean; // ✅ NUEVO
   } {
     return {
       features: [
+        'Fecha de corte obligatoria para cálculo preciso de edades',
         'Semaforización automática por desempeño',
         'Numeradores y denominadores por rango de edad',
         'Análisis temporal mensual y anual',
@@ -1024,7 +1081,8 @@ static async generateAndExportAdvancedReport(
       formats: ['CSV', 'PDF'],
       semaforization_levels: ['Óptimo', 'Aceptable', 'Deficiente', 'Muy Deficiente', 'NA'],
       temporal_analysis: true,
-      excel_logic: true
+      excel_logic: true,
+      requires_cutoff_date: true // ✅ NUEVO
     };
   }
 
@@ -1038,17 +1096,18 @@ static async generateAndExportAdvancedReport(
   static async downloadMultipleFiles(
     downloadLinks: Record<string, string>,
     baseFilename: string = 'reporte',
+    cutoffDate?: string, // ✅ OPCIONAL: Incluir en nombre de archivo
     delayBetweenDownloads: number = 1000
   ): Promise<void> {
     try {
-      console.log(`📥 Descargando ${Object.keys(downloadLinks).length} archivos de forma secuencial`);
+      console.log(`📥 Descargando ${Object.keys(downloadLinks).length} archivos`);
       
       for (const [format, link] of Object.entries(downloadLinks)) {
-        const filename = `${baseFilename}_${format.toUpperCase()}_${new Date().toISOString().split('T')[0]}.${format}`;
+        const dateSuffix = cutoffDate ? `_${cutoffDate}` : `_${new Date().toISOString().split('T')[0]}`;
+        const filename = `${baseFilename}_${format.toUpperCase()}${dateSuffix}.${format}`;
         
         await this.downloadFromLink(link, filename);
         
-        // Esperar entre descargas para evitar problemas de navegador
         if (delayBetweenDownloads > 0) {
           await new Promise(resolve => setTimeout(resolve, delayBetweenDownloads));
         }
@@ -1078,15 +1137,18 @@ static async generateAndExportAdvancedReport(
       errors.push('filename es requerido');
     }
 
-    if (request.min_count !== undefined && request.min_count < 0) {
-      errors.push('min_count debe ser mayor o igual a 0');
-    }
-
-    if (request.corte_fecha) {
+    // ✅ VALIDACIÓN OBLIGATORIA DE FECHA
+    if (!request.corte_fecha || request.corte_fecha.trim() === '') {
+      errors.push('corte_fecha es requerido');
+    } else {
       const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
       if (!dateRegex.test(request.corte_fecha)) {
         errors.push('corte_fecha debe tener formato YYYY-MM-DD');
       }
+    }
+
+    if (request.min_count !== undefined && request.min_count < 0) {
+      errors.push('min_count debe ser mayor o igual a 0');
     }
 
     if (request.keywords && request.keywords.length === 0) {

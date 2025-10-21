@@ -1,16 +1,14 @@
 // components/technical-note/report/ReportTable.tsx - ✅ VERSIÓN COMPLETA CORREGIDA
 import { memo, useMemo, useCallback, useState } from 'react';
-import { Table, Typography, Tag, Space, Button, Tooltip, Empty, Row, Col, Divider, message, Modal, Dropdown } from 'antd';
+import { Table, Typography, Tag, Space, Button, Tooltip, Empty, Row, Col, message, Modal, Dropdown } from 'antd';
 import type { MenuProps } from 'antd';
 import { 
   CalendarOutlined, 
   ExpandAltOutlined, 
   CompressOutlined,
-  DownloadOutlined,
   FileTextOutlined,
   FilePdfOutlined,
   ExportOutlined,
-  CloudDownloadOutlined,
   LoadingOutlined,
   DownOutlined,
   DatabaseOutlined,
@@ -19,8 +17,12 @@ import {
   PieChartOutlined
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
-import type { KeywordAgeReportItem } from '../../../services/TechnicalNoteService';
+import type { GeographicFilters, KeywordAgeReportItem } from '../../../services/TechnicalNoteService';
 import { TechnicalNoteService } from '../../../services/TechnicalNoteService';
+import dayjs from 'dayjs';
+import 'dayjs/locale/es';
+
+dayjs.locale('es');
 
 const { Text, Title } = Typography;
 
@@ -40,15 +42,12 @@ const kwColor = (k: string) => KEYWORD_COLORS[k.toLowerCase()] || 'default';
 
 /* 🚦 FUNCIÓN PARA ESTILIZAR SOLO LA CELDA DE SEMAFORIZACIÓN */
 const getSemaforizacionCellStyle = (color?: string, estado?: string) => {
-  // Usar color del backend si está disponible
-  const mainColor = color || '#6c757d'; // fallback gris
-  
-  // Generar color de fondo más suave para la celda
+  const mainColor = color || '#6c757d';
   const hex = mainColor.replace('#', '');
   const r = parseInt(hex.substr(0, 2), 16);
   const g = parseInt(hex.substr(2, 2), 16);
   const b = parseInt(hex.substr(4, 2), 16);
-  const lightBg = `rgba(${r}, ${g}, ${b}, 0.15)`; // 15% transparencia para fondo suave
+  const lightBg = `rgba(${r}, ${g}, ${b}, 0.15)`;
   
   return {
     backgroundColor: lightBg,
@@ -90,11 +89,8 @@ interface Props {
   showTemporalData: boolean;
   filename?: string;
   selectedKeywords?: string[];
-  geographicFilters?: {
-    departamento?: string;
-    municipio?: string;
-    ips?: string;
-  };
+  geographicFilters?: GeographicFilters;
+  cutoffDate?: string; // ✅ Fecha de corte desde padre (YYYY-MM-DD)
   onExportStart?: () => void;
   onExportComplete?: (files: Record<string, string>) => void;
   onExportError?: (error: string) => void;
@@ -106,6 +102,7 @@ interface ExportControlsProps {
   filename: string;
   selectedKeywords: string[];
   geographicFilters: Props['geographicFilters'];
+  cutoffDate?: string;
   onExportStart?: () => void;
   onExportComplete?: (files: Record<string, string>) => void;
   onExportError?: (error: string) => void;
@@ -116,6 +113,7 @@ const ExportControls = memo<ExportControlsProps>(({
   filename, 
   selectedKeywords,
   geographicFilters,
+  cutoffDate,
   onExportStart,
   onExportComplete,
   onExportError
@@ -129,9 +127,26 @@ const ExportControls = memo<ExportControlsProps>(({
     include_temporal: true
   });
 
-  // ✅ CORRECCIÓN: Preparar parámetros sin doble extensión
+  // ✅ Usar cutoffDate del padre o corte_fecha del reporte como fallback
+  const effectiveCutoffDate = cutoffDate || keywordReport.corte_fecha || "2025-07-31";
+
+  // ✅ FUNCIÓN HELPER: Normalizar filtros geográficos (null → undefined)
+  const normalizeGeographicFilters = useCallback((
+    filters?: GeographicFilters
+  ): { departamento?: string; municipio?: string; ips?: string } | undefined => {
+    if (!filters) return undefined;
+
+    const normalized: { departamento?: string; municipio?: string; ips?: string } = {};
+    
+    if (filters.departamento) normalized.departamento = filters.departamento;
+    if (filters.municipio) normalized.municipio = filters.municipio;
+    if (filters.ips) normalized.ips = filters.ips;
+
+    return Object.keys(normalized).length > 0 ? normalized : undefined;
+  }, []);
+
+  // ✅ Preparar parámetros con filtros normalizados
   const prepareExportRequest = useCallback(() => {
-    // Limpiar extensión .csv del nombre base para evitar duplicaciones
     const cleanFilename = filename?.replace(/\.csv$/, '') || 'reporte';
     
     return {
@@ -140,14 +155,10 @@ const ExportControls = memo<ExportControlsProps>(({
       keywords: selectedKeywords.length > 0 ? selectedKeywords : undefined,
       min_count: 0,
       include_temporal: true,
-      geographic_filters: geographicFilters ? {
-        departamento: geographicFilters.departamento,
-        municipio: geographicFilters.municipio,
-        ips: geographicFilters.ips
-      } : undefined,
-      corte_fecha: keywordReport.corte_fecha || "2025-07-31"
+      geographic_filters: normalizeGeographicFilters(geographicFilters),
+      corte_fecha: effectiveCutoffDate
     };
-  }, [filename, keywordReport, selectedKeywords, geographicFilters]);
+  }, [filename, keywordReport, selectedKeywords, geographicFilters, effectiveCutoffDate, normalizeGeographicFilters]);
 
   // 📥 EXPORTACIÓN INDIVIDUAL POR TIPO CSV
   const handleExportCSVType = useCallback(async (csvType: string, csvLabel: string) => {
@@ -159,20 +170,17 @@ const ExportControls = memo<ExportControlsProps>(({
       
       const request = prepareExportRequest();
       
-      // Generar reporte completo y obtener enlaces
       const result = await TechnicalNoteService.generateAndExportAdvancedReport(
         request,
         { export_csv: true, export_pdf: false, include_temporal: true }
       );
       
       if (result.success && result.download_links) {
-        // Buscar el enlace específico del tipo CSV
         const csvKey = Object.keys(result.download_links).find(key => 
           key.includes('csv') && key.includes(csvType.toLowerCase())
         );
         
         if (csvKey && result.download_links[csvKey]) {
-          // Descargar archivo específico con nombre correcto
           const downloadFilename = `${request.filename}_${csvType}.csv`;
           await TechnicalNoteService.downloadFromLink(
             result.download_links[csvKey], 
@@ -235,7 +243,7 @@ const ExportControls = memo<ExportControlsProps>(({
     }
   }, [prepareExportRequest, onExportStart, onExportComplete, onExportError]);
 
-  // 📥 EXPORTACIÓN COMPLETA (TODOS LOS ARCHIVOS)
+  // 📥 EXPORTACIÓN COMPLETA
   const handleCompleteExport = useCallback(async () => {
     try {
       setExportLoading(true);
@@ -251,14 +259,12 @@ const ExportControls = memo<ExportControlsProps>(({
       );
       
       if (result.success && result.download_links) {
-        // Descargar todos los archivos generados con nombres correctos
         const downloadPromises = Object.entries(result.download_links).map(([type, link]) => {
           let downloadFilename: string;
           
           if (type.includes('pdf')) {
             downloadFilename = `${request.filename}.pdf`;
           } else {
-            // Para CSV, extraer el tipo específico
             const csvType = type.replace('csv_', '');
             downloadFilename = `${request.filename}_${csvType}.csv`;
           }
@@ -319,7 +325,6 @@ const ExportControls = memo<ExportControlsProps>(({
       );
       
       if (result.success && result.download_links) {
-        // Descargar archivos seleccionados con nombres correctos
         const downloadPromises = Object.entries(result.download_links).map(([type, link]) => {
           let downloadFilename: string;
           
@@ -411,7 +416,6 @@ const ExportControls = memo<ExportControlsProps>(({
           );
           
           if (result.success && result.download_links) {
-            // Filtrar solo enlaces CSV
             const csvLinks = Object.entries(result.download_links).filter(([key]) => 
               key.includes('csv')
             );
@@ -445,12 +449,7 @@ const ExportControls = memo<ExportControlsProps>(({
     }
   ];
 
-  // 📊 MOSTRAR RESUMEN DE DATOS
   const totalItems = keywordReport.items?.length || 0;
-  const globalStats = keywordReport.global_statistics;
-  const hasNumeradorDenominador = keywordReport.items?.some(item => 
-    item.numerador !== undefined && item.denominador !== undefined
-  );
 
   return (
     <>
@@ -462,7 +461,6 @@ const ExportControls = memo<ExportControlsProps>(({
         border: '1px solid #e8e8e8'
       }}>
         <Row gutter={[16, 12]} align="middle">
-          {/* 📊 RESUMEN DE DATOS */}
           <Col flex="auto">
             <Space direction="vertical" size={4}>
               <Title level={5} style={{ margin: 0, color: '#1890ff' }}>
@@ -470,9 +468,19 @@ const ExportControls = memo<ExportControlsProps>(({
               </Title>
               
               <Space size={16}>
-                <Text strong>
-                  📅 Corte: {keywordReport.corte_fecha || '2025-07-31'}
-                </Text>
+                <div style={{
+                  padding: '4px 10px',
+                  backgroundColor: '#e6f7ff',
+                  border: '1px solid #91d5ff',
+                  borderRadius: 4
+                }}>
+                  <Space size={4}>
+                    <CalendarOutlined style={{ color: '#1890ff' }} />
+                    <Text strong style={{ color: '#1890ff' }}>
+                      Corte: {dayjs(effectiveCutoffDate).format('DD/MM/YYYY')}
+                    </Text>
+                  </Space>
+                </div>
                 
                 {selectedKeywords.length > 0 && (
                   <Text>
@@ -491,10 +499,8 @@ const ExportControls = memo<ExportControlsProps>(({
             </Space>
           </Col>
 
-          {/* 🚀 BOTONES DE EXPORTACIÓN INDIVIDUALES */}
           <Col>
             <Space size={8}>
-              {/* ✅ BOTÓN DROPDOWN CSV INDIVIDUAL */}
               <Dropdown
                 menu={{ items: csvMenuItems }}
                 trigger={['click']}
@@ -514,7 +520,6 @@ const ExportControls = memo<ExportControlsProps>(({
                 </Button>
               </Dropdown>
 
-              {/* ✅ BOTÓN PDF INDIVIDUAL */}
               <Tooltip title="Descargar reporte en PDF">
                 <Button
                   icon={exportLoading ? <LoadingOutlined /> : <FilePdfOutlined />}
@@ -531,7 +536,6 @@ const ExportControls = memo<ExportControlsProps>(({
         </Row>
       </div>
 
-      {/* 🔧 MODAL DE EXPORTACIÓN AVANZADA COMPLETO */}
       <Modal
         title={
           <Space>
@@ -549,6 +553,21 @@ const ExportControls = memo<ExportControlsProps>(({
       >
         <div style={{ padding: '16px 0' }}>
           <Space direction="vertical" size={16} style={{ width: '100%' }}>
+            <div style={{
+              padding: '10px',
+              backgroundColor: '#f0f5ff',
+              border: '1px solid #adc6ff',
+              borderRadius: 6
+            }}>
+              <Space>
+                <CalendarOutlined style={{ color: '#1890ff' }} />
+                <Text strong>Fecha de Corte:</Text>
+                <Text style={{ color: '#1890ff', fontWeight: 600 }}>
+                  {dayjs(effectiveCutoffDate).format('DD/MM/YYYY')}
+                </Text>
+              </Space>
+            </div>
+
             <div>
               <Text strong>Selecciona los formatos a exportar:</Text>
               <div style={{ marginTop: 8 }}>
@@ -612,7 +631,8 @@ const ExportControls = memo<ExportControlsProps>(({
                 • Numeradores y denominadores por rango de edad<br />
                 • Lógica Excel para cálculo de denominadores<br />
                 • Filtros geográficos aplicados<br />
-                • Análisis de cobertura detallado
+                • Análisis de cobertura detallado<br />
+                • Fecha de corte: {dayjs(effectiveCutoffDate).format('DD/MM/YYYY')}
               </Text>
             </div>
           </Space>
@@ -631,6 +651,7 @@ export const ReportTable = memo<Props>(({
   filename,
   selectedKeywords = [],
   geographicFilters,
+  cutoffDate,
   onExportStart,
   onExportComplete,
   onExportError
@@ -650,7 +671,6 @@ export const ReportTable = memo<Props>(({
   const { items, temporal_data = {}, totals_by_keyword } = keywordReport;
   const hasND = useMemo(() => items.some(i => i.numerador !== undefined && i.denominador !== undefined), [items]);
   
-  // 🚦 VERIFICAR SI HAY DATOS DE SEMAFORIZACIÓN
   const hasSemaforizacion = useMemo(() => 
     items.some(i => i.semaforizacion !== undefined), [items]);
 
@@ -667,12 +687,10 @@ export const ReportTable = memo<Props>(({
       );
     }
 
-    /* construir filas CON SEMAFORIZACIÓN EN CELDA */
     const rows: any[] = [];
     Object.entries(res.data.years)
       .sort(([a], [b]) => parseInt(b) - parseInt(a))
       .forEach(([year, y]: any) => {
-        /* fila año */
         rows.push({
           key: `y-${year}`,
           period: year,
@@ -680,12 +698,11 @@ export const ReportTable = memo<Props>(({
           den: y.total_den ?? 0,
           pct: y.pct ?? 0,
           semaforizacion: y.semaforizacion ?? 'NA',
-          color: y.color, // 🚦 COLOR DEL BACKEND
+          color: y.color,
           descripcion: y.descripcion,
           isYear: true
         });
         
-        /* filas mes */
         Object.entries(y.months ?? {})
           .sort(([, a]: any, [, b]: any) => a.month - b.month)
           .forEach(([mName, m]: any) => {
@@ -696,7 +713,7 @@ export const ReportTable = memo<Props>(({
               den: m.den, 
               pct: m.pct,
               semaforizacion: m.semaforizacion ?? 'NA',
-              color: m.color, // 🚦 COLOR DEL BACKEND
+              color: m.color,
               descripcion: m.descripcion,
               isYear: false
             });
@@ -801,7 +818,6 @@ export const ReportTable = memo<Props>(({
       }
     });
 
-    // 🚦 AGREGAR COLUMNA DE SEMAFORIZACIÓN - SOLO CELDA COLORIDA
     if (hasSemaforizacion) {
       base.push({
         title: <div style={{textAlign:'center'}}>🚦 Estado</div>,
@@ -827,7 +843,6 @@ export const ReportTable = memo<Props>(({
     return base;
   }, [hasND, totals_by_keyword, hasSemaforizacion]);
 
-  /* ──────────────────── helpers ──────────────────── */
   const rowExpandable = useCallback((r:KeywordAgeReportItem)=>
       !!findTemporal(temporal_data,r.column??'',r.keyword??'',r.age_range??'')?.data?.years,
     [temporal_data]);
@@ -835,10 +850,8 @@ export const ReportTable = memo<Props>(({
   const rowKey = useCallback((r:KeywordAgeReportItem)=>
       `${r.column}-${r.keyword}-${r.age_range}`,[]);
 
-  /* ──────────────────── render ──────────────────── */
   return (
     <>
-      {/* 🚦 ESTILOS CSS BÁSICOS - SIN COLORES DE FILA */}
       <style>{`
         .temporal-year-row { background-color: #e6f7ff !important; font-weight: 500; }
         .temporal-month-row { background-color: #f6ffed !important; }
@@ -858,18 +871,17 @@ export const ReportTable = memo<Props>(({
         }
       `}</style>
 
-      {/* 🚀 CONTROLES DE EXPORTACIÓN */}
       <ExportControls
         keywordReport={keywordReport}
         filename={filename || keywordReport.filename || 'reporte'}
         selectedKeywords={selectedKeywords}
         geographicFilters={geographicFilters}
+        cutoffDate={cutoffDate}
         onExportStart={onExportStart}
         onExportComplete={onExportComplete}
         onExportError={onExportError}
       />
 
-      {/* 📊 TABLA PRINCIPAL */}
       <Table
         dataSource={items}
         columns={columns}

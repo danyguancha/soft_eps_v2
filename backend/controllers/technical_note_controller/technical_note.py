@@ -1,4 +1,4 @@
-# controllers/technical_note_controller/technical_note.py
+# controllers/technical_note_controller/technical_note.py - MODIFICADO PARA FECHA DINÁMICA
 import os
 from typing import Dict, Any, List, Optional
 from fastapi import HTTPException
@@ -13,7 +13,6 @@ from services.technical_note_services.geographic_service import GeographicServic
 from services.technical_note_services.report_service import ReportService
 from utils.technical_note_utils.file_utils import generate_file_key, is_supported_file
 from utils.technical_note_utils.display_utils import generate_display_name, generate_description
-
 
 class TechnicalNoteController:
     """Controlador principal refactorizado con separación de responsabilidades"""
@@ -40,7 +39,6 @@ class TechnicalNoteController:
         try:
             file_key = generate_file_key(filename)
             
-            # Asegurar fuente de datos
             try:
                 data_source = self.data_source_service.ensure_data_source_available(filename, file_key)
             except Exception as data_error:
@@ -49,19 +47,16 @@ class TechnicalNoteController:
                     geo_type
                 )
             
-            # Verificar legibilidad
             if not self.data_source_service.verify_data_source_readable(data_source):
                 return self._build_error_response(
                     "No se puede leer el archivo", 
                     geo_type
                 )
             
-            # Obtener valores geográficos usando servicio especializado
             result = self.geographic_service.get_geographic_values(
                 data_source, geo_type, departamento, municipio
             )
             
-            # Enriquecer resultado con información del archivo
             result["filename"] = filename
             return result
             
@@ -91,10 +86,8 @@ class TechnicalNoteController:
             
             file_key = generate_file_key(filename)
             
-            # Cargar archivo si no está en cache
             self._ensure_file_loaded(filename, file_path, file_key)
             
-            # Usar sistema de paginación existente
             result = self.query_pagination.query_data_ultra_fast(
                 conn=duckdb_service.conn,
                 file_id=file_key,
@@ -111,7 +104,6 @@ class TechnicalNoteController:
             if not result.get("success", True):
                 raise HTTPException(status_code=500, detail=result.get("error", "Error en consulta"))
             
-            # Enriquecer respuesta
             return self._enrich_pagination_response(result, filename, filters, search, sort_by, sort_order)
             
         except HTTPException:
@@ -131,19 +123,25 @@ class TechnicalNoteController:
         departamento: Optional[str] = None,
         municipio: Optional[str] = None,
         ips: Optional[str] = None,
-        corte_fecha: str = "2025-07-31"  # ✅ NUEVO PARÁMETRO
+        corte_fecha: str = None  # ✅ SIN VALOR POR DEFECTO - DEBE VENIR DEL FRONTEND
     ) -> Dict[str, Any]:
-        """Genera reporte CON NUMERADOR/DENOMINADOR usando servicio especializado"""
+        """Genera reporte CON NUMERADOR/DENOMINADOR usando FECHA DINÁMICA"""
         try:
-            print(f"\n📊 ========== REPORTE KEYWORDS CON NUMERADOR/DENOMINADOR ==========")
+            # ✅ VALIDAR QUE VENGA LA FECHA
+            if not corte_fecha:
+                raise HTTPException(
+                    status_code=400,
+                    detail="El parámetro 'corte_fecha' es obligatorio y debe venir desde el frontend"
+                )
+            
+            print(f"\n📊 ========== REPORTE CON FECHA DINÁMICA ==========")
             print(f"📋 Archivo: {filename}")
-            print(f"🗓️ Fecha corte: {corte_fecha}")  # ✅ NUEVO LOG
+            print(f"🗓️ Fecha corte RECIBIDA: {corte_fecha}")
             print(f"🔍 Keywords: {keywords}")
             print(f"🗺️ Filtros: Dept={departamento}, Mun={municipio}, IPS={ips}")
             
             file_key = generate_file_key(filename)
             
-            # Asegurar fuente de datos
             try:
                 data_source = self.data_source_service.ensure_data_source_available(filename, file_key)
             except Exception as data_error:
@@ -152,13 +150,13 @@ class TechnicalNoteController:
                     detail=f"No se pudo acceder a los datos de {filename}: {str(data_error)}"
                 )
             
-            # ✅ GENERAR REPORTE CON NUMERADOR/DENOMINADOR
             geographic_filters = {
                 'departamento': departamento,
                 'municipio': municipio,
                 'ips': ips
             }
             
+            # ✅ PASAR FECHA DINÁMICA AL SERVICIO
             return self.report_service.generate_keyword_age_report(
                 data_source=data_source,
                 filename=filename,
@@ -166,13 +164,13 @@ class TechnicalNoteController:
                 min_count=min_count,
                 include_temporal=include_temporal,
                 geographic_filters=geographic_filters,
-                corte_fecha=corte_fecha  # ✅ PASAR NUEVO PARÁMETRO
+                corte_fecha=corte_fecha  # ✅ FECHA DINÁMICA
             )
             
         except HTTPException:
             raise
         except Exception as e:
-            print(f"❌ Error completo en reporte numerador/denominador: {e}")
+            print(f"❌ Error completo en reporte: {e}")
             import traceback
             traceback.print_exc()
             raise HTTPException(status_code=500, detail=f"Error generando reporte: {str(e)}")
@@ -185,7 +183,6 @@ class TechnicalNoteController:
             file_key = generate_file_key(filename)
             data_source = self.data_source_service.ensure_data_source_available(filename, file_key)
             
-            # Obtener metadatos usando conexión existente
             describe_sql = f"DESCRIBE SELECT * FROM {data_source}"
             columns_result = duckdb_service.conn.execute(describe_sql).fetchall()
             
@@ -243,13 +240,11 @@ class TechnicalNoteController:
             file_key = generate_file_key(filename)
             data_source = self.data_source_service.ensure_data_source_available(filename, file_key)
             
-            # Usar método existente si está disponible
             try:
                 unique_values = duckdb_service.get_unique_values_ultra_fast(
                     file_key, column_name, limit
                 )
             except Exception:
-                # Fallback a query directa
                 unique_values = self._get_unique_values_fallback(data_source, column_name, limit)
             
             return {
@@ -322,7 +317,6 @@ class TechnicalNoteController:
             else:
                 raise HTTPException(status_code=500, detail="Error convirtiendo archivo técnico")
         else:
-            # Sincronizar con cache local
             table_info = duckdb_service.loaded_tables[file_key]
             if file_key not in self.loaded_technical_files:
                 self.loaded_technical_files[file_key] = {
@@ -398,33 +392,39 @@ class TechnicalNoteController:
             "values": []
         }
     
-    def get_age_ranges(self, filename: str, corte_fecha: str = "2025-07-31"):
+    def get_age_ranges(self, filename: str, corte_fecha: str):
+        """✅ MODIFICADO: Pasar fecha dinámica al controlador de edad"""
         return AgeController().get_age_ranges(filename, corte_fecha, self.static_files_dir)
     
-
-    def get_inasistentes_report(self, filename: str,selected_months: List[int],
-                                selected_years: List[int] = None, selected_keywords: List[str] = None,corte_fecha: str = "2025-07-31",
-                                departamento: Optional[str] = None,municipio: Optional[str] = None,
-                                ips: Optional[str] = None):
-        return AbsentUserController().get_inasistentes_report(filename, selected_months,
-                                                            selected_years, selected_keywords, corte_fecha,
-                                                            departamento, municipio, ips,
-                                                            self.static_files_dir)
+    def get_inasistentes_report(
+        self, filename: str, selected_months: List[int],
+        selected_years: List[int] = None, selected_keywords: List[str] = None,
+        corte_fecha: str = None,  # ✅ SIN VALOR POR DEFECTO
+        departamento: Optional[str] = None, municipio: Optional[str] = None,
+        ips: Optional[str] = None
+    ):
+        """✅ MODIFICADO: Pasar fecha dinámica al controlador de ausentes"""
+        return AbsentUserController().get_inasistentes_report(
+            filename, selected_months, selected_years, selected_keywords, corte_fecha,
+            departamento, municipio, ips, self.static_files_dir
+        )
     
-    def export_inasistentes_csv(self, filename: str, selected_months: List[int],
-                           selected_years: List[int] = None, selected_keywords: List[str] = None,
-                           corte_fecha: str = "2025-07-31", departamento: Optional[str] = None,
-                           municipio: Optional[str] = None, ips: Optional[str] = None):
+    def export_inasistentes_csv(
+        self, filename: str, selected_months: List[int],
+        selected_years: List[int] = None, selected_keywords: List[str] = None,
+        corte_fecha: str = None,  # ✅ SIN VALOR POR DEFECTO
+        departamento: Optional[str] = None,
+        municipio: Optional[str] = None, ips: Optional[str] = None
+    ):
+        """✅ MODIFICADO: Pasar fecha dinámica al exportador"""
         return AbsentUserController().export_inasistentes_to_csv(
             filename, selected_months, selected_years, selected_keywords, 
             corte_fecha, departamento, municipio, ips, self.static_files_dir
         )
 
-
 # Función factory para mantener compatibilidad
 def get_technical_note_controller():
     from controllers.files_controllers.storage_manager import storage_manager
     return TechnicalNoteController(storage_manager)
-
 
 technical_note_controller = get_technical_note_controller()

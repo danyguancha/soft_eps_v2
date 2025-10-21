@@ -1,3 +1,4 @@
+# services/technical_note_services/report_service_aux/analysis_numerador_denominador.py
 from typing import Any, Dict, List, Optional
 from services.duckdb_service.duckdb_service import duckdb_service
 from services.technical_note_services.report_service_aux.corrected_months import CorrectedMonths
@@ -11,7 +12,7 @@ class AnalysisNumeratorDenominator:
         min_count: int, corte_fecha: str, age_extractor
     ) -> List[Dict[str, Any]]:
         """
-        COMPLETAMENTE CORREGIDO: Calcula numerador y denominador por rango de edad específico
+        ✅ COMPLETAMENTE CORREGIDO: Calcula numerador y denominador CON FECHA DINÁMICA
         """
         items_with_numerator_denominator = []
         
@@ -22,15 +23,21 @@ class AnalysisNumeratorDenominator:
             print(f"❌ Error detectando campo documento: {e}")
             return []
         
-        # DETECTAR CAMPOS DE EDAD CORRECTOS  
+        # ✅ DETECTAR CAMPOS DE EDAD CON FECHA DINÁMICA
         try:
+            print(f"🗓️ Usando fecha de corte DINÁMICA: {corte_fecha}")
             edad_meses_field = CorrectedMonths().get_age_months_field_corrected(data_source, corte_fecha)
             edad_años_field = CorrectedYear().get_age_years_field_corrected(data_source, corte_fecha)
+            
+            # ✅ IMPRIMIR LOS CAMPOS DE EDAD CALCULADOS
+            print(f"📊 Campo edad meses: {edad_meses_field}")
+            print(f"📊 Campo edad años: {edad_años_field}")
+            
         except Exception as e:
             print(f"❌ Error detectando campos de edad: {e}")
             return []
         
-        # CONSTRUIR FILTROS GEOGRÁFICOS CORREGIDOS
+        # CONSTRUIR FILTROS GEOGRÁFICOS
         geo_conditions = []
         if departamento and departamento != 'Todos': 
             geo_conditions.append(f'"Departamento" = \'{departamento}\'')
@@ -46,12 +53,16 @@ class AnalysisNumeratorDenominator:
                 keyword = match['keyword'] 
                 original_age_range = match['age_range']
                 
+                print(f"\n{'='*80}")
+                print(f"📋 Analizando: {column_name}")
+                print(f"🗓️ Fecha de corte: {corte_fecha}")
+                print(f"{'='*80}")
+                
                 # EXTRAER RANGO DE EDAD ESPECÍFICO
                 age_range_obj = age_extractor.extract_age_range(column_name)
                 
                 if not age_range_obj:
-                    print(f"   ⚠️ No se pudo extraer rango de edad específico del nombre")
-                    # Usar análisis tradicional como fallback
+                    print(f"   ⚠️ No se pudo extraer rango de edad específico")
                     traditional_count = self._get_traditional_count(data_source, column_name, geo_filter)
                     if traditional_count >= min_count:
                         items_with_numerator_denominator.append({
@@ -63,26 +74,30 @@ class AnalysisNumeratorDenominator:
                             "denominador": traditional_count,
                             "cobertura_porcentaje": 100.0,
                             "sin_datos": 0,
-                            "metodo": "FALLBACK_TRADICIONAL"
+                            "metodo": "FALLBACK_TRADICIONAL",
+                            "corte_fecha": corte_fecha
                         })
                     continue
                 
-                print(f"   RANGO EXTRAÍDO: {age_range_obj.get_description()}")
+                print(f"   ✅ RANGO EXTRAÍDO: {age_range_obj.get_description()}")
                 print(f"   📏 Min: {age_range_obj.min_age}, Max: {age_range_obj.max_age}, Unit: {age_range_obj.unit}")
                 
-                # GENERAR FILTRO SQL USANDO EL MÉTODO DEL AGERANGE
-                specific_age_filter = age_range_obj.get_age_filter_sql(edad_meses_field, edad_años_field)
+                # ✅ USAR FILTRO EXACTO CON FECHA DINÁMICA
+                specific_age_filter = self._build_exact_age_filter(age_range_obj, edad_meses_field, edad_años_field)
                 age_description = age_range_obj.get_description()
                 
-                # CALCULAR DENOMINADOR CON CAMPOS CORRECTOS
-                denominator_sql = f"""
-                SELECT COUNT(DISTINCT {document_field}) as total_poblacion_rango
+                print(f"   🔍 FILTRO EDAD EXACTO: {specific_age_filter}")
+                
+                # ✅ CALCULAR DENOMINADOR CON FECHA DINÁMICA
+                # IMPORTANTE: El denominador debe contar TODOS los registros del rango de edad
+                # calculado con la fecha de corte, sin importar si tienen o no consulta
+                denominador_sql = f"""
+                SELECT COUNT({document_field}) as total_registros
                 FROM {data_source}
                 WHERE 
                     ({specific_age_filter})
                     AND "Fecha Nacimiento" IS NOT NULL 
                     AND TRIM("Fecha Nacimiento") != ''
-                    AND LENGTH(TRIM("Fecha Nacimiento")) >= 8
                     AND TRY_CAST(strptime("Fecha Nacimiento", '%d/%m/%Y') AS DATE) IS NOT NULL
                     AND strptime("Fecha Nacimiento", '%d/%m/%Y') <= DATE '{corte_fecha}'
                     AND {document_field} IS NOT NULL
@@ -90,35 +105,38 @@ class AnalysisNumeratorDenominator:
                     AND {geo_filter}
                 """
                 
-                print(f"   🔍 QUERY DENOMINADOR (primeros 150 chars): {denominator_sql[:150]}...")
+                print(f"   🔍 SQL DENOMINADOR:")
+                print(f"      {denominador_sql[:300]}...")
                 
                 try:
-                    denominator_result = duckdb_service.conn.execute(denominator_sql).fetchone()
+                    denominator_result = duckdb_service.conn.execute(denominador_sql).fetchone()
                     total_denominator = int(denominator_result[0]) if denominator_result and denominator_result[0] else 0
                 except Exception as e:
                     print(f"   ❌ Error ejecutando denominador: {e}")
+                    import traceback
+                    traceback.print_exc()
                     continue
                 
-                print(f"   📊 DENOMINADOR: {total_denominator:,} personas en {age_description}")
+                print(f"   📊 DENOMINADOR: {total_denominator:,} registros con {age_description}")
                 
                 if total_denominator == 0:
-                    print(f"   ⚠️ DENOMINADOR = 0 - Sin población en este rango")
+                    print(f"   ⚠️ DENOMINADOR = 0 - Sin población en este rango exacto")
                     continue
                 
-                # CALCULAR NUMERADOR CON CAMPOS CORRECTOS
+                # ✅ CALCULAR NUMERADOR CON FECHA DINÁMICA
                 escaped_column = duckdb_service.escape_identifier(column_name)
                 
+                # ✅ NUMERADOR: Solo los que tienen datos válidos en la columna
                 numerator_sql = f"""
-                SELECT COUNT(DISTINCT {document_field}) as total_con_datos
+                SELECT COUNT({document_field}) as total_con_datos
                 FROM {data_source}
                 WHERE 
                     ({specific_age_filter})
                     AND {escaped_column} IS NOT NULL 
                     AND TRIM(CAST({escaped_column} AS VARCHAR)) != ''
-                    AND TRIM(CAST({escaped_column} AS VARCHAR)) NOT IN ('NULL', 'null', 'None', 'none', 'NaN', 'nan', 'N/A', 'n/a', '-')
+                    AND TRIM(CAST({escaped_column} AS VARCHAR)) NOT IN ('NULL', 'null', 'None', 'none', 'NaN', 'nan', 'N/A', 'n/a', '-', 'No')
                     AND "Fecha Nacimiento" IS NOT NULL 
                     AND TRIM("Fecha Nacimiento") != ''
-                    AND LENGTH(TRIM("Fecha Nacimiento")) >= 8
                     AND TRY_CAST(strptime("Fecha Nacimiento", '%d/%m/%Y') AS DATE) IS NOT NULL
                     AND strptime("Fecha Nacimiento", '%d/%m/%Y') <= DATE '{corte_fecha}'
                     AND {document_field} IS NOT NULL
@@ -126,25 +144,62 @@ class AnalysisNumeratorDenominator:
                     AND {geo_filter}
                 """
                 
-                print(f"   🔍 QUERY NUMERADOR (primeros 150 chars): {numerator_sql[:150]}...")
+                print(f"   🔍 SQL NUMERADOR:")
+                print(f"      {numerator_sql[:300]}...")
                 
                 try:
                     numerator_result = duckdb_service.conn.execute(numerator_sql).fetchone()
                     total_numerator = int(numerator_result[0]) if numerator_result and numerator_result[0] else 0
                 except Exception as e:
                     print(f"   ❌ Error ejecutando numerador: {e}")
+                    import traceback
+                    traceback.print_exc()
                     continue
                 
-                print(f"   NUMERADOR: {total_numerator:,} con datos")
+                print(f"   ✅ NUMERADOR: {total_numerator:,} registros con datos")
                 
                 # VALIDAR CONSISTENCIA
                 if total_numerator > total_denominator:
-                    print(f"   🔧 Corrigiendo: numerador > denominador")
+                    print(f"   🔧 ADVERTENCIA: numerador ({total_numerator}) > denominador ({total_denominator})")
+                    print(f"   🔧 Ajustando numerador = denominador")
                     total_numerator = total_denominator
                 
                 # CALCULAR MÉTRICAS
                 cobertura_porcentaje = (total_numerator / total_denominator) * 100 if total_denominator > 0 else 0.0
                 sin_datos = total_denominator - total_numerator
+                
+                print(f"   📈 COBERTURA: {cobertura_porcentaje:.2f}%")
+                print(f"   ⚠️ SIN DATOS: {sin_datos:,} registros")
+                
+                # ✅ AGREGAR DEBUG: Verificar con una consulta de muestra
+                if age_range_obj.unit == 'months':
+                    debug_sql = f"""
+                    SELECT 
+                        "Fecha Nacimiento",
+                        {edad_meses_field} as edad_calculada,
+                        {escaped_column} as valor_consulta,
+                        CASE 
+                            WHEN {escaped_column} IS NOT NULL 
+                                 AND TRIM(CAST({escaped_column} AS VARCHAR)) != ''
+                                 AND TRIM(CAST({escaped_column} AS VARCHAR)) NOT IN ('NULL', 'null', 'None', 'none', 'NaN', 'nan', 'N/A', 'n/a', '-', 'No')
+                            THEN 'CON_DATO'
+                            ELSE 'SIN_DATO'
+                        END as estado
+                    FROM {data_source}
+                    WHERE 
+                        ({specific_age_filter})
+                        AND "Fecha Nacimiento" IS NOT NULL 
+                        AND {geo_filter}
+                    LIMIT 10
+                    """
+                    
+                    try:
+                        debug_result = duckdb_service.conn.execute(debug_sql).fetchall()
+                        print(f"   🔍 MUESTRA DE DATOS (primeros 10):")
+                        for idx, row in enumerate(debug_result, 1):
+                            print(f"      {idx}. Nac: {row[0]}, Edad: {row[1]} meses, Valor: {row[2]}, Estado: {row[3]}")
+                    except Exception as debug_error:
+                        print(f"   ⚠️ No se pudo ejecutar debug: {debug_error}")
                 
                 # APLICAR FILTRO min_count
                 if total_numerator >= min_count:
@@ -159,7 +214,7 @@ class AnalysisNumeratorDenominator:
                         "denominador": total_denominator,
                         "cobertura_porcentaje": round(cobertura_porcentaje, 2),
                         "sin_datos": sin_datos,
-                        "metodo": f"NUMERADOR_DENOMINADOR_RANGO_{age_range_obj.unit.upper()}",
+                        "metodo": f"REGISTROS_TOTALES_{age_range_obj.unit.upper()}",
                         
                         # Campos adicionales
                         "age_range_extracted": {
@@ -171,9 +226,11 @@ class AnalysisNumeratorDenominator:
                         "corte_fecha": corte_fecha
                     })
                     
-                    # DEBUGGING: Verificar si el rango incluye múltiples edades
+                    print(f"   ✅ AGREGADO AL REPORTE")
+                    
+                    # DEBUG para rangos múltiples
                     if age_range_obj.min_age != age_range_obj.max_age:
-                        print(f"   🔍 VERIFICACIÓN RANGO MÚLTIPLE:")
+                        print(f"   🔍 DESGLOSE POR EDAD (rango múltiple):")
                         self._debug_age_range_coverage(
                             data_source, age_range_obj, edad_meses_field, edad_años_field, 
                             geo_filter, corte_fecha, document_field
@@ -187,7 +244,83 @@ class AnalysisNumeratorDenominator:
                 traceback.print_exc()
                 continue
         
+        print(f"\n{'='*80}")
+        print(f"✅ ANÁLISIS COMPLETO: {len(items_with_numerator_denominator)} actividades procesadas")
+        print(f"🗓️ Fecha de corte utilizada: {corte_fecha}")
+        print(f"{'='*80}\n")
+        
         return items_with_numerator_denominator
+    
+    def _build_exact_age_filter(self, age_range_obj, edad_meses_field: str, edad_años_field: str) -> str:
+        """
+        ✅ Construye filtro de edad EXACTA usando los campos calculados dinámicamente
+        """
+        if age_range_obj.unit == 'months':
+            if age_range_obj.min_age == age_range_obj.max_age:
+                # Un solo mes
+                filter_sql = f"{edad_meses_field} = {age_range_obj.min_age}"
+            else:
+                # Rango de meses
+                filter_sql = f"{edad_meses_field} BETWEEN {age_range_obj.min_age} AND {age_range_obj.max_age}"
+        
+        elif age_range_obj.unit == 'years':
+            if age_range_obj.min_age == age_range_obj.max_age:
+                # Un solo año: convertir a meses (ej: 3 años = 36-47 meses)
+                min_months = age_range_obj.min_age * 12
+                max_months = (age_range_obj.min_age + 1) * 12 - 1
+                filter_sql = f"{edad_meses_field} BETWEEN {min_months} AND {max_months}"
+            else:
+                # Rango de años: convertir a meses
+                min_months = age_range_obj.min_age * 12
+                max_months = (age_range_obj.max_age + 1) * 12 - 1
+                filter_sql = f"{edad_meses_field} BETWEEN {min_months} AND {max_months}"
+        
+        else:
+            # Fallback al método original
+            filter_sql = age_range_obj.get_age_filter_sql(edad_meses_field, edad_años_field)
+        
+        return filter_sql
+    
+    def _debug_age_range_coverage(
+        self, data_source: str, age_range_obj, edad_meses_field: str, 
+        edad_años_field: str, geo_filter: str, corte_fecha: str, document_field: str
+    ):
+        """Debug: Verificar distribución de edades en el denominador CON FECHA DINÁMICA"""
+        try:
+            print(f"\n      🔍 DEBUG: Distribución por edad en el rango")
+            
+            age_filter = self._build_exact_age_filter(age_range_obj, edad_meses_field, edad_años_field)
+            
+            debug_sql = f"""
+            SELECT 
+                {edad_meses_field} as edad_meses,
+                COUNT({document_field}) as registros
+            FROM {data_source}
+            WHERE 
+                ({age_filter})
+                AND "Fecha Nacimiento" IS NOT NULL 
+                AND TRY_CAST(strptime("Fecha Nacimiento", '%d/%m/%Y') AS DATE) IS NOT NULL
+                AND strptime("Fecha Nacimiento", '%d/%m/%Y') <= DATE '{corte_fecha}'
+                AND {document_field} IS NOT NULL
+                AND {geo_filter}
+            GROUP BY {edad_meses_field}
+            ORDER BY edad_meses
+            LIMIT 20
+            """
+            
+            debug_result = duckdb_service.conn.execute(debug_sql).fetchall()
+            
+            total_verification = 0
+            for row in debug_result:
+                edad_mes = row[0]
+                registros = row[1]
+                total_verification += registros
+                print(f"         {edad_mes} meses: {registros:,} registros")
+            
+            print(f"      📊 TOTAL VERIFICADO: {total_verification:,}")
+            
+        except Exception as e:
+            print(f"      ❌ Error en debug: {e}")
     
     def calculate_totals_with_numerator_denominator(self, items: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
         """Calcula totales por palabra clave CON numerador/denominador"""
@@ -228,7 +361,7 @@ class AnalysisNumeratorDenominator:
         corte_fecha: str,
         temporal_breakdown_data: Dict[str, Any] = None
     ) -> Dict[str, Any]:
-        """Construye reporte exitoso CON numerador/denominador Y DESGLOSE TEMPORAL"""
+        """Construye reporte exitoso CON numerador/denominador Y FECHA DINÁMICA"""
         return {
             "success": True,
             "filename": filename,
@@ -238,24 +371,20 @@ class AnalysisNumeratorDenominator:
             "items": items,
             "totals_by_keyword": totals_by_keyword,
             "temporal_data": temporal_data,
-            "temporal_breakdown_data": temporal_breakdown_data or {},  # 🆕 NUEVO CAMPO
+            "temporal_breakdown_data": temporal_breakdown_data or {},
             "global_statistics": global_statistics,
             "ultra_fast": True,
-            "engine": "DuckDB_NumeradorDenominador_Keywords_v2",
+            "engine": "DuckDB_DateDiff_FechaDinamica_v6",
             "data_source_used": data_source,
-            "metodo": "NUMERADOR_DENOMINADOR_CON_DESGLOSE_TEMPORAL_POR_MES_Y_AÑO",
-            "version": "2.0.0",
+            "metodo": "REGISTROS_TOTALES_DATE_DIFF",
+            "version": "6.0.0",
+            "logica_denominador": "COUNT(*) con date_diff() equivalente a SIFECHA de Excel",
             "caracteristicas": [
-                "extraccion_automatica_rango_edad",
-                "numerador_denominador_por_columna", 
-                "calculo_cobertura_especifica",
-                "compatibilidad_keywords_tradicional",
-                "analisis_temporal_integrado",
-                "verificacion_rangos_multiples",
-                "deteccion_automatica_campos",
-                "desglose_temporal_numerador_denominador_mes_año",
-                "extraccion_fechas_desde_columnas_consulta",
-                "calculo_cobertura_por_periodo_temporal"
+                "date_diff_equivalente_sifecha",
+                "edad_exacta_fecha_dinamica",
+                "numerador_con_datos_reales",
+                "cobertura_por_edad_especifica",
+                "compatibilidad_100_excel_sifecha"
             ]
         }
     

@@ -1,54 +1,74 @@
-
-
+# services/technical_note_services/report_service_aux/corrected_years.py - ✅ CORREGIDO
 from services.duckdb_service.duckdb_service import duckdb_service
-
 
 class CorrectedYear:
     def get_age_years_field_corrected(self, data_source: str, corte_fecha: str) -> str:
         """
-        CORREGIDO: Determina el campo correcto para edad en años
+        ✅ SOLUCIÓN DEFINITIVA: Usar date_diff() para años (igual que Excel)
+        
+        Excel: =SIFECHA(fecha_nacimiento; fecha_corte; "y")
+        DuckDB: date_diff('year', fecha_nacimiento, fecha_corte)
         """
         try:
+            print(f"\n🔍 ===== DEBUG get_age_years_field_corrected =====")
+            print(f"   📅 corte_fecha RECIBIDA: {corte_fecha}")
+            
             describe_sql = f"DESCRIBE SELECT * FROM {data_source}"
             columns_result = duckdb_service.conn.execute(describe_sql).fetchall()
             column_names = [row[0] for row in columns_result]
             
-            print(f"   🔍 Buscando campo edad años en {len(column_names)} columnas...")
-            
-            # Buscar columnas existentes de edad en años
-            edad_candidates = ['edad_años', 'años_edad', 'edad_en_años', 'EdadAños', 'Edad_Años', 
-                             'edad', 'Edad', 'age', 'Age', 'años', 'Anos', 'years']
+            # Buscar columnas existentes
+            edad_candidates = ['edad', 'Edad', 'edad_años', 'age', 'Age']
             
             for candidate in edad_candidates:
                 if candidate in column_names:
-                    # Verificar si necesita conversión
-                    if candidate.lower() in ['edad', 'age']:
-                        print(f"   Campo edad años detectado (con conversión): {candidate}")
-                        return f'TRY_CAST("{candidate}" AS INTEGER)'
-                    else:
-                        print(f"   Campo edad años detectado: {candidate}")
-                        return f'"{candidate}"'
+                    print(f"   ✅ Campo edad años detectado: {candidate}")
+                    return f'TRY_CAST("{candidate}" AS INTEGER)'
             
-            # BUSCAR POR SIMILITUD PARCIAL
-            for column in column_names:
-                if any(keyword in column.lower() for keyword in ['edad', 'age', 'años', 'year']):
-                    if not any(exclude in column.lower() for exclude in ['meses', 'month', 'dias', 'day']):
-                        print(f"   Campo edad años por similitud: {column}")
-                        return f'TRY_CAST("{column}" AS INTEGER)'
+            # Buscar fecha de nacimiento
+            fecha_candidates = ['Fecha Nacimiento', 'fecha_nacimiento', 'FechaNacimiento']
             
-            # Calcular desde meses
-            try:
-                edad_meses_field = self._get_age_months_field_corrected(data_source, corte_fecha)
-                calc_field = f"FLOOR(({edad_meses_field}) / 12)"
-                print(f"   Calculando edad años desde meses")
+            fecha_field = None
+            for candidate in fecha_candidates:
+                if candidate in column_names:
+                    fecha_field = candidate
+                    break
+            
+            if fecha_field:
+                # ✅ CAMBIO CRÍTICO: Usar date_diff() para años completos
+                calc_field = f"date_diff('year', strptime(\"{fecha_field}\", '%d/%m/%Y'), DATE '{corte_fecha}')"
+                
+                print(f"   ✅ Calculando edad años desde: {fecha_field}")
+                print(f"   📅 Con fecha de corte DINÁMICA: {corte_fecha}")
+                print(f"   🔧 Fórmula SQL (date_diff): {calc_field}")
+                
+                # Validación
+                try:
+                    test_sql = f"""
+                    SELECT 
+                        "{fecha_field}" as fecha_nac,
+                        {calc_field} as edad_años_calculada,
+                        DATE '{corte_fecha}' as fecha_corte
+                    FROM {data_source}
+                    WHERE "{fecha_field}" IS NOT NULL 
+                    AND TRY_CAST(strptime("{fecha_field}", '%d/%m/%Y') AS DATE) IS NOT NULL
+                    LIMIT 5
+                    """
+                    test_result = duckdb_service.conn.execute(test_sql).fetchall()
+                    
+                    print(f"   ✅ Validación OK - Ejemplos:")
+                    for row in test_result:
+                        print(f"      Nac: {row[0]} → Edad: {row[1]} años (corte: {row[2]})")
+                        
+                except Exception as test_error:
+                    print(f"   ❌ Error en validación: {test_error}")
+                    raise
+                
+                print(f"===== FIN DEBUG =====\n")
                 return calc_field
-            except:
-                pass
             
-            # Fallback final
-            print(f"   ⚠️ Usando fallback para edad años")
-            return 'TRY_CAST("edad" AS INTEGER)'
+            raise Exception("No se encontró campo de edad en años ni fecha de nacimiento")
             
         except Exception as e:
-            print(f"   ❌ Error detectando campo edad años: {e}")
-            return 'TRY_CAST("edad" AS INTEGER)'
+            print(f"   ❌ Error: {e}")
+            raise

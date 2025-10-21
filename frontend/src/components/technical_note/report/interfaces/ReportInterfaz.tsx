@@ -1,45 +1,39 @@
-import type { GeographicFilters, KeywordAgeReport } from "../../../../services/TechnicalNoteService";
+// components/technical-note/report/interfaces/ReportInterfaz.ts - ✅ ACTUALIZAR
 
+import type { GeographicFilters } from '../../../../services/TechnicalNoteService';
 
 export interface TemporalReportProps {
-    keywordReport: KeywordAgeReport | null;
-    loadingReport: boolean;
-    showReport: boolean;
-    hasReport: boolean;
-    reportItemsCount: number;
-    reportTotalRecords: number;
-    selectedFile: string | null;
-    reportKeywords: string[];
-    reportMinCount: number;
-    showTemporalData: boolean;
-    // Filtros geográficos
-    geographicFilters: GeographicFilters;
-    departamentosOptions: string[];
-    municipiosOptions: string[];
-    ipsOptions: string[];
-    loadingGeoFilters: {
-        departamentos: boolean;
-        municipios: boolean;
-        ips: boolean;
-    };
-    // Handlers existentes
-    onToggleReportVisibility: () => void;
-    onRegenerateReport: () => void;
-    onSetReportKeywords: (keywords: string[]) => void;
-    onSetReportMinCount: (count: number) => void;
-    onSetShowTemporalData: (show: boolean) => void;
-    onLoadKeywordAgeReport: (
-        filename: string, 
-        keywords?: string[], 
-        minCount?: number, 
-        includeTemporal?: boolean,
-        geographicFilters?: GeographicFilters
-    ) => void;
-    onAddKeyword: (keyword: string) => void;
-    onRemoveKeyword: (keyword: string) => void;
-    // Handlers geográficos
-    onDepartamentoChange: (value: string | null) => void;
-    onMunicipioChange: (value: string | null) => void;
-    onIpsChange: (value: string | null) => void;
-    resetGeographicFilters: () => void;
+  keywordReport: any;
+  loadingReport: boolean;
+  showReport: boolean;
+  hasReport: boolean;
+  reportTotalRecords: number;
+  selectedFile: string | null;
+  reportKeywords: string[];
+  reportMinCount: number;
+  showTemporalData: boolean;
+  geographicFilters: GeographicFilters;
+  departamentosOptions: string[];
+  municipiosOptions: string[];
+  ipsOptions: string[];
+  loadingGeoFilters: any;
+  
+  onToggleReportVisibility: () => void;
+  onSetReportKeywords: (keywords: string[]) => void;
+  onSetShowTemporalData: (show: boolean) => void;
+  
+  // ✅ FIRMA ACTUALIZADA CON 6 PARÁMETROS
+  onLoadKeywordAgeReport: (
+    filename: string,           // 1. filename
+    cutoffDate: string,         // 2. cutoffDate (OBLIGATORIO)
+    keywords?: string[],        // 3. keywords (OPCIONAL)
+    minCount?: number,          // 4. minCount (OPCIONAL)
+    includeTemporal?: boolean,  // 5. includeTemporal (OPCIONAL)
+    geoFilters?: GeographicFilters // 6. geoFilters (OPCIONAL)
+  ) => void | Promise<any>;
+  
+  onDepartamentoChange: (departamento: string | null) => void;
+  onMunicipioChange: (municipio: string | null) => void;
+  onIpsChange: (ips: string | null) => void;
+  resetGeographicFilters: () => void;
 }

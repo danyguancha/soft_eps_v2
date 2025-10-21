@@ -1,44 +1,43 @@
-// components/report/AgeRangeSelector.tsx - CON BOTÓN MANUAL PARA GENERAR REPORTE
+// components/report/AgeRangeSelector.tsx - CON FECHA DE CORTE DESDE COMPONENTE PADRE
 
 import React, { useState, useEffect } from 'react';
 import {
   Select, Card, Row, Col, Typography, Statistic, Spin, Alert,
-  DatePicker, Button, Space, Divider, Tag
+  Button, Space, Divider, Tag
 } from 'antd';
 import {
   CalendarOutlined, UserOutlined, PlayCircleOutlined,
-  StopOutlined, ReloadOutlined, CheckCircleOutlined
+  StopOutlined, ReloadOutlined
 } from '@ant-design/icons';
 import { TechnicalNoteService } from '../../../services/TechnicalNoteService';
 import type { AgeRangesResponse } from '../../../interfaces/IAge';
-import dayjs, { Dayjs } from 'dayjs';
+import dayjs from 'dayjs';
 
-const { Text, Title } = Typography;
+const { Text } = Typography;
 const { Option } = Select;
 
 interface AgeRangeSelectorProps {
   filename: string;
+  cutoffDate: string; // NUEVA PROP: Fecha de corte desde el padre (formato YYYY-MM-DD)
   onAgeSelectionChange: (selection: {
     selectedYears: number[];
     selectedMonths: number[];
     corteFecha: string;
   }) => void;
-  initialCorteFecha?: string;
 }
 
 export const AgeRangeSelector: React.FC<AgeRangeSelectorProps> = ({
   filename,
-  onAgeSelectionChange,
-  initialCorteFecha = "2025-07-31"
+  cutoffDate, // RECIBIR fecha de corte desde el padre
+  onAgeSelectionChange
 }) => {
   const [ageRanges, setAgeRanges] = useState<AgeRangesResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedYears, setSelectedYears] = useState<number[]>([]);
   const [selectedMonths, setSelectedMonths] = useState<number[]>([]);
-  const [corteFecha, setCorteFecha] = useState<string>("2025-07-31");
 
-  // ✅ NUEVO ESTADO PARA CONTROL MANUAL
+  // ✅ ESTADO PARA CONTROL MANUAL
   const [isGenerating, setIsGenerating] = useState(false);
   const [hasGenerated, setHasGenerated] = useState(false);
   const [lastSuccessfulSelection, setLastSuccessfulSelection] = useState<{
@@ -47,33 +46,56 @@ export const AgeRangeSelector: React.FC<AgeRangeSelectorProps> = ({
     corteFecha: string;
   } | null>(null);
 
-  // Cargar rangos de edades
+  // ✅ Cargar rangos de edades cuando cambia el archivo o la fecha de corte
   const loadAgeRanges = async (fecha: string) => {
+    if (!fecha) {
+      console.warn('⚠️ No se puede cargar rangos sin fecha de corte');
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
     try {
+      console.log(`📊 Cargando rangos de edades para ${filename} con fecha ${fecha}`);
       const response = await TechnicalNoteService.getAgeRanges(filename, fecha);
       setAgeRanges(response);
+      console.log('✅ Rangos cargados exitosamente:', response);
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Error cargando rangos de edades');
-      console.error('Error cargando rangos:', err);
+      const errorMsg = err.response?.data?.detail || 'Error cargando rangos de edades';
+      setError(errorMsg);
+      console.error('❌ Error cargando rangos:', err);
     } finally {
       setLoading(false);
     }
   };
 
+  // ✅ Efecto para cargar rangos cuando cambia el archivo o la fecha
   useEffect(() => {
-    if (filename) {
-      loadAgeRanges(corteFecha);
+    if (filename && cutoffDate) {
+      console.log(`🔄 Detectado cambio: filename=${filename}, cutoffDate=${cutoffDate}`);
+      loadAgeRanges(cutoffDate);
+      
+      // Limpiar selecciones al cambiar fecha o archivo
+      setSelectedYears([]);
+      setSelectedMonths([]);
+      setHasGenerated(false);
+      setLastSuccessfulSelection(null);
+      setError(null);
     }
-  }, [filename, corteFecha]);
+  }, [filename, cutoffDate]);
 
   // ✅ FUNCIÓN PARA GENERAR REPORTE MANUALMENTE
   const handleGenerateReport = async () => {
     // Validar que se haya seleccionado al menos un mes o año
     if (selectedYears.length === 0 && selectedMonths.length === 0) {
       setError('Debe seleccionar al menos una edad en años o meses para generar el reporte');
+      return;
+    }
+
+    // Validar que haya fecha de corte
+    if (!cutoffDate) {
+      setError('No hay fecha de corte seleccionada');
       return;
     }
 
@@ -84,7 +106,7 @@ export const AgeRangeSelector: React.FC<AgeRangeSelectorProps> = ({
       const selection = {
         selectedYears,
         selectedMonths,
-        corteFecha
+        corteFecha: cutoffDate // Usar la fecha del padre
       };
 
       console.log('🚀 Generando reporte con selección:', selection);
@@ -111,6 +133,7 @@ export const AgeRangeSelector: React.FC<AgeRangeSelectorProps> = ({
     setError(null);
     setHasGenerated(false);
     setLastSuccessfulSelection(null);
+    console.log('🧹 Selección limpiada');
   };
 
   // ✅ FUNCIÓN PARA RECARGAR CON LA MISMA SELECCIÓN
@@ -131,24 +154,10 @@ export const AgeRangeSelector: React.FC<AgeRangeSelectorProps> = ({
     }
   };
 
-  // ✅ HANDLER CORREGIDO PARA FECHA
-  const handleDateChange = (date: Dayjs | null, dateString: string | string[]) => {
-    const dateStr = Array.isArray(dateString) ? dateString[0] : dateString;
-
-    if (dateStr && date) {
-      setCorteFecha(dateStr);
-      // Limpiar selecciones y estado al cambiar fecha
-      setSelectedYears([]);
-      setSelectedMonths([]);
-      setHasGenerated(false);
-      setLastSuccessfulSelection(null);
-      setError(null);
-    }
-  };
-
   // ✅ VERIFICAR SI HAY SELECCIÓN VÁLIDA
   const hasValidSelection = selectedYears.length > 0 || selectedMonths.length > 0;
 
+  // Renderizado de estados de carga y error
   if (loading) {
     return (
       <Card>
@@ -170,13 +179,27 @@ export const AgeRangeSelector: React.FC<AgeRangeSelectorProps> = ({
           description={error}
           type="error"
           showIcon
+          action={
+            <Button size="small" onClick={() => loadAgeRanges(cutoffDate)}>
+              Reintentar
+            </Button>
+          }
         />
       </Card>
     );
   }
 
   if (!ageRanges) {
-    return null;
+    return (
+      <Card>
+        <Alert
+          message="Esperando datos"
+          description="Seleccione un archivo y fecha de corte para cargar los rangos de edades"
+          type="info"
+          showIcon
+        />
+      </Card>
+    );
   }
 
   return (
@@ -186,6 +209,11 @@ export const AgeRangeSelector: React.FC<AgeRangeSelectorProps> = ({
           <UserOutlined />
           <span>Generar Reporte de Inasistentes</span>
           {filename && <Tag color="blue">{filename}</Tag>}
+          {cutoffDate && (
+            <Tag color="green" icon={<CalendarOutlined />}>
+              Corte: {dayjs(cutoffDate).format('DD/MM/YYYY')}
+            </Tag>
+          )}
         </div>
       }
       extra={
@@ -212,20 +240,30 @@ export const AgeRangeSelector: React.FC<AgeRangeSelectorProps> = ({
       }
       size="small"
     >
-      {/* ✅ FECHA DE CORTE Y ESTADÍSTICAS */}
+      {/* ✅ INFORMACIÓN DE FECHA DE CORTE Y ESTADÍSTICAS */}
       <Row gutter={16} style={{ marginBottom: 16 }}>
         <Col span={8}>
-          <Text strong>📅 Fecha de Corte:</Text>
-          <div style={{ marginTop: 4 }}>
-            <DatePicker
-              value={dayjs(corteFecha)}
-              onChange={handleDateChange}
-              format="YYYY-MM-DD"
-              placeholder="Seleccionar fecha de corte"
-              allowClear={false}
-              size="small"
-              disabled={isGenerating}
-            />
+          <div style={{
+            padding: '12px',
+            backgroundColor: '#f0f5ff',
+            border: '2px solid #1890ff',
+            borderRadius: 8,
+            textAlign: 'center'
+          }}>
+            <CalendarOutlined style={{ fontSize: 24, color: '#1890ff', marginBottom: 8 }} />
+            <div>
+              <Text strong style={{ display: 'block', marginBottom: 4 }}>
+                Fecha de Corte
+              </Text>
+              <Text style={{ fontSize: 18, color: '#1890ff', fontWeight: 600 }}>
+                {dayjs(cutoffDate).format('DD/MM/YYYY')}
+              </Text>
+            </div>
+            <div style={{ marginTop: 4 }}>
+              <Text type="secondary" style={{ fontSize: 11 }}>
+                {dayjs(cutoffDate).format('dddd, D [de] MMMM [de] YYYY')}
+              </Text>
+            </div>
           </div>
         </Col>
         <Col span={16}>
@@ -348,7 +386,7 @@ export const AgeRangeSelector: React.FC<AgeRangeSelectorProps> = ({
             )}
             <div style={{ marginTop: 4 }}>
               <Text type="secondary" style={{ fontSize: 11 }}>
-                💡 Presione "Generar Reporte" para procesar los inasistentes
+                💡 Presione "Generar Reporte" para procesar los inasistentes con la fecha de corte {dayjs(cutoffDate).format('DD/MM/YYYY')}
               </Text>
             </div>
           </div>
@@ -417,7 +455,7 @@ export const AgeRangeSelector: React.FC<AgeRangeSelectorProps> = ({
                 {lastSuccessfulSelection.selectedMonths.length > 0 && (
                   <div>📅 Meses: {lastSuccessfulSelection.selectedMonths.slice(0, 10).join(', ')}{lastSuccessfulSelection.selectedMonths.length > 10 ? '...' : ''}</div>
                 )}
-                <div>📅 Fecha corte: {lastSuccessfulSelection.corteFecha}</div>
+                <div>📅 Fecha corte: {dayjs(lastSuccessfulSelection.corteFecha).format('DD/MM/YYYY')}</div>
               </div>
             </div>
           }
@@ -438,9 +476,10 @@ export const AgeRangeSelector: React.FC<AgeRangeSelectorProps> = ({
         }}>
           <Text type="secondary">
             🎯 <strong>Instrucciones:</strong><br />
-            1. Seleccione las edades en años y/o meses que desea evaluar<br />
-            2. Presione "Generar Reporte" para procesar los inasistentes<br />
-            3. Los resultados aparecerán en la tabla inferior
+            1. Las edades se calcularán basándose en la fecha de corte: {dayjs(cutoffDate).format('DD/MM/YYYY')}<br />
+            2. Seleccione las edades en años y/o meses que desea evaluar<br />
+            3. Presione "Generar Reporte" para procesar los inasistentes<br />
+            4. Los resultados aparecerán en la tabla inferior
           </Text>
         </div>
       )}

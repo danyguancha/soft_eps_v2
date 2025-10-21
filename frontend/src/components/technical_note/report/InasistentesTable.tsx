@@ -1,7 +1,7 @@
-// components/report/InasistentesTable.tsx - Versión con desglose por actividades
+// components/report/InasistentesTable.tsx - ✅ CORREGIDO
 
 import React, { memo, useState } from 'react';
-import { Table, Typography, Tag, Card, Statistic, Row, Col, Empty, Badge, Tabs, Button } from 'antd';
+import { Table, Typography, Tag, Card, Statistic, Row, Col, Empty, Badge, Tabs, Button, Space } from 'antd';
 import {
     UserDeleteOutlined,
     EnvironmentOutlined,
@@ -10,11 +10,16 @@ import {
     UnorderedListOutlined,
     CheckCircleOutlined,
     ExclamationCircleOutlined,
-    DownloadOutlined
+    DownloadOutlined,
+    InfoCircleOutlined
 } from '@ant-design/icons';
 import type { InasistentesReportResponse, InasistenteRecord, ActivityReport } from '../../../interfaces/IAbsentUser';
-import './InasistentesTable.css'; // Importar estilos específicos si es necesario
+import './InasistentesTable.css';
 import { TechnicalNoteService } from '../../../services/TechnicalNoteService';
+import dayjs from 'dayjs';
+import 'dayjs/locale/es';
+
+dayjs.locale('es');
 
 const { Text } = Typography;
 const { TabPane } = Tabs;
@@ -22,9 +27,14 @@ const { TabPane } = Tabs;
 interface InasistentesTableProps {
     reportData: InasistentesReportResponse | null;
     loading: boolean;
+    cutoffDate?: string; // NUEVA PROP: Fecha de corte desde el padre (formato YYYY-MM-DD)
 }
 
-export const InasistentesTable: React.FC<InasistentesTableProps> = memo(({ reportData, loading }) => {
+export const InasistentesTable: React.FC<InasistentesTableProps> = memo(({ 
+    reportData, 
+    loading,
+    cutoffDate 
+}) => {
     const [activeTab, setActiveTab] = useState<string>('resumen');
 
     if (loading) {
@@ -47,6 +57,9 @@ export const InasistentesTable: React.FC<InasistentesTableProps> = memo(({ repor
             </Card>
         );
     }
+
+    // ✅ Usar cutoffDate del padre o corte_fecha del reporte como fallback
+    const displayCutoffDate = cutoffDate || reportData.corte_fecha;
 
     // ✅ COLUMNAS PARA TABLA DE INASISTENTES
     const getTableColumns = (showActivityColumn: boolean = false) => [
@@ -169,7 +182,6 @@ export const InasistentesTable: React.FC<InasistentesTableProps> = memo(({ repor
             }
             style={{ marginBottom: 16 }}
         >
-            {/* Estadísticas de la actividad */}
             <Row gutter={16} style={{ marginBottom: 12 }}>
                 <Col span={6}>
                     <Statistic
@@ -201,7 +213,6 @@ export const InasistentesTable: React.FC<InasistentesTableProps> = memo(({ repor
                 </Col>
             </Row>
 
-            {/* Tabla de inasistentes para esta actividad */}
             <Table
                 dataSource={activityReport.inasistentes}
                 columns={getTableColumns(true)}
@@ -231,7 +242,6 @@ export const InasistentesTable: React.FC<InasistentesTableProps> = memo(({ repor
     // ✅ RENDERIZAR RESUMEN GENERAL
     const renderResumenGeneral = () => (
         <div>
-            {/* Estadísticas generales */}
             <Row gutter={16} style={{ marginBottom: 16 }}>
                 <Col span={4}>
                     <Statistic
@@ -283,7 +293,6 @@ export const InasistentesTable: React.FC<InasistentesTableProps> = memo(({ repor
                 </Col>
             </Row>
 
-            {/* Información de columnas descubiertas */}
             <Card size="small" title="Columnas Descubiertas Dinámicamente" style={{ marginBottom: 16 }}>
                 {Object.entries(reportData.columnas_descubiertas).map(([keyword, columns]) => (
                     <div key={keyword} style={{ marginBottom: 8 }}>
@@ -301,7 +310,6 @@ export const InasistentesTable: React.FC<InasistentesTableProps> = memo(({ repor
                 ))}
             </Card>
 
-            {/* Resumen por actividades */}
             <Card size="small" title="Resumen por Actividades">
                 <Row gutter={8}>
                     {reportData.inasistentes_por_actividad.map((activity, idx) => (
@@ -333,75 +341,80 @@ export const InasistentesTable: React.FC<InasistentesTableProps> = memo(({ repor
         </div>
     );
 
+    // ✅ HANDLER DE EXPORTACIÓN CORREGIDO
     const handleExportCSV = async () => {
         if (!reportData) return;
 
+        // ✅ VALIDAR QUE HAYA FECHA DE CORTE
+        if (!displayCutoffDate) {
+            console.error('❌ No hay fecha de corte disponible para exportar');
+            return;
+        }
+
         try {
-            console.log('📥 Iniciando exportación CSV con caracteres especiales...');
+            console.log('📥 Iniciando exportación CSV con fecha de corte:', displayCutoffDate);
 
-            const { filtros_aplicados, filename, corte_fecha } = reportData; // Ya no usamos corte_fecha (fecha de corte)
+            const { filtros_aplicados, filename } = reportData;
 
-            // Llamar al servicio de exportación (el backend puede ignorar corteFecha si no se usa)
+            // ✅ ORDEN CORRECTO DE PARÁMETROS:
+            // exportInasistentesCSV(filename, cutoffDate, months, years, keywords, geoFilters)
             const csvBlob = await TechnicalNoteService.exportInasistentesCSV(
                 filename,
-                filtros_aplicados.selected_months,
-                filtros_aplicados.selected_years,
-                filtros_aplicados.selected_keywords,
-                corte_fecha,
-                {
+                displayCutoffDate,                          // ✅ SEGUNDO PARÁMETRO: fecha de corte
+                filtros_aplicados.selected_months,          // ✅ TERCER PARÁMETRO: meses
+                filtros_aplicados.selected_years,           // ✅ CUARTO PARÁMETRO: años
+                filtros_aplicados.selected_keywords,        // ✅ QUINTO PARÁMETRO: keywords
+                {                                           // ✅ SEXTO PARÁMETRO: filtros geográficos
                     departamento: filtros_aplicados.departamento,
                     municipio: filtros_aplicados.municipio,
                     ips: filtros_aplicados.ips
                 }
             );
 
-            
-            const now = new Date(); 
-            const pad = (n: number) => String(n).padStart(2, '0'); 
-            const yyyy = now.getFullYear(); 
-            const MM = pad(now.getMonth() + 1); 
-            const dd = pad(now.getDate()); 
-            const HH = pad(now.getHours()); 
-            const mm = pad(now.getMinutes()); 
-            const ss = pad(now.getSeconds()); 
+            const now = new Date();
+            const pad = (n: number) => String(n).padStart(2, '0');
+            const yyyy = now.getFullYear();
+            const MM = pad(now.getMonth() + 1);
+            const dd = pad(now.getDate());
+            const HH = pad(now.getHours());
+            const mm = pad(now.getMinutes());
+            const ss = pad(now.getSeconds());
 
-            const today = `${yyyy}-${MM}-${dd}`; 
-            const hms = `${HH}-${mm}-${ss}`; 
+            const today = `${yyyy}-${MM}-${dd}`;
+            const hms = `${HH}-${mm}-${ss}`;
 
             // Descargar preservando encoding
             const url = window.URL.createObjectURL(
                 new Blob([csvBlob], { type: 'text/csv; charset=utf-8' })
-            ); 
+            );
             const link = document.createElement('a');
-            link.href = url; 
+            link.href = url;
 
-            
-            const filters: string[] = []; 
+            const filters: string[] = [];
             if (filtros_aplicados.selected_keywords?.length > 0) {
-                filters.push(filtros_aplicados.selected_keywords.join('-')); 
+                filters.push(filtros_aplicados.selected_keywords.join('-'));
             }
             if (filtros_aplicados.selected_months?.length > 0) {
-                filters.push(`meses-${filtros_aplicados.selected_months.join('-')}`); 
+                filters.push(`meses-${filtros_aplicados.selected_months.join('-')}`);
             }
             if (filtros_aplicados.selected_years?.length > 0) {
-                filters.push(`años-${filtros_aplicados.selected_years.join('-')}`); 
+                filters.push(`años-${filtros_aplicados.selected_years.join('-')}`);
             }
-            const filterSuffix = filters.length > 0 ? `_${filters.join('_')}` : ''; 
+            const filterSuffix = filters.length > 0 ? `_${filters.join('_')}` : '';
 
             // Nombre final único con fecha y hora locales
-            link.download = `inasistentes_${filename.replace('.csv', '')}${filterSuffix}_${today}_${hms}.csv`; 
+            link.download = `inasistentes_${filename.replace('.csv', '')}${filterSuffix}_${today}_${hms}.csv`;
 
-            document.body.appendChild(link); 
-            link.click(); 
-            document.body.removeChild(link); 
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
             window.URL.revokeObjectURL(url);
 
-            console.log('✅ CSV con tildes, ñ y acentos descargado exitosamente');
+            console.log('✅ CSV descargado exitosamente con fecha de corte:', displayCutoffDate);
         } catch (error) {
             console.error('❌ Error exportando CSV:', error);
         }
     };
-
 
     return (
         <Card
@@ -409,58 +422,104 @@ export const InasistentesTable: React.FC<InasistentesTableProps> = memo(({ repor
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <UserDeleteOutlined style={{ color: '#ff4d4f', fontSize: 16 }} />
                     <span style={{ fontSize: 16 }}>Reporte Dinámico de Inasistentes</span>
-
                     <Badge
                         count={reportData.resumen_general.total_inasistentes_global}
                         overflowCount={Infinity}
                         style={{ backgroundColor: '#ff4d4f' }}
                     />
-
+                    {displayCutoffDate && (
+                        <Tag color="blue" icon={<CalendarOutlined />} style={{ fontSize: 11 }}>
+                            Corte: {dayjs(displayCutoffDate).format('DD/MM/YYYY')}
+                        </Tag>
+                    )}
                 </div>
-
             }
             size="small"
             style={{ height: '700px', display: 'flex', flexDirection: 'column' }}
-
+            extra={
+                <Button
+                    type="primary"
+                    icon={<DownloadOutlined />}
+                    onClick={handleExportCSV}
+                    size="small"
+                    style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
+                    disabled={!displayCutoffDate}
+                    title={!displayCutoffDate ? "Se requiere fecha de corte para exportar" : "Exportar CSV"}
+                >
+                    Exportar CSV
+                </Button>
+            }
         >
-            <Button
-                type="primary"
-                icon={<DownloadOutlined />}
-                onClick={handleExportCSV}
-                size="small"
-                style={{ backgroundColor: '#52c41a', borderColor: '#52c41a', float: 'right' }}
-            >
-                Exportar CSV
-            </Button>
-
-
-            {/* Información de filtros aplicados */}
             <div style={{
                 marginBottom: 12,
-                padding: 8,
-                backgroundColor: '#fff7e6',
-                border: '1px solid #ffd591',
-                borderRadius: 4
+                padding: 10,
+                backgroundColor: '#f0f5ff',
+                border: '1px solid #adc6ff',
+                borderRadius: 6
             }}>
-                <Text strong style={{ color: '#d46b08', fontSize: 11 }}>Filtros Aplicados:</Text>
-                <div style={{ marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                    {reportData.filtros_aplicados.selected_keywords?.length > 0 && (
-                        <Text style={{ fontSize: 10 }}>
-                            🔍<strong>Busqueda:</strong> {reportData.filtros_aplicados.selected_keywords.join(', ')}
+                <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                    <div style={{
+                        padding: '6px 10px',
+                        backgroundColor: '#e6f7ff',
+                        border: '1px solid #91d5ff',
+                        borderRadius: 4,
+                        marginBottom: 6
+                    }}>
+                        <Space align="center">
+                            <CalendarOutlined style={{ color: '#1890ff', fontSize: 14 }} />
+                            <Text strong style={{ fontSize: 12, color: '#1890ff' }}>
+                                Fecha de Corte:
+                            </Text>
+                            <Text style={{ fontSize: 13, fontWeight: 600, color: '#1890ff' }}>
+                                {dayjs(displayCutoffDate).format('DD/MM/YYYY')}
+                            </Text>
+                            <InfoCircleOutlined style={{ color: '#8c8c8c', fontSize: 12 }} />
+                            <Text type="secondary" style={{ fontSize: 11 }}>
+                                Las edades se calcularon a esta fecha
+                            </Text>
+                        </Space>
+                    </div>
+
+                    <div>
+                        <Text strong style={{ color: '#595959', fontSize: 11 }}>
+                            📋 Filtros Aplicados:
                         </Text>
-                    )}
-                    {reportData.filtros_aplicados.selected_months.length > 0 && (
-                        <Text style={{ fontSize: 10 }}>
-                            🗓️ <strong>Meses:</strong> {reportData.filtros_aplicados.selected_months.join(', ')}
-                        </Text>
-                    )}
-                    <Text style={{ fontSize: 9, color: '#666' }}>
-                        Corte: {reportData.corte_fecha}
-                    </Text>
-                </div>
+                        <div style={{ marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                            {reportData.filtros_aplicados.selected_keywords?.length > 0 && (
+                                <Tag color="purple" style={{ fontSize: 10 }}>
+                                    🔍 Búsqueda: {reportData.filtros_aplicados.selected_keywords.join(', ')}
+                                </Tag>
+                            )}
+                            {reportData.filtros_aplicados.selected_years?.length > 0 && (
+                                <Tag color="blue" style={{ fontSize: 10 }}>
+                                    🗓️ Años: {reportData.filtros_aplicados.selected_years.join(', ')}
+                                </Tag>
+                            )}
+                            {reportData.filtros_aplicados.selected_months?.length > 0 && (
+                                <Tag color="cyan" style={{ fontSize: 10 }}>
+                                    📅 Meses: {reportData.filtros_aplicados.selected_months.join(', ')}
+                                </Tag>
+                            )}
+                            {reportData.filtros_aplicados.departamento && (
+                                <Tag color="green" style={{ fontSize: 10 }}>
+                                    📍 Depto: {reportData.filtros_aplicados.departamento}
+                                </Tag>
+                            )}
+                            {reportData.filtros_aplicados.municipio && (
+                                <Tag color="orange" style={{ fontSize: 10 }}>
+                                    🏘️ Mpio: {reportData.filtros_aplicados.municipio}
+                                </Tag>
+                            )}
+                            {reportData.filtros_aplicados.ips && (
+                                <Tag color="red" style={{ fontSize: 10 }}>
+                                    🏥 IPS: {reportData.filtros_aplicados.ips}
+                                </Tag>
+                            )}
+                        </div>
+                    </div>
+                </Space>
             </div>
 
-            {/* Tabs principales */}
             <div style={{ flex: 1, overflow: 'hidden' }}>
                 <Tabs
                     activeKey={activeTab}
@@ -498,10 +557,7 @@ export const InasistentesTable: React.FC<InasistentesTableProps> = memo(({ repor
                                     overflowCount={Infinity}
                                     style={{ marginLeft: 4, backgroundColor: '#ff4d4f' }}
                                 />
-                                {/* ✅ BOTÓN DE EXPORTACIÓN */}
-
                             </span>
-
                         }
                         key="actividades"
                     >
@@ -522,10 +578,6 @@ export const InasistentesTable: React.FC<InasistentesTableProps> = memo(({ repor
                             )}
                         </div>
                     </TabPane>
-
-
-
-
                 </Tabs>
             </div>
         </Card>

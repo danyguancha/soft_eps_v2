@@ -1,4 +1,5 @@
-// components/technical-note/MainContent.tsx - ✅ MAIN CONTENT
+// components/technical-note/MainContent.tsx - ✅ CORREGIDO
+
 import React from 'react';
 import { Card, Spin, Typography, Space, Alert, Button } from 'antd';
 import { BarChartOutlined, CloudUploadOutlined } from '@ant-design/icons';
@@ -27,7 +28,6 @@ interface MainContentProps {
   loadingReport: boolean;
   showReport: boolean;
   hasReport: boolean;
-  reportItemsCount: number;
   reportTotalRecords: number;
   reportKeywords: string[];
   reportMinCount: number;
@@ -37,6 +37,7 @@ interface MainContentProps {
   municipiosOptions: string[];
   ipsOptions: string[];
   loadingGeoFilters: any;
+  cutoffDate?: string; // ✅ NUEVA PROP: Fecha de corte
   
   // Event handlers
   onPaginationChange: any;
@@ -101,12 +102,12 @@ export const MainContent: React.FC<MainContentProps> = (props) => {
           onSearch={props.onSearch}
         /> */}
 
+        {/* ✅ COMPONENTE REPORT SIN reportItemsCount */}
         <Report
           keywordReport={props.keywordReport}
           loadingReport={props.loadingReport}
           showReport={props.showReport}
           hasReport={props.hasReport}
-          reportItemsCount={props.reportItemsCount}
           reportTotalRecords={props.reportTotalRecords}
           selectedFile={props.selectedFile}
           reportKeywords={props.reportKeywords}
@@ -117,14 +118,11 @@ export const MainContent: React.FC<MainContentProps> = (props) => {
           municipiosOptions={props.municipiosOptions}
           ipsOptions={props.ipsOptions}
           loadingGeoFilters={props.loadingGeoFilters}
+          cutoffDate={props.cutoffDate} // ✅ PASAR FECHA DE CORTE
           onToggleReportVisibility={props.onToggleReportVisibility}
-          onRegenerateReport={props.onRegenerateReport}
           onSetReportKeywords={props.onSetReportKeywords}
-          onSetReportMinCount={props.onSetReportMinCount}
           onSetShowTemporalData={props.onSetShowTemporalData}
           onLoadKeywordAgeReport={props.onLoadKeywordAgeReport}
-          onAddKeyword={props.onAddKeyword}
-          onRemoveKeyword={props.onRemoveKeyword}
           onDepartamentoChange={props.onDepartamentoChange}
           onMunicipioChange={props.onMunicipioChange}
           onIpsChange={props.onIpsChange}

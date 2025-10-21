@@ -1,6 +1,9 @@
-// components/technical-note/TechnicalNoteViewer.tsx - ✅ COMPONENTE PRINCIPAL REFACTORIZADO
+// components/technical-note/TechnicalNoteViewer.tsx - ✅ CORREGIDO
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Modal, message } from 'antd';
+import dayjs, { Dayjs } from 'dayjs';
+import 'dayjs/locale/es';
 import { useTechnicalNote } from '../../hooks/useTechnicalNote';
 import { useFileUpload } from '../../hooks/useFileUpload';
 import { BASE_AGE_GROUPS, convertUploadedFilesToGroups } from '../../config/ageGroups.config';
@@ -9,13 +12,24 @@ import type { AgeGroupIcon, CustomUploadedFile } from '../../types/FileTypes';
 // Componentes refactorizados
 import { HeaderSection } from './HeaderSection';
 import { LoadingProgress } from './LoadingProgress';
+import { CutoffDateSelector } from './CutoffDateSelector';
 import { FileGridSection } from './FileGridSection';
 import { FileUploadModal } from './FileUploadModal';
 import { MainContent } from './MainContent';
 
+dayjs.locale('es');
+
 const TechnicalNoteViewer: React.FC = () => {
   const [fileSelectionLoading, setFileSelectionLoading] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [cutoffDate, setCutoffDate] = useState<Dayjs | null>(null);
+
+  // ✅ CONVERTIR cutoffDate de Dayjs a string YYYY-MM-DD
+  const cutoffDateString = useMemo(() => {
+    const result = cutoffDate ? cutoffDate.format('YYYY-MM-DD') : undefined;
+    console.log('🔍 TechnicalNoteViewer - cutoffDateString calculado:', result);
+    return result;
+  }, [cutoffDate]);
 
   // Hook personalizado para gestión de archivos
   const {
@@ -43,7 +57,6 @@ const TechnicalNoteViewer: React.FC = () => {
     loadingReport,
     showReport,
     hasReport,
-    reportItemsCount,
     reportTotalRecords,
     reportKeywords,
     reportMinCount,
@@ -86,6 +99,28 @@ const TechnicalNoteViewer: React.FC = () => {
     return [...BASE_AGE_GROUPS, ...customGroups];
   }, [uploadedFiles]);
 
+  // Handler para cambio de fecha de corte
+  const handleCutoffDateChange = (date: Dayjs | null) => {
+    console.log('📅 handleCutoffDateChange llamado con:', date?.format('YYYY-MM-DD'));
+    setCutoffDate(date);
+    if (date) {
+      console.log(`✅ Fecha de corte seleccionada: ${date.format('DD/MM/YYYY')}`);
+      message.success(`Fecha de corte establecida: ${date.format('DD/MM/YYYY')}`);
+    } else {
+      console.log('⚠️ Fecha de corte eliminada');
+      message.warning('Fecha de corte eliminada. Debe seleccionar una fecha para continuar.');
+    }
+  };
+
+  // ✅ DEBUG: Log cuando cambia cutoffDate
+  useEffect(() => {
+    console.log('🔍 TechnicalNoteViewer - Estado cutoffDate:', {
+      cutoffDate: cutoffDate?.format('YYYY-MM-DD'),
+      cutoffDateString,
+      hasCutoffDate: !!cutoffDate
+    });
+  }, [cutoffDate, cutoffDateString]);
+
   // Cargar archivos personalizados al iniciar
   useEffect(() => {
     const loadCustomFiles = async () => {
@@ -100,6 +135,11 @@ const TechnicalNoteViewer: React.FC = () => {
 
   // Handler unificado para selección de archivos
   const handleFileGroupClick = async (group: AgeGroupIcon) => {
+    if (!cutoffDate) {
+      message.error('Debe seleccionar una fecha de corte antes de cargar archivos');
+      return;
+    }
+
     if (!group.filename) return;
 
     try {
@@ -107,13 +147,15 @@ const TechnicalNoteViewer: React.FC = () => {
 
       if (group.isCustomFile) {
         console.log(`🔍 Cargando archivo personalizado: ${group.filename}`);
-        await loadFileData(group.filename);
+        console.log(`📅 Con fecha de corte: ${cutoffDate.format('YYYY-MM-DD')}`);
+        await loadFileData(group.filename, cutoffDate.format('YYYY-MM-DD'));
         setShowUploadModal(false);
       } else {
         const fileInfo = getFileByDisplayName(group.displayName);
         const filename = fileInfo?.filename || group.filename;
         console.log(`🔍 Cargando archivo precargado: ${filename} para ${group.displayName}`);
-        await loadFileData(filename);
+        console.log(`📅 Con fecha de corte: ${cutoffDate.format('YYYY-MM-DD')}`);
+        await loadFileData(filename, cutoffDate.format('YYYY-MM-DD'));
       }
 
       console.log(`✅ Archivo cargado exitosamente: ${group.displayName}`);
@@ -146,6 +188,11 @@ const TechnicalNoteViewer: React.FC = () => {
 
   // Handlers de upload con actualización de archivos disponibles
   const handleCustomUploadWithRefresh = async (options: any) => {
+    if (!cutoffDate) {
+      message.error('Debe seleccionar una fecha de corte antes de cargar archivos');
+      return;
+    }
+
     try {
       await handleCustomUpload(options);
       await loadAvailableFiles();
@@ -154,10 +201,24 @@ const TechnicalNoteViewer: React.FC = () => {
     }
   };
 
-  // Handlers para compatibilidad del reporte
+  // Manejar apertura de modal de upload
+  const handleShowUploadModal = () => {
+    if (!cutoffDate) {
+      message.error('Debe seleccionar una fecha de corte antes de cargar archivos');
+      return;
+    }
+    setShowUploadModal(true);
+  };
+
+  // ✅ ACTUALIZADO: Wrapper para regenerar reporte con cutoffDate
   const handleRegenerateReport = () => {
+    if (!cutoffDateString) {
+      message.error('Debe seleccionar una fecha de corte antes de regenerar el reporte');
+      return;
+    }
     console.log(`🔄 Regenerando reporte con filtros geográficos:`, geographicFilters);
-    regenerateReport();
+    console.log(`📅 Con fecha de corte: ${cutoffDateString}`);
+    regenerateReport(cutoffDateString);
   };
 
   const handleAddKeyword = (value: string) => {
@@ -182,9 +243,15 @@ const TechnicalNoteViewer: React.FC = () => {
         hasGeographicFilters={hasGeographicFilters}
         geographicSummary={geographicSummary}
         loadingFiles={loadingFiles}
-        onShowUploadModal={() => setShowUploadModal(true)}
+        onShowUploadModal={handleShowUploadModal}
         onLoadAvailableFiles={loadAvailableFiles}
         onResetGeographicFilters={resetGeographicFilters}
+      />
+
+      {/* Selector de Fecha de Corte */}
+      <CutoffDateSelector
+        selectedDate={cutoffDate}
+        onDateChange={handleCutoffDateChange}
       />
 
       {/* Loading Progress */}
@@ -201,8 +268,9 @@ const TechnicalNoteViewer: React.FC = () => {
         uploadedFiles={uploadedFiles}
         fileSelectionLoading={fileSelectionLoading}
         hasGeographicFilters={hasGeographicFilters}
+        cutoffDateSelected={!!cutoffDate}
         onFileGroupClick={handleFileGroupClick}
-        onShowUploadModal={() => setShowUploadModal(true)}
+        onShowUploadModal={handleShowUploadModal}
         onRemoveUploadedFile={handleRemoveUploadedFileWithConfirm}
         getFileByDisplayName={getFileByDisplayName}
       />
@@ -233,7 +301,7 @@ const TechnicalNoteViewer: React.FC = () => {
         isLoadingFiles={false}
       />
 
-      {/* Main Content */}
+      {/* ✅ Main Content CON cutoffDate */}
       <MainContent
         loading={loading}
         hasData={hasData}
@@ -255,7 +323,6 @@ const TechnicalNoteViewer: React.FC = () => {
         loadingReport={loadingReport}
         showReport={showReport}
         hasReport={hasReport}
-        reportItemsCount={reportItemsCount}
         reportTotalRecords={reportTotalRecords}
         reportKeywords={reportKeywords}
         reportMinCount={reportMinCount}
@@ -265,6 +332,7 @@ const TechnicalNoteViewer: React.FC = () => {
         municipiosOptions={municipiosOptions}
         ipsOptions={ipsOptions}
         loadingGeoFilters={loadingGeoFilters}
+        cutoffDate={cutoffDateString} // ✅ PASAR cutoffDate como string YYYY-MM-DD
         
         // Event handlers
         onPaginationChange={handlePaginationChange}
@@ -284,7 +352,7 @@ const TechnicalNoteViewer: React.FC = () => {
         onMunicipioChange={onMunicipioChange}
         onIpsChange={onIpsChange}
         resetGeographicFilters={resetGeographicFilters}
-        onShowUploadModal={() => setShowUploadModal(true)}
+        onShowUploadModal={handleShowUploadModal}
       />
     </div>
   );

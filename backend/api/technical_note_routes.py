@@ -1,8 +1,5 @@
-# api/technical_note_routes.py - COMPLETO CON DEBUG
+# api/technical_note_routes.py - COMPLETO CON FECHA DE CORTE DINÁMICA
 from datetime import datetime
-import os
-import tempfile
-import uuid
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from typing import Any, Dict, List, Optional
 import json
@@ -12,7 +9,6 @@ from pydantic import BaseModel, Field, validator
 from controllers.technical_note_controller.age_range_extractor import AgeRangeExtractor
 from controllers.technical_note_controller.technical_note import technical_note_controller
 from services.technical_note_services.report_service_aux.report_exporter import ReportExporter
-
 
 report_exporter = ReportExporter()
 age_extractor = AgeRangeExtractor()
@@ -37,7 +33,7 @@ class AdvancedReportRequestModel(BaseModel):
     min_count: int = Field(default=0, description="Conteo mínimo para incluir resultados")
     include_temporal: bool = Field(default=True, description="Incluir análisis temporal")
     geographic_filters: Optional[GeographicFiltersModel] = Field(default=None, description="Filtros geográficos")
-    corte_fecha: str = Field(default="2025-07-31", description="Fecha de corte en formato YYYY-MM-DD")
+    corte_fecha: str = Field(..., description="✅ Fecha de corte DINÁMICA en formato YYYY-MM-DD")
     
     @validator('corte_fecha')
     def validate_corte_fecha(cls, v):
@@ -79,7 +75,6 @@ def get_technical_file_data_with_excel_filters(
     try:
         print(f"📡 GET /data/{filename} - página {page}, tamaño {page_size}")
         
-        # Parsear filtros JSON
         parsed_filters = None
         if filters:
             try:
@@ -110,7 +105,7 @@ def get_technical_file_data_with_excel_filters(
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
-    
+
 @router.get("/geographic/{filename}/departamentos")
 def get_departamentos(filename: str):
     """Obtiene lista de departamentos únicos"""
@@ -142,7 +137,7 @@ def get_municipios(
         
         result = technical_note_controller.get_geographic_values(
             filename=filename,
-            geo_type='municipios',  # Plural
+            geo_type='municipios',
             departamento=departamento
         )
         
@@ -167,7 +162,7 @@ def get_ips(
         
         result = technical_note_controller.get_geographic_values(
             filename=filename,
-            geo_type='ips',  # Singular
+            geo_type='ips',
             departamento=departamento,
             municipio=municipio
         )
@@ -181,46 +176,30 @@ def get_ips(
         print(f"❌ Error en /ips: {e}")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
-
 @router.get("/report/{filename}")
 def get_keyword_age_report(
     filename: str,
     keywords: Optional[str] = Query(None, description="Lista separada por comas, ej: medicina,enfermeria"),
     min_count: int = Query(0, ge=0, description="Filtra ítems con conteo menor a este valor"),
     include_temporal: bool = Query(True, description="Incluir análisis temporal por año/mes"),
-    # PARÁMETROS GEOGRÁFICOS EXISTENTES
     departamento: Optional[str] = Query(None, description="Filtrar por departamento específico"),
     municipio: Optional[str] = Query(None, description="Filtrar por municipio específico"),
     ips: Optional[str] = Query(None, description="Filtrar por IPS específica"),
-    # ✅ NUEVO PARÁMETRO PARA NUMERADOR/DENOMINADOR
-    corte_fecha: str = Query("2025-07-31", description="Fecha de corte para cálculo de edades (YYYY-MM-DD)")
+    corte_fecha: str = Query(..., description="✅ Fecha de corte OBLIGATORIA (YYYY-MM-DD)")
 ):
     """
-    🆕 Genera reporte CON NUMERADOR/DENOMINADOR POR RANGO DE EDAD ESPECÍFICO
+    🆕 Genera reporte CON NUMERADOR/DENOMINADOR CON FECHA DE CORTE DINÁMICA
     
-    NUEVA LÓGICA:
-    - Busca columnas que coincidan con keywords (medicina, enfermería, etc.)
-    - Para cada columna: extrae rango de edad del nombre
-    - DENOMINADOR: población total en ese rango específico
-    - NUMERADOR: población en rango que SÍ tiene datos en la columna
-    - COBERTURA: (numerador/denominador) * 100
-    
-    Parámetros:
-    - keywords: Lista de palabras clave separadas por comas
-    - min_count: Filtro mínimo de conteo (aplicado al numerador)
-    - corte_fecha: Fecha para cálculo de edades en formato YYYY-MM-DD
-    - departamento, municipio, ips: Filtros geográficos
+    ✅ CAMBIO PRINCIPAL: corte_fecha es OBLIGATORIO y viene desde el frontend
     """
     try:
-        print(f"\n📊 ========== GET /report/{filename} NUMERADOR/DENOMINADOR ==========")
-        print(f"🗓️ Fecha corte: {corte_fecha}")
+        print(f"\n📊 ========== GET /report/{filename} CON FECHA DINÁMICA ==========")
+        print(f"🗓️ Fecha corte RECIBIDA: {corte_fecha}")
         print(f"🔍 Keywords: {keywords}")
         print(f"🗺️ Filtros: Dept={departamento}, Mun={municipio}, IPS={ips}")
-        print(f"📊 Min count: {min_count}, Temporal: {include_temporal}")
         
         # Validar formato de fecha
         try:
-            from datetime import datetime
             datetime.strptime(corte_fecha, '%Y-%m-%d')
         except ValueError:
             raise HTTPException(
@@ -234,7 +213,7 @@ def get_keyword_age_report(
             kw_list = [k.strip().lower() for k in keywords.split(",") if k.strip()]
             print(f"🎯 Keywords procesadas: {kw_list}")
         
-        # ✅ LLAMAR CON PARÁMETRO corte_fecha
+        # ✅ PASAR FECHA DE CORTE DINÁMICA AL CONTROLADOR
         result = technical_note_controller.get_keyword_age_report(
             filename=filename,
             keywords=kw_list,
@@ -243,10 +222,9 @@ def get_keyword_age_report(
             departamento=departamento,
             municipio=municipio,
             ips=ips,
-            corte_fecha=corte_fecha  # ✅ NUEVO PARÁMETRO
+            corte_fecha=corte_fecha  # ✅ FECHA DINÁMICA DESDE FRONTEND
         )
         
-        # ✅ LOGGING EXTENDIDO CON NUMERADOR/DENOMINADOR
         items_count = len(result.get('items', []))
         global_stats = result.get('global_statistics', {})
         total_denominador = global_stats.get('total_denominador_global', 0)
@@ -258,7 +236,7 @@ def get_keyword_age_report(
         print(f"📊 DENOMINADOR GLOBAL: {total_denominador:,}")
         print(f"✅ NUMERADOR GLOBAL: {total_numerador:,}")  
         print(f"📈 COBERTURA GLOBAL: {cobertura_global}%")
-        print(f"🎯 Método: {result.get('metodo', 'No especificado')}")
+        print(f"🗓️ Fecha de corte usada: {corte_fecha}")
         print(f"============================================")
         
         return result
@@ -270,7 +248,6 @@ def get_keyword_age_report(
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
-
 
 @router.get("/unique-values/{filename}/{column_name}")
 def get_column_unique_values(
@@ -323,7 +300,6 @@ def get_file_columns(filename: str):
         print(f"❌ Error en /columns/{filename}: {e}")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
-# Endpoint de debug adicional
 @router.get("/debug/{filename}")
 def debug_file_state(filename: str):
     """Debug del estado interno del archivo"""
@@ -336,9 +312,9 @@ def debug_file_state(filename: str):
             "file_key": file_key,
             "loaded_in_controller": file_key in technical_note_controller.loaded_technical_files,
             "loaded_in_duckdb": file_key in duckdb_service.loaded_tables,
-            "available_tables": duckdb_service.list_tables(),
+            "available_tables": duckdb_service.list_tables() if hasattr(duckdb_service, 'list_tables') else [],
             "controller_cache": technical_note_controller.loaded_technical_files.get(file_key),
-            "duckdb_cache": duckdb_service.get_table_info(file_key)
+            "duckdb_cache": duckdb_service.get_table_info(file_key) if hasattr(duckdb_service, 'get_table_info') else None
         }
         
         return debug_info
@@ -346,19 +322,18 @@ def debug_file_state(filename: str):
     except Exception as e:
         print(f"❌ Error en debug: {e}")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
-    
+
 @router.get("/age-ranges/{filename}")
 def get_age_ranges(
     filename: str,
-    corte_fecha: Optional[str] = Query("2025-07-31", description="Fecha de corte en formato YYYY-MM-DD")
+    corte_fecha: str = Query(..., description="✅ Fecha de corte OBLIGATORIA (YYYY-MM-DD)")
 ):
-    """Obtiene rangos de edades únicos para filtros de inasistentes"""
+    """Obtiene rangos de edades únicos - CON FECHA DINÁMICA"""
     try:
-        print(f"📅 GET /age-ranges/{filename} con fecha corte: {corte_fecha}")
+        print(f"📅 GET /age-ranges/{filename} con fecha corte DINÁMICA: {corte_fecha}")
         
         # Validar formato de fecha
         try:
-            from datetime import datetime
             datetime.strptime(corte_fecha, "%Y-%m-%d")
         except ValueError:
             raise HTTPException(
@@ -368,7 +343,7 @@ def get_age_ranges(
         
         result = technical_note_controller.get_age_ranges(
             filename=filename,
-            corte_fecha=corte_fecha
+            corte_fecha=corte_fecha  # ✅ FECHA DINÁMICA
         )
         
         if not result.get("success"):
@@ -390,13 +365,12 @@ def get_age_ranges(
 def get_inasistentes_report(
     filename: str,
     request: Dict[str, Any],
-    corte_fecha: Optional[str] = Query("2025-07-31", description="Fecha de corte en formato YYYY-MM-DD")
+    corte_fecha: str = Query(..., description="✅ Fecha de corte OBLIGATORIA (YYYY-MM-DD)")
 ):
-    """Genera reporte de inasistentes dinámico con descubrimiento automático de actividades"""
+    """Genera reporte de inasistentes - CON FECHA DINÁMICA"""
     try:
-        print(f"🏥 POST /inasistentes-report/{filename}")
+        print(f"🏥 POST /inasistentes-report/{filename} con fecha: {corte_fecha}")
         
-        # EXTRAER PARÁMETROS
         selected_months = request.get("selectedMonths", [])
         selected_years = request.get("selectedYears", [])
         selected_keywords = request.get("selectedKeywords", [])
@@ -404,7 +378,15 @@ def get_inasistentes_report(
         municipio = request.get("municipio")
         ips = request.get("ips")
         
-        # VALIDACIONES
+        # Validar formato de fecha
+        try:
+            datetime.strptime(corte_fecha, "%Y-%m-%d")
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Fecha de corte debe tener formato YYYY-MM-DD"
+            )
+        
         if not selected_months and not selected_years:
             raise HTTPException(
                 status_code=400, 
@@ -422,7 +404,7 @@ def get_inasistentes_report(
             selected_months=selected_months,
             selected_years=selected_years,
             selected_keywords=selected_keywords,
-            corte_fecha=corte_fecha,
+            corte_fecha=corte_fecha,  # ✅ FECHA DINÁMICA
             departamento=departamento,
             municipio=municipio,
             ips=ips
@@ -431,7 +413,6 @@ def get_inasistentes_report(
         if not result.get("success"):
             raise HTTPException(status_code=500, detail=result.get("error", "Error generando reporte"))
         
-        # ACTUALIZAR CONTADORES PARA NUEVA ESTRUCTURA
         total_inasistentes = result.get("resumen_general", {}).get("total_inasistentes_global", 0)
         actividades_evaluadas = result.get("resumen_general", {}).get("total_actividades_evaluadas", 0)
         print(f"Reporte dinámico generado: {total_inasistentes} inasistentes, {actividades_evaluadas} actividades")
@@ -444,20 +425,16 @@ def get_inasistentes_report(
         print(f"❌ Error en /inasistentes-report/{filename}: {e}")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
-
-# export reporte de inasistentes
-
 @router.post("/inasistentes-report/{filename}/export-csv")
 def export_inasistentes_csv(
     filename: str,
     request: Dict[str, Any],
-    corte_fecha: Optional[str] = Query("2025-07-31", description="Fecha de corte en formato YYYY-MM-DD")
+    corte_fecha: str = Query(..., description="✅ Fecha de corte OBLIGATORIA (YYYY-MM-DD)")
 ):
-    """Exporta reporte de inasistentes a CSV"""
+    """Exporta reporte de inasistentes a CSV - CON FECHA DINÁMICA"""
     try:
-        print(f"📥 POST /inasistentes-report/{filename}/export-csv")
+        print(f"📥 POST /inasistentes-report/{filename}/export-csv con fecha: {corte_fecha}")
         
-        # EXTRAER PARÁMETROS
         selected_months = request.get("selectedMonths", [])
         selected_years = request.get("selectedYears", [])
         selected_keywords = request.get("selectedKeywords", [])
@@ -465,20 +442,18 @@ def export_inasistentes_csv(
         municipio = request.get("municipio")
         ips = request.get("ips")
         
-        # VALIDACIONES
         if not selected_months and not selected_years:
             raise HTTPException(
                 status_code=400, 
                 detail="Debe seleccionar al menos una edad en meses o años"
             )
         
-        # EXPORTAR CSV
         csv_response = technical_note_controller.export_inasistentes_csv(
             filename=filename,
             selected_months=selected_months,
             selected_years=selected_years,
             selected_keywords=selected_keywords,
-            corte_fecha=corte_fecha,
+            corte_fecha=corte_fecha,  # ✅ FECHA DINÁMICA
             departamento=departamento,
             municipio=municipio,
             ips=ips
@@ -497,16 +472,34 @@ async def generate_and_export_advanced_report(
     request_data: dict,
     background_tasks: BackgroundTasks,
 ):
+    """Genera y exporta reporte avanzado - CON FECHA DINÁMICA"""
     try:
         start_time = datetime.now()
         
-        # ✅ Extraer parámetros
         data_source = request_data.get('data_source')
         filename = request_data.get('filename', 'reporte')
         export_csv = request_data.get('export_csv', True)
         export_pdf = request_data.get('export_pdf', True)
+        corte_fecha = request_data.get('corte_fecha')  # ✅ OBTENER FECHA DEL REQUEST
         
-        # ✅ Generar reporte con controlador
+        # ✅ VALIDAR QUE VENGA LA FECHA
+        if not corte_fecha:
+            raise HTTPException(
+                status_code=400,
+                detail="El parámetro 'corte_fecha' es obligatorio (formato YYYY-MM-DD)"
+            )
+        
+        # Validar formato
+        try:
+            datetime.strptime(corte_fecha, '%Y-%m-%d')
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Formato de fecha inválido: {corte_fecha}. Use YYYY-MM-DD"
+            )
+        
+        print(f"📊 Generando reporte con fecha de corte: {corte_fecha}")
+        
         report_data = technical_note_controller.get_keyword_age_report(
             filename=data_source,
             keywords=request_data.get('keywords'),
@@ -515,10 +508,9 @@ async def generate_and_export_advanced_report(
             departamento=request_data.get('geographic_filters', {}).get('departamento'),
             municipio=request_data.get('geographic_filters', {}).get('municipio'),
             ips=request_data.get('geographic_filters', {}).get('ips'),
-            corte_fecha=request_data.get('corte_fecha', '2025-07-31')
+            corte_fecha=corte_fecha  # ✅ FECHA DINÁMICA
         )
         
-        # ✅ USAR SERVICIO DE EXPORTACIÓN
         export_result = report_exporter.export_report(
             report_data=report_data,
             base_filename=filename,
@@ -527,7 +519,6 @@ async def generate_and_export_advanced_report(
             include_temporal=True
         )
         
-        # ✅ Programar limpieza
         background_tasks.add_task(report_exporter.cleanup_old_temp_files, 30)
         
         return export_result
@@ -553,7 +544,5 @@ async def download_report_file(file_id: str):
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
-
-
 
 router.include_router(reports_router)

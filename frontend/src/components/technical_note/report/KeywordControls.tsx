@@ -1,5 +1,5 @@
 // components/report/KeywordControls.tsx
-import React, { memo, useCallback } from 'react';
+import { memo, useCallback } from 'react';
 import { Card, Space, Typography, Tag, Row, Col, Button } from 'antd';
 import { FilterOutlined, SyncOutlined } from '@ant-design/icons';
 import { OptimizedKeywordSelect } from './OptimizedKeywordSelect';

@@ -1,4 +1,4 @@
-// hooks/useTechnicalNote.ts - ✅ ARCHIVO COMPLETO CON CORRECCIONES DE TIPADO
+// hooks/useTechnicalNote.ts - ✅ VERSIÓN COMPLETA CORREGIDA CON VALIDACIÓN ROBUSTA
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   TechnicalNoteService,
@@ -7,7 +7,7 @@ import {
   type TechnicalFileMetadata,
   type KeywordAgeReport,
   type GeographicFilters,
-  type GlobalStatistics  // ✅ IMPORTACIÓN AGREGADA
+  type GlobalStatistics
 } from '../services/TechnicalNoteService';
 import type { FilterCondition, SortCondition } from '../types/api.types';
 
@@ -32,9 +32,6 @@ export const useTechnicalNote = () => {
   const [reportKeywords, setReportKeywords] = useState<string[]>(['medicina']);
   const [reportMinCount, setReportMinCount] = useState<number>(0);
   const [showTemporalData, setShowTemporalData] = useState<boolean>(true);
-
-  // ✅ ESTADO PARA FECHA DE CORTE
-  const [corteFecha, setCorteFecha] = useState<string>("2025-07-31");
 
   // ✅ ESTADOS PARA FILTROS GEOGRÁFICOS
   const [geographicFilters, setGeographicFilters] = useState<GeographicFilters>({});
@@ -159,15 +156,13 @@ export const useTechnicalNote = () => {
   const handleDepartamentoChange = useCallback((departamento: string | null) => {
     setGeographicFilters(prev => ({
       departamento: departamento,
-      municipio: null, // Reset municipio
-      ips: null        // Reset IPS
+      municipio: null,
+      ips: null
     }));
     
-    // Limpiar opciones dependientes
     setMunicipiosOptions([]);
     setIpsOptions([]);
     
-    // Cargar municipios del nuevo departamento
     if (departamento && selectedFile) {
       loadMunicipios(selectedFile, departamento);
     }
@@ -177,13 +172,11 @@ export const useTechnicalNote = () => {
     setGeographicFilters(prev => ({
       ...prev,
       municipio: municipio,
-      ips: null // Reset IPS
+      ips: null
     }));
     
-    // Limpiar IPS
     setIpsOptions([]);
     
-    // Cargar IPS del nuevo municipio
     if (municipio && geographicFilters.departamento && selectedFile) {
       loadIps(selectedFile, geographicFilters.departamento, municipio);
     }
@@ -200,11 +193,6 @@ export const useTechnicalNote = () => {
     setGeographicFilters({});
     setMunicipiosOptions([]);
     setIpsOptions([]);
-  }, []);
-
-  // ✅ HANDLER PARA CAMBIO DE FECHA DE CORTE
-  const handleCorteFechaChange = useCallback((newFecha: string) => {
-    setCorteFecha(newFecha);
   }, []);
 
   // ✅ Cargar archivos disponibles
@@ -249,42 +237,68 @@ export const useTechnicalNote = () => {
     }
   }, []);
 
-  // ✅ ACTUALIZADO: Cargar reporte con numerador/denominador
+  // ✅ CORREGIDO: Cargar reporte con VALIDACIÓN ROBUSTA
   const loadKeywordAgeReport = useCallback(async (
     filename: string,
+    cutoffDate: string, // ✅ SEGUNDO PARÁMETRO
     keywords?: string[],
     minCount: number = 0,
     includeTemporal: boolean = true,
-    geoFilters: GeographicFilters = {},
-    corteFechaOverride?: string
+    geoFilters: GeographicFilters = {}
   ) => {
+    console.log('🔍 loadKeywordAgeReport llamado con:', {
+      filename,
+      cutoffDate,
+      cutoffDateType: typeof cutoffDate,
+      cutoffDateTruthy: !!cutoffDate,
+      cutoffDateLength: cutoffDate?.length,
+      keywords,
+      minCount,
+      includeTemporal,
+      geoFilters
+    });
+
+    // ✅ VALIDACIÓN ROBUSTA: Verificar que cutoffDate no sea undefined, null, ni string vacío
+    if (!cutoffDate || typeof cutoffDate !== 'string' || cutoffDate.trim() === '') {
+      const errorMsg = `❌ Fecha de corte inválida: ${JSON.stringify(cutoffDate)} (tipo: ${typeof cutoffDate})`;
+      console.error(errorMsg);
+      throw new Error('Fecha de corte es obligatoria para generar el reporte');
+    }
+
+    // ✅ VALIDACIÓN ADICIONAL: Verificar formato básico YYYY-MM-DD
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(cutoffDate.trim())) {
+      const errorMsg = `❌ Formato de fecha inválido: ${cutoffDate}. Debe ser YYYY-MM-DD`;
+      console.error(errorMsg);
+      throw new Error('Formato de fecha de corte inválido. Use YYYY-MM-DD');
+    }
+
     try {
       setLoadingReport(true);
 
-      const fechaToUse = corteFechaOverride || corteFecha;
-
       console.log('📊 Cargando reporte numerador/denominador con:', {
         filename,
+        cutoffDate: cutoffDate.trim(), // Usar fecha limpia
         keywords,
         minCount,
         includeTemporal,
-        geoFilters,
-        corteFecha: fechaToUse
+        geoFilters
       });
 
+      // ✅ CORRECCIÓN: Orden correcto de parámetros según TechnicalNoteService
+      // getKeywordAgeReport(filename, cutoffDate, keywords, minCount, includeTemporal, geoFilters)
       const report = await TechnicalNoteService.getKeywordAgeReport(
-        filename, 
-        keywords, 
-        minCount, 
-        includeTemporal, 
-        geoFilters,
-        fechaToUse
+        filename,
+        cutoffDate.trim(),  // ✅ Limpiar espacios antes de enviar
+        keywords,
+        minCount,
+        includeTemporal,
+        geoFilters
       );
       
       setKeywordReport(report);
       setShowReport(true);
 
-      // ✅ LOGS ACTUALIZADOS CON VERIFICACIÓN DE TIPOS
       const totalItems = report.items.length;
       const globalStats: GlobalStatistics | undefined = report.global_statistics;
       const totalDenominador = globalStats?.total_denominador_global || 0;
@@ -296,17 +310,17 @@ export const useTechnicalNote = () => {
       console.log(`   📊 DENOMINADOR: ${totalDenominador.toLocaleString()}`);
       console.log(`   ✅ NUMERADOR: ${totalNumerador.toLocaleString()}`);
       console.log(`   📈 COBERTURA: ${coberturaGlobal}%`);
-      console.log(`   🗓️ Fecha corte: ${fechaToUse}`);
+      console.log(`   🗓️ Fecha corte: ${cutoffDate}`);
 
       return report;
     } catch (error: any) {
-      console.error('Error loading keyword age report:', error);
+      console.error('❌ Error loading keyword age report:', error);
       setKeywordReport(null);
-      return null;
+      throw error;
     } finally {
       setLoadingReport(false);
     }
-  }, [corteFecha]);
+  }, []);
 
   // MÉTODO PRINCIPAL: Cargar página con filtros del servidor
   const loadFileDataWithServerFilters = useCallback(async (
@@ -370,36 +384,25 @@ export const useTechnicalNote = () => {
     }
   }, [loading]);
 
-  // ✅ ACTUALIZADO: Cargar primera página con filtros geográficos
-  const loadFileData = useCallback(async (filename: string, sheetName?: string) => {
+  // ✅ Cargar primera página
+  const loadFileData = useCallback(async (
+    filename: string, 
+    cutoffDate?: string,
+    sheetName?: string
+  ) => {
     try {
       setSelectedFile(filename);
 
-      // Cargar metadatos primero
       const metadata = await loadFileMetadata(filename);
       if (!metadata) {
         throw new Error('No se pudieron cargar los metadatos');
       }
 
-      // ✅ CARGAR DEPARTAMENTOS AL SELECCIONAR ARCHIVO
       await loadDepartamentos(filename);
 
-      // Cargar primera página SIN filtros
       const data = await loadFileDataWithServerFilters(filename, 1, pageSize, sheetName);
 
-      if (data) {
-        // ✅ AUTO-GENERAR REPORTE al cargar archivo
-        console.log('🤖 Auto-generando reporte palabra clave + edad...');
-        setTimeout(async () => {
-          try {
-            console.log('🤖 Intentando generar reporte numerador/denominador automático...');
-            await loadKeywordAgeReport(filename, reportKeywords, 0, true, geographicFilters);
-          } catch (reportError: any) {
-            console.error('❌ Error en reporte auto-generado:', reportError);
-          }
-        }, 2000);
-      }
-
+      return data;
     } catch (error: any) {
       console.error('Error loading file data:', error);
 
@@ -410,10 +413,12 @@ export const useTechnicalNote = () => {
       setDepartamentosOptions([]);
       setMunicipiosOptions([]);
       setIpsOptions([]);
+      
+      throw error;
     }
-  }, [pageSize, loadFileMetadata, loadFileDataWithServerFilters, loadKeywordAgeReport, loadDepartamentos, reportKeywords, geographicFilters]);
+  }, [pageSize, loadFileMetadata, loadFileDataWithServerFilters, loadDepartamentos]);
 
-  // Handler para paginación - CON FILTROS ACTUALES
+  // Handler para paginación
   const handlePaginationChange = useCallback((page: number, newPageSize: number) => {
     if (!selectedFile || processingRef.current) return;
 
@@ -431,12 +436,11 @@ export const useTechnicalNote = () => {
     );
   }, [selectedFile, serverFilters, serverSearch, serverSort, loadFileDataWithServerFilters]);
 
-  // Handler para filtros - AHORA DEL SERVIDOR
+  // Handler para filtros
   const handleFiltersChange = useCallback((filters: FilterCondition[]) => {
     if (!selectedFile) return;
 
     console.log(`🔍 APLICANDO FILTROS DEL SERVIDOR:`, filters);
-    console.log(`📋 Filtros a aplicar: ${filters.length} filtros sobre TODOS los registros`);
 
     loadFileDataWithServerFilters(
       selectedFile,
@@ -450,11 +454,11 @@ export const useTechnicalNote = () => {
     );
   }, [selectedFile, pageSize, serverSearch, serverSort, loadFileDataWithServerFilters]);
 
-  // Handler para búsqueda - AHORA DEL SERVIDOR
+  // Handler para búsqueda
   const handleSearch = useCallback((searchTerm: string) => {
     if (!selectedFile) return;
 
-    console.log(`🔍 BÚSQUEDA DEL SERVIDOR: "${searchTerm}" sobre TODOS los registros`);
+    console.log(`🔍 BÚSQUEDA DEL SERVIDOR: "${searchTerm}"`);
 
     loadFileDataWithServerFilters(
       selectedFile,
@@ -468,14 +472,14 @@ export const useTechnicalNote = () => {
     );
   }, [selectedFile, pageSize, serverFilters, serverSort, loadFileDataWithServerFilters]);
 
-  // Handler para ordenamiento - AHORA DEL SERVIDOR
+  // Handler para ordenamiento
   const handleSortChange = useCallback((sort: SortCondition[]) => {
     if (!selectedFile) return;
 
     const sortBy = sort.length > 0 ? sort[0].column : undefined;
     const sortOrder = sort.length > 0 ? sort[0].direction : undefined;
 
-    console.log(`📊 ORDENAMIENTO DEL SERVIDOR: ${sortBy} ${sortOrder} sobre TODOS los registros`);
+    console.log(`📊 ORDENAMIENTO DEL SERVIDOR: ${sortBy} ${sortOrder}`);
 
     loadFileDataWithServerFilters(
       selectedFile,
@@ -489,7 +493,7 @@ export const useTechnicalNote = () => {
     );
   }, [selectedFile, currentPage, pageSize, serverFilters, serverSearch, loadFileDataWithServerFilters]);
 
-  // Handler para eliminar filas - SOLO LOCAL (no del servidor)
+  // Handler para eliminar filas
   const handleDeleteRows = useCallback((indices: number[]) => {
     if (!currentFileData) return;
 
@@ -503,21 +507,33 @@ export const useTechnicalNote = () => {
     console.log(`🗑️ Filas eliminadas localmente: ${indices.length}`);
   }, [filteredData, currentFileData]);
 
-  // ✅ HANDLERS PARA REPORTE CON FILTROS GEOGRÁFICOS
+  // ✅ HANDLERS PARA REPORTE
   const toggleReportVisibility = useCallback(() => {
     setShowReport(!showReport);
   }, [showReport]);
 
-  const regenerateReport = useCallback(() => {
-    if (!selectedFile) return;
+  const regenerateReport = useCallback((cutoffDate: string) => {
+    if (!selectedFile) {
+      console.error('❌ No hay archivo seleccionado');
+      return;
+    }
     
-    console.log('🔄 Regenerando reporte con filtros geográficos:', geographicFilters);
-    console.log('🗓️ Fecha corte:', corteFecha);
+    if (!cutoffDate || cutoffDate.trim() === '') {
+      console.error('❌ No hay fecha de corte seleccionada');
+      return;
+    }
     
-    loadKeywordAgeReport(
-      selectedFile, 
-      reportKeywords, 
-      reportMinCount, 
+    console.log('🔄 Regenerando reporte con:', {
+      archivo: selectedFile,
+      filtrosGeo: geographicFilters,
+      fechaCorte: cutoffDate
+    });
+    
+    return loadKeywordAgeReport(
+      selectedFile,
+      cutoffDate,
+      reportKeywords,
+      reportMinCount,
       showTemporalData,
       geographicFilters
     );
@@ -537,29 +553,37 @@ export const useTechnicalNote = () => {
     setReportKeywords(prev => prev.filter(k => k !== keyword));
   }, []);
 
-  // ✅ MÉTODO ACTUALIZADO: Generar reporte con filtros geográficos y fecha
+  // ✅ WRAPPER ACTUALIZADO CON LOGS
   const handleLoadKeywordAgeReport = useCallback((
     filename: string,
+    cutoffDate: string,
     keywords?: string[],
     minCount?: number,
     includeTemporal?: boolean,
-    geoFiltersOverride?: GeographicFilters,
-    corteFechaOverride?: string
+    geoFiltersOverride?: GeographicFilters
   ) => {
     const filtersToUse = geoFiltersOverride || geographicFilters;
-    const fechaToUse = corteFechaOverride || corteFecha;
     
-    console.log('📊 Generando reporte numerador/denominador con:', {
+    console.log('🎯 handleLoadKeywordAgeReport llamado:', {
       filename,
+      cutoffDate,
+      cutoffDateType: typeof cutoffDate,
+      cutoffDateValue: cutoffDate,
       keywords,
       minCount,
       includeTemporal,
-      geographicFilters: filtersToUse,
-      corteFecha: fechaToUse
+      geographicFilters: filtersToUse
     });
     
-    return loadKeywordAgeReport(filename, keywords, minCount, includeTemporal, filtersToUse, fechaToUse);
-  }, [geographicFilters, corteFecha, loadKeywordAgeReport]);
+    return loadKeywordAgeReport(
+      filename,
+      cutoffDate,
+      keywords,
+      minCount,
+      includeTemporal,
+      filtersToUse
+    );
+  }, [geographicFilters, loadKeywordAgeReport]);
 
   // Limpiar datos
   const clearCurrentData = useCallback(() => {
@@ -573,21 +597,16 @@ export const useTechnicalNote = () => {
     setCurrentPage(1);
     setPageSize(20);
 
-    // Limpiar filtros del servidor
     setServerFilters([]);
     setServerSearch('');
     setServerSort({});
 
-    // ✅ Limpiar reporte y filtros geográficos
     setKeywordReport(null);
     setShowReport(false);
     setGeographicFilters({});
     setDepartamentosOptions([]);
     setMunicipiosOptions([]);
     setIpsOptions([]);
-
-    // ✅ NO limpiar fecha de corte (mantener para siguiente uso)
-    // setCorteFecha("2025-07-31");
 
     setPagination(prev => ({
       ...prev,
@@ -635,16 +654,13 @@ export const useTechnicalNote = () => {
     pageSize,
     serverPagination,
 
-    // Estados del reporte con filtros geográficos
+    // Estados del reporte
     keywordReport,
     loadingReport,
     showReport,
     reportKeywords,
     reportMinCount,
     showTemporalData,
-
-    // Estado de fecha de corte
-    corteFecha,
 
     // Estados de filtros geográficos
     geographicFilters,
@@ -677,9 +693,6 @@ export const useTechnicalNote = () => {
     onAddKeyword: handleAddKeyword,
     onRemoveKeyword: handleRemoveKeyword,
 
-    // Handler para fecha de corte
-    onCorteFechaChange: handleCorteFechaChange,
-
     // Handlers para filtros geográficos
     onDepartamentoChange: handleDepartamentoChange,
     onMunicipioChange: handleMunicipioChange,
@@ -701,12 +714,12 @@ export const useTechnicalNote = () => {
     isFiltered: serverPagination?.filtered || false,
     originalTotal: serverPagination?.original_total || 0,
 
-    // ✅ Info del reporte CORREGIDA CON TIPADO SEGURO
+    // Info del reporte
     hasReport: !!keywordReport && keywordReport.items.length > 0,
     reportItemsCount: keywordReport?.items?.length || 0,
     reportTotalRecords: calculateReportTotals().totalRecords,
 
-    // ✅ CAMPOS DE ESTADÍSTICAS GLOBALES CORREGIDOS
+    // Campos de estadísticas globales
     reportGlobalStats: getGlobalStatistics(),
     reportMetodo: keywordReport?.metodo,
     reportVersion: keywordReport?.version,
