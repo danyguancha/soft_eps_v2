@@ -4,103 +4,107 @@ import re
 
 
 class ResponseProcessor:
-    """Procesa y mejora las respuestas del AI"""
+    """Procesa y mejora respuestas del AI con validación inteligente"""
     
     def process(self, ai_response: str, query_analysis: Dict[str, Any], file_context: str = None) -> str:
-        """Procesa la respuesta del AI"""
+        """Post-procesamiento inteligente de respuestas"""
         
         query_type = query_analysis['type']
+        confidence = query_analysis.get('confidence', 0.7)
         
         # Limpiar respuesta
         processed = self._clean_response(ai_response)
         
-        # Eliminar placeholders inventados
-        processed = self._remove_placeholders(processed)
+        # Validar y corregir placeholders
+        processed = self._validate_and_fix_placeholders(processed, query_type)
         
-        # Agregar sugerencias según el tipo
-        if query_type == 'structure_analysis':
-            processed = self._add_structure_suggestions(processed)
-        elif query_type == 'statistical':
-            processed = self._add_statistical_suggestions(processed)
-        elif query_type == 'filtering':
-            processed = self._add_filtering_suggestions(processed)
+        # Agregar sugerencias contextuales
+        processed = self._add_contextual_suggestions(processed, query_type, confidence)
+        
+        # Mejorar formato Markdown
+        processed = self._enhance_markdown(processed)
         
         return processed
     
     def _clean_response(self, response: str) -> str:
-        """Limpia la respuesta"""
-        # Eliminar frases redundantes
+        """Limpia respuesta de frases redundantes"""
         remove_phrases = [
-            "Permíteme un momento",
-            "Voy a cargar",
-            "Necesito cargar",
-            "Para proporcionarte",
-            "Con gusto te ayudo",
-            "te mostraré",
-            "voy a procesar"
+            r"Permíteme un momento.*?\.",
+            r"Voy a cargar.*?\.",
+            r"Necesito cargar.*?\.",
+            r"Para proporcionarte.*?\.",
+            r"Con gusto te ayudo.*?\.",
+            r"te mostraré.*?\.",
+            r"voy a procesar.*?\."
         ]
         
-        for phrase in remove_phrases:
-            if phrase.lower() in response.lower():
-                sentences = response.split('.')
-                response = '. '.join([s for s in sentences if phrase.lower() not in s.lower()])
+        cleaned = response
+        for pattern in remove_phrases:
+            cleaned = re.sub(pattern, '', cleaned, flags=re.IGNORECASE)
         
-        return response.strip()
+        # Eliminar múltiples líneas en blanco
+        cleaned = re.sub(r'\n{3,}', '\n\n', cleaned)
+        
+        return cleaned.strip()
     
-    def _remove_placeholders(self, response: str) -> str:
-        """Elimina placeholders inventados como [Valor Promedio]"""
-        # Detectar y eliminar placeholders entre corchetes
-        patterns = [
+    def _validate_and_fix_placeholders(self, response: str, query_type: str) -> str:
+        """Valida y corrige placeholders inventados"""
+        
+        # Detectar placeholders entre corchetes
+        placeholder_patterns = [
             r'\[Valor.*?\]',
-            r'\[.*?Promedio.*?\]',
-            r'\[.*?Mínimo.*?\]',
-            r'\[.*?Máximo.*?\]',
-            r'\[.*?Mediana.*?\]',
-            r'\[.*?Desviación.*?\]',
+            r'\[.*?[Pp]romedio.*?\]',
+            r'\[.*?[Mm][íi]nimo.*?\]',
+            r'\[.*?[Mm][áa]ximo.*?\]',
+            r'\[.*?[Mm]ediana.*?\]',
+            r'\[.*?[Dd]esviaci[óo]n.*?\]',
+            r'\[.*?[Tt]otal.*?\]',
+            r'\[.*?[Cc]antidad.*?\]'
         ]
         
-        for pattern in patterns:
-            response = re.sub(pattern, '**[dato no disponible]**', response, flags=re.IGNORECASE)
+        placeholder_count = 0
+        for pattern in placeholder_patterns:
+            matches = re.findall(pattern, response, flags=re.IGNORECASE)
+            placeholder_count += len(matches)
         
-        # Si hay muchos placeholders, agregar aviso
-        if response.count('[dato no disponible]') > 3:
-            response = response.replace('[dato no disponible]', '')
-            response += "\n\n⚠️ **Nota:** Los valores estadísticos específicos no están disponibles en este momento. Para ver estadísticas calculadas en tiempo real, usa la sección **Análisis** de la aplicación."
+        # Si hay muchos placeholders, agregar advertencia
+        if placeholder_count > 3:
+            warning = "\n\n⚠️ **Nota:** Los valores mostrados son ejemplos. Para estadísticas reales calculadas, usa la sección **Análisis** de la aplicación."
+            response = re.sub(r'\[.*?\]', '**[valor no calculado]**', response)
+            response += warning
         
         return response
     
-    def _add_structure_suggestions(self, response: str) -> str:
-        """Agrega sugerencias para análisis de estructura"""
-        if "columnas" in response.lower() or "estructura" in response.lower():
-            suggestions = """
-
-💡 **Próximos pasos:**
-• Usa los **filtros de tabla** para buscar datos específicos
-• Ve a **Análisis** para estadísticas automáticas
-• Exporta en **CSV o Excel** cuando lo necesites
-"""
-            return response + suggestions
+    def _add_contextual_suggestions(self, response: str, query_type: str, confidence: float) -> str:
+        """Agrega sugerencias basadas en tipo de consulta y confianza"""
+        
+        suggestions = {
+            'structure_analysis': "\n\n💡 **Próximos pasos:** Usa los filtros de tabla para explorar o ve a **Análisis** para estadísticas.",
+            'statistical': "\n\n💡 **Tip:** Para análisis más profundo, prueba la sección **Visualización** para gráficos interactivos.",
+            'filtering': "\n\n💡 **Sugerencia:** Usa la **barra de búsqueda** y los **filtros de columna** en la tabla.",
+            'temporal': "\n\n💡 **Tip:** Para análisis temporal avanzado, considera exportar y usar herramientas de series de tiempo.",
+            'export': "\n\n💡 **Recuerda:** Puedes exportar en **CSV** o **Excel** desde cualquier vista de datos."
+        }
+        
+        # Solo agregar si la confianza es alta
+        if confidence > 0.75 and query_type in suggestions:
+            return response + suggestions[query_type]
+        
         return response
     
-    def _add_statistical_suggestions(self, response: str) -> str:
-        """Agrega sugerencias para estadísticas"""
-        suggestions = """
+    def _enhance_markdown(self, response: str) -> str:
+        """Mejora formato Markdown para mejor legibilidad"""
+        
+        # Asegurar espacios antes de headers
+        response = re.sub(r'([^\n])\n(#{1,3} )', r'\1\n\n\2', response)
+        
+        # Mejorar listas
+        response = re.sub(r'\n([•\-\*]) ', r'\n\n\1 ', response)
+        
+        # Asegurar negrita correcta
+        response = re.sub(r'\*\*\s+', r'**', response)
+        response = re.sub(r'\s+\*\*', r'**', response)
+        
+        return response
 
-💡 **Sugerencia:** Para ver estadísticas reales calculadas, ve a la sección **Análisis** de la aplicación donde encontrarás:
-• Promedios, medianas y desviaciones estándar
-• Distribuciones y frecuencias
-• Gráficos interactivos
-"""
-        return response + suggestions
-    
-    def _add_filtering_suggestions(self, response: str) -> str:
-        """Agrega sugerencias para filtrado"""
-        suggestions = """
-
-💡 **Sugerencia:** Usa la **barra de búsqueda** y los **filtros de columna** en la tabla de datos.
-"""
-        return response + suggestions
-
-
-# Instancia global
 response_processor = ResponseProcessor()

@@ -1,38 +1,38 @@
 # controllers/aux_ai_controller/sql_executor.py
 import asyncio
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 from services.duckdb_service.duckdb_service import duckdb_service
-import pandas as pd
 import os
 
 
 class SQLExecutor:
-    """Ejecuta consultas SQL para análisis de datos"""
+    """Ejecuta consultas SQL para análisis de datos con logging mejorado"""
     
     async def calculate_statistics(self, file_id: str, columns: List[str], parquet_path: str = None) -> Dict[str, Any]:
-        """Calcula estadísticas para un archivo"""
+        """Calcula estadísticas con logging detallado"""
         try:
+            print(f"\n📊 Iniciando cálculo de estadísticas...")
+            print(f"   File ID: {file_id}")
+            print(f"   Parquet: {parquet_path}")
+            print(f"   Columnas: {len(columns)}")
+            
             loop = asyncio.get_event_loop()
             
             def execute_stats():
                 results = {}
                 
-                # ✅ Usar la ruta del parquet en lugar del file_id
                 table_path = parquet_path if parquet_path else file_id
                 
-                # Verificar que el archivo existe
                 if not os.path.exists(table_path):
-                    print(f"❌ Archivo no encontrado: {table_path}")
+                    print(f"   ❌ Archivo no encontrado: {table_path}")
                     return {}
-                
-                print(f"📊 Usando archivo: {table_path}")
                 
                 # Obtener tipos de columnas
                 try:
                     type_query = f"DESCRIBE SELECT * FROM '{table_path}' LIMIT 1"
                     column_types = duckdb_service.conn.execute(type_query).fetchdf()
                 except Exception as e:
-                    print(f"❌ Error obteniendo tipos de columnas: {e}")
+                    print(f"   ❌ Error obteniendo tipos: {e}")
                     return {}
                 
                 # Clasificar columnas
@@ -48,15 +48,13 @@ class SQLExecutor:
                         else:
                             categorical_cols.append(col)
                 
-                print(f"📈 Columnas numéricas: {numeric_cols}")
-                print(f"📋 Columnas categóricas: {len(categorical_cols)}")
+                print(f"   📈 {len(numeric_cols)} numéricas, {len(categorical_cols)} categóricas")
                 
                 # Estadísticas numéricas
                 if numeric_cols:
                     results['numeric'] = {}
-                    for col in numeric_cols[:5]:  # Máximo 5 columnas numéricas
+                    for col in numeric_cols[:5]:
                         try:
-                            # Escapar nombre de columna con comillas dobles
                             col_escaped = f'"{col}"'
                             
                             stats_query = f"""
@@ -71,7 +69,6 @@ class SQLExecutor:
                                 WHERE {col_escaped} IS NOT NULL
                             """
                             
-                            print(f"🔍 Ejecutando query para {col}")
                             stats = duckdb_service.conn.execute(stats_query).fetchone()
                             
                             results['numeric'][col] = {
@@ -82,15 +79,15 @@ class SQLExecutor:
                                 'mediana': round(float(stats[4]), 2) if stats[4] else 0,
                                 'desviacion_std': round(float(stats[5]), 2) if stats[5] else 0
                             }
-                            print(f"✅ Estadísticas calculadas para {col}")
+                            print(f"   ✅ {col}: avg={stats[1]:.2f}")
                         except Exception as e:
-                            print(f"⚠️ Error calculando estadísticas para {col}: {e}")
+                            print(f"   ⚠️ Error en {col}: {e}")
                             continue
                 
-                # Estadísticas categóricas (top 5 valores más frecuentes)
+                # Estadísticas categóricas
                 if categorical_cols:
                     results['categorical'] = {}
-                    for col in categorical_cols[:8]:  # Máximo 8 columnas categóricas
+                    for col in categorical_cols[:8]:
                         try:
                             col_escaped = f'"{col}"'
                             
@@ -107,7 +104,6 @@ class SQLExecutor:
                             """
                             freq_df = duckdb_service.conn.execute(freq_query).fetchdf()
                             
-                            # Contar valores únicos
                             unique_query = f"""
                                 SELECT COUNT(DISTINCT {col_escaped}) as unique_count
                                 FROM '{table_path}'
@@ -119,18 +115,19 @@ class SQLExecutor:
                                 'valores_unicos': int(unique_count),
                                 'top_5': freq_df.to_dict('records')
                             }
-                            print(f"✅ Frecuencias calculadas para {col}")
+                            print(f"   ✅ {col}: {unique_count} valores únicos")
                         except Exception as e:
-                            print(f"⚠️ Error calculando frecuencias para {col}: {e}")
+                            print(f"   ⚠️ Error en {col}: {e}")
                             continue
                 
+                print(f"   ✅ Estadísticas calculadas exitosamente")
                 return results
             
             result = await loop.run_in_executor(None, execute_stats)
             return result
             
         except Exception as e:
-            print(f"❌ Error calculando estadísticas: {e}")
+            print(f"   ❌ Error calculando estadísticas: {e}")
             import traceback
             print(traceback.format_exc())
             return {}

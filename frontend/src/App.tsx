@@ -9,9 +9,8 @@ import { AppHeader } from './components/layout/AppHeader';
 import { NavigationMenu } from './components/navigation/NavigationMenu';
 import FileCrossManager from './components/cross/FileCrossManager';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
-
-// Importa el nuevo componente de routing dinámico
 import { DynamicTabRouter } from './components/routing/DynamicTabRouter';
+import { ChatBot } from './components/chatbot/ChatBot'; // ✅ IMPORTAR CHATBOT
 
 import { useFileOperations } from './hooks/useFileOperations';
 import { CrossDataProvider, useCrossDataContext } from './contexts/CrossDataContext';
@@ -28,7 +27,6 @@ interface UIState {
   crossModalVisible: boolean;
 }
 
-// Componente principal de la aplicación
 const AppContent: React.FC = () => {
   const screens = useBreakpoint();
   const location = useLocation();
@@ -46,9 +44,8 @@ const AppContent: React.FC = () => {
     crossModalVisible: false,
   });
 
-  // Determina la clave activa basada en la ruta actual
   const getActiveKey = (): TabKey => {
-    const path = location.pathname.slice(1) || 'welcome'; // Remueve '/' inicial
+    const path = location.pathname.slice(1) || 'welcome';
     return path as TabKey;
   };
 
@@ -119,7 +116,7 @@ const AppContent: React.FC = () => {
                       {/* Ruta por defecto */}
                       <Route path="/" element={<DynamicTabRouter tabKey="welcome" />} />
                       
-                      {/* Rutas dinámicas para cada tab del registro */}
+                      {/* Rutas principales */}
                       <Route path="/welcome" element={<DynamicTabRouter tabKey="welcome" />} />
                       <Route path="/upload" element={<DynamicTabRouter tabKey="upload" />} />
                       <Route 
@@ -132,9 +129,8 @@ const AppContent: React.FC = () => {
                         } 
                       />
                       <Route path="/export" element={<DynamicTabRouter tabKey="export" />} />
-                      <Route path="/chat" element={<DynamicTabRouter tabKey="chat" />} />
                       
-                      {/* ✅ ÚNICA RUTA QUE NECESITA LAS PROPS DE CROSS */}
+                      {/* Ruta de cruce */}
                       <Route 
                         path="/cross" 
                         element={
@@ -149,9 +145,8 @@ const AppContent: React.FC = () => {
                         } 
                       />
                       
+                      {/* Rutas de nota técnica */}
                       <Route path="/technical_note" element={<DynamicTabRouter tabKey="technical_note" />} />
-                      
-                      {/* Rutas anidadas para nota técnica con grupos etarios */}
                       <Route path="/technical_note/:ageGroup" element={<DynamicTabRouter tabKey="technical_note" />} />
                       
                       {/* Ruta 404 */}
@@ -199,15 +194,9 @@ const AppContent: React.FC = () => {
               availableFiles={fileOperations.files || []}
               onRefreshFiles={fileOperations.loadFiles}
               onCrossComplete={(result) => {
-                console.log('🎯 Cruce completado, resultado:', result);
-                
-                // Actualizar estado
                 crossData.handleCrossComplete(result);
-                
-                // Cerrar modal
                 setUI(p => ({ ...p, crossModalVisible: false }));
                 
-                // Solo navegar si NO fue descarga automática
                 if (!result.download_completed) {
                   setTimeout(() => {
                     navigate('/cross');
@@ -217,18 +206,20 @@ const AppContent: React.FC = () => {
               onComplete={() => setUI((p) => ({ ...p, crossModalVisible: false }))}
             />
           </Modal>
+
+          {/* ✅ CHATBOT FLOTANTE - DISPONIBLE EN TODAS LAS PÁGINAS */}
+          <ChatBot fileContext={fileOperations.currentFile?.file_id} />
         </Layout>
       </div>
     </ErrorBoundary>
   );
 };
 
-// Componente App principal con BrowserRouter
 const App: React.FC = () => {
   return (
     <BrowserRouter>
       <CrossDataProvider>
-      <AppContent />
+        <AppContent />
       </CrossDataProvider>
     </BrowserRouter>
   );
