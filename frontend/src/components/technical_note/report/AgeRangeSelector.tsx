@@ -1,4 +1,4 @@
-// components/report/AgeRangeSelector.tsx - CON FECHA DE CORTE DESDE COMPONENTE PADRE
+// components/report/AgeRangeSelector.tsx - ✅ VERSIÓN ULTRA COMPACTADA
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -18,7 +18,7 @@ const { Option } = Select;
 
 interface AgeRangeSelectorProps {
   filename: string;
-  cutoffDate: string; // NUEVA PROP: Fecha de corte desde el padre (formato YYYY-MM-DD)
+  cutoffDate: string;
   onAgeSelectionChange: (selection: {
     selectedYears: number[];
     selectedMonths: number[];
@@ -28,7 +28,7 @@ interface AgeRangeSelectorProps {
 
 export const AgeRangeSelector: React.FC<AgeRangeSelectorProps> = ({
   filename,
-  cutoffDate, // RECIBIR fecha de corte desde el padre
+  cutoffDate,
   onAgeSelectionChange
 }) => {
   const [ageRanges, setAgeRanges] = useState<AgeRangesResponse | null>(null);
@@ -36,8 +36,6 @@ export const AgeRangeSelector: React.FC<AgeRangeSelectorProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [selectedYears, setSelectedYears] = useState<number[]>([]);
   const [selectedMonths, setSelectedMonths] = useState<number[]>([]);
-
-  // ✅ ESTADO PARA CONTROL MANUAL
   const [isGenerating, setIsGenerating] = useState(false);
   const [hasGenerated, setHasGenerated] = useState(false);
   const [lastSuccessfulSelection, setLastSuccessfulSelection] = useState<{
@@ -46,7 +44,6 @@ export const AgeRangeSelector: React.FC<AgeRangeSelectorProps> = ({
     corteFecha: string;
   } | null>(null);
 
-  // ✅ Cargar rangos de edades cuando cambia el archivo o la fecha de corte
   const loadAgeRanges = async (fecha: string) => {
     if (!fecha) {
       console.warn('⚠️ No se puede cargar rangos sin fecha de corte');
@@ -70,13 +67,11 @@ export const AgeRangeSelector: React.FC<AgeRangeSelectorProps> = ({
     }
   };
 
-  // ✅ Efecto para cargar rangos cuando cambia el archivo o la fecha
   useEffect(() => {
     if (filename && cutoffDate) {
       console.log(`🔄 Detectado cambio: filename=${filename}, cutoffDate=${cutoffDate}`);
       loadAgeRanges(cutoffDate);
       
-      // Limpiar selecciones al cambiar fecha o archivo
       setSelectedYears([]);
       setSelectedMonths([]);
       setHasGenerated(false);
@@ -85,15 +80,12 @@ export const AgeRangeSelector: React.FC<AgeRangeSelectorProps> = ({
     }
   }, [filename, cutoffDate]);
 
-  // ✅ FUNCIÓN PARA GENERAR REPORTE MANUALMENTE
   const handleGenerateReport = async () => {
-    // Validar que se haya seleccionado al menos un mes o año
     if (selectedYears.length === 0 && selectedMonths.length === 0) {
       setError('Debe seleccionar al menos una edad en años o meses para generar el reporte');
       return;
     }
 
-    // Validar que haya fecha de corte
     if (!cutoffDate) {
       setError('No hay fecha de corte seleccionada');
       return;
@@ -106,15 +98,12 @@ export const AgeRangeSelector: React.FC<AgeRangeSelectorProps> = ({
       const selection = {
         selectedYears,
         selectedMonths,
-        corteFecha: cutoffDate // Usar la fecha del padre
+        corteFecha: cutoffDate
       };
 
       console.log('🚀 Generando reporte con selección:', selection);
-
-      // Llamar al callback del componente padre
       await onAgeSelectionChange(selection);
 
-      // Marcar como exitoso
       setLastSuccessfulSelection(selection);
       setHasGenerated(true);
 
@@ -126,7 +115,6 @@ export const AgeRangeSelector: React.FC<AgeRangeSelectorProps> = ({
     }
   };
 
-  // ✅ FUNCIÓN PARA LIMPIAR SELECCIONES
   const handleClearSelection = () => {
     setSelectedYears([]);
     setSelectedMonths([]);
@@ -136,7 +124,6 @@ export const AgeRangeSelector: React.FC<AgeRangeSelectorProps> = ({
     console.log('🧹 Selección limpiada');
   };
 
-  // ✅ FUNCIÓN PARA RECARGAR CON LA MISMA SELECCIÓN
   const handleReloadReport = async () => {
     if (!lastSuccessfulSelection) return;
 
@@ -154,17 +141,15 @@ export const AgeRangeSelector: React.FC<AgeRangeSelectorProps> = ({
     }
   };
 
-  // ✅ VERIFICAR SI HAY SELECCIÓN VÁLIDA
   const hasValidSelection = selectedYears.length > 0 || selectedMonths.length > 0;
 
-  // Renderizado de estados de carga y error
   if (loading) {
     return (
-      <Card>
-        <div style={{ textAlign: 'center', padding: '40px' }}>
-          <Spin size="large" />
-          <div style={{ marginTop: 16 }}>
-            <Text>Cargando rangos de edades...</Text>
+      <Card bodyStyle={{ padding: '20px' }}>
+        <div style={{ textAlign: 'center' }}>
+          <Spin size="default" />
+          <div style={{ marginTop: 8 }}>
+            <Text style={{ fontSize: '11px' }}>Cargando rangos de edades...</Text>
           </div>
         </div>
       </Card>
@@ -173,14 +158,15 @@ export const AgeRangeSelector: React.FC<AgeRangeSelectorProps> = ({
 
   if (error && !ageRanges) {
     return (
-      <Card>
+      <Card bodyStyle={{ padding: '10px' }}>
         <Alert
           message="Error cargando rangos"
           description={error}
           type="error"
           showIcon
+          style={{ fontSize: '11px' }}
           action={
-            <Button size="small" onClick={() => loadAgeRanges(cutoffDate)}>
+            <Button size="small" onClick={() => loadAgeRanges(cutoffDate)} style={{ fontSize: '11px', height: '24px' }}>
               Reintentar
             </Button>
           }
@@ -191,298 +177,389 @@ export const AgeRangeSelector: React.FC<AgeRangeSelectorProps> = ({
 
   if (!ageRanges) {
     return (
-      <Card>
+      <Card bodyStyle={{ padding: '10px' }}>
         <Alert
           message="Esperando datos"
           description="Seleccione un archivo y fecha de corte para cargar los rangos de edades"
           type="info"
           showIcon
+          style={{ fontSize: '11px' }}
         />
       </Card>
     );
   }
 
   return (
-    <Card
-      title={
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <UserOutlined />
-          <span>Generar Reporte de Inasistentes</span>
-          {filename && <Tag color="blue">{filename}</Tag>}
-          {cutoffDate && (
-            <Tag color="green" icon={<CalendarOutlined />}>
-              Corte: {dayjs(cutoffDate).format('DD/MM/YYYY')}
-            </Tag>
-          )}
-        </div>
-      }
-      extra={
-        hasGenerated && (
-          <Space>
-            <Button
-              icon={<ReloadOutlined />}
-              onClick={handleReloadReport}
-              loading={isGenerating}
-              disabled={!lastSuccessfulSelection || isGenerating}
-              title="Recargar último reporte"
-            >
-              Recargar
-            </Button>
-            <Button
-              icon={<StopOutlined />}
-              onClick={handleClearSelection}
-              disabled={isGenerating}
-            >
-              Limpiar
-            </Button>
-          </Space>
-        )
-      }
-      size="small"
-    >
-      {/* ✅ INFORMACIÓN DE FECHA DE CORTE Y ESTADÍSTICAS */}
-      <Row gutter={16} style={{ marginBottom: 16 }}>
-        <Col span={8}>
+    <>
+      <style>{`
+        .age-selector-compact .ant-card-head {
+          padding: 0 10px !important;
+          min-height: 36px !important;
+        }
+        
+        .age-selector-compact .ant-card-head-title {
+          padding: 6px 0 !important;
+          font-size: 12px !important;
+        }
+        
+        .age-selector-compact .ant-card-body {
+          padding: 10px !important;
+        }
+        
+        .age-selector-compact .ant-card-extra {
+          padding: 4px 0 !important;
+        }
+        
+        .age-selector-compact .ant-select {
+          font-size: 11px !important;
+        }
+        
+        .age-selector-compact .ant-select-selector {
+          font-size: 11px !important;
+          min-height: 26px !important;
+          padding: 0 6px !important;
+        }
+        
+        .age-selector-compact .ant-select-selection-item {
+          font-size: 10px !important;
+          padding: 0 4px !important;
+          line-height: 20px !important;
+          height: 20px !important;
+        }
+        
+        .age-selector-compact .ant-tag {
+          font-size: 10px !important;
+          padding: 0 5px !important;
+          line-height: 18px !important;
+          margin: 0 4px !important;
+        }
+        
+        .age-selector-compact .ant-btn-sm {
+          height: 24px !important;
+          padding: 0 8px !important;
+          font-size: 11px !important;
+        }
+        
+        .age-selector-compact .ant-statistic {
+          margin-bottom: 0 !important;
+        }
+        
+        .age-selector-compact .ant-statistic-title {
+          font-size: 10px !important;
+          margin-bottom: 2px !important;
+        }
+        
+        .age-selector-compact .ant-statistic-content {
+          font-size: 13px !important;
+        }
+        
+        .age-selector-compact .ant-alert {
+          padding: 6px 10px !important;
+          font-size: 10px !important;
+        }
+        
+        .age-selector-compact .ant-alert-message {
+          font-size: 11px !important;
+          margin-bottom: 2px !important;
+        }
+        
+        .age-selector-compact .ant-alert-description {
+          font-size: 10px !important;
+        }
+        
+        .age-selector-compact .ant-divider {
+          margin: 10px 0 !important;
+        }
+      `}</style>
+
+      <Card
+        className="age-selector-compact"
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <UserOutlined style={{ fontSize: '12px' }} />
+            <span style={{ fontSize: '12px' }}>Generar Reporte de Inasistentes</span>
+            {filename && <Tag color="blue" style={{ fontSize: '9px', padding: '0 4px', lineHeight: '16px' }}>{filename}</Tag>}
+            {cutoffDate && (
+              <Tag color="green" icon={<CalendarOutlined style={{ fontSize: '9px' }} />} style={{ fontSize: '9px', padding: '0 4px', lineHeight: '16px' }}>
+                Corte: {dayjs(cutoffDate).format('DD/MM/YYYY')}
+              </Tag>
+            )}
+          </div>
+        }
+        extra={
+          hasGenerated && (
+            <Space size={4}>
+              <Button
+                icon={<ReloadOutlined style={{ fontSize: '11px' }} />}
+                onClick={handleReloadReport}
+                loading={isGenerating}
+                disabled={!lastSuccessfulSelection || isGenerating}
+                title="Recargar último reporte"
+                size="small"
+                style={{ fontSize: '10px', height: '24px', padding: '0 6px' }}
+              >
+                Recargar
+              </Button>
+              <Button
+                icon={<StopOutlined style={{ fontSize: '11px' }} />}
+                onClick={handleClearSelection}
+                disabled={isGenerating}
+                size="small"
+                style={{ fontSize: '10px', height: '24px', padding: '0 6px' }}
+              >
+                Limpiar
+              </Button>
+            </Space>
+          )
+        }
+        size="small"
+        bodyStyle={{ padding: '10px' }}
+      >
+        <Row gutter={[8, 8]} style={{ marginBottom: 10 }}>
+          <Col span={8}>
+            <div style={{
+              padding: '8px',
+              backgroundColor: '#f0f5ff',
+              border: '1px solid #1890ff',
+              borderRadius: 4,
+              textAlign: 'center'
+            }}>
+              <CalendarOutlined style={{ fontSize: 18, color: '#1890ff', marginBottom: 4 }} />
+              <div>
+                <Text strong style={{ display: 'block', marginBottom: 2, fontSize: '10px' }}>
+                  Fecha de Corte
+                </Text>
+                <Text style={{ fontSize: 14, color: '#1890ff', fontWeight: 600 }}>
+                  {dayjs(cutoffDate).format('DD/MM/YYYY')}
+                </Text>
+              </div>
+              <div style={{ marginTop: 2 }}>
+                <Text type="secondary" style={{ fontSize: 9 }}>
+                  {dayjs(cutoffDate).format('dddd, D [de] MMMM [de] YYYY')}
+                </Text>
+              </div>
+            </div>
+          </Col>
+          <Col span={16}>
+            <Row gutter={8}>
+              <Col span={8}>
+                <Statistic
+                  title="Total Registros"
+                  value={ageRanges.statistics.total_registros}
+                  prefix={<UserOutlined style={{ fontSize: '11px' }} />}
+                  valueStyle={{ fontSize: '13px' }}
+                  style={{ fontSize: '10px' }}
+                />
+              </Col>
+              <Col span={8}>
+                <Statistic
+                  title="Rango Años"
+                  value={`${ageRanges.statistics.rango_años.min}-${ageRanges.statistics.rango_años.max}`}
+                  prefix={<CalendarOutlined style={{ fontSize: '11px' }} />}
+                  valueStyle={{ fontSize: '13px' }}
+                  style={{ fontSize: '10px' }}
+                />
+              </Col>
+              <Col span={8}>
+                <Statistic
+                  title="Rango Meses"
+                  value={`${ageRanges.statistics.rango_meses.min}-${ageRanges.statistics.rango_meses.max}`}
+                  prefix={<CalendarOutlined style={{ fontSize: '11px' }} />}
+                  valueStyle={{ fontSize: '13px' }}
+                  style={{ fontSize: '10px' }}
+                />
+              </Col>
+            </Row>
+          </Col>
+        </Row>
+
+        <Row gutter={8} style={{ marginBottom: 10 }}>
+          <Col span={12}>
+            <Text strong style={{ fontSize: '10px' }}>🗓️ Edades en Años:</Text>
+            <div style={{ marginTop: 3 }}>
+              <Select
+                mode="multiple"
+                style={{ width: '100%' }}
+                placeholder="Seleccionar edades en años"
+                value={selectedYears}
+                onChange={setSelectedYears}
+                disabled={isGenerating}
+                showSearch
+                size="small"
+                filterOption={(input, option) =>
+                  option?.children?.toString().toLowerCase().includes(input.toLowerCase()) ?? false
+                }
+                maxTagCount="responsive"
+              >
+                {ageRanges.age_ranges.years.map(year => (
+                  <Option key={year} value={year}>
+                    {year} año{year !== 1 ? 's' : ''}
+                  </Option>
+                ))}
+              </Select>
+            </div>
+            <div style={{ marginTop: 2 }}>
+              <Text type="secondary" style={{ fontSize: 9 }}>
+                {ageRanges.age_ranges.years.length} valores únicos disponibles
+              </Text>
+            </div>
+          </Col>
+
+          <Col span={12}>
+            <Text strong style={{ fontSize: '10px' }}>📅 Edades en Meses:</Text>
+            <div style={{ marginTop: 3 }}>
+              <Select
+                mode="multiple"
+                style={{ width: '100%' }}
+                placeholder="Seleccionar edades en meses"
+                value={selectedMonths}
+                onChange={setSelectedMonths}
+                disabled={isGenerating}
+                showSearch
+                size="small"
+                filterOption={(input, option) =>
+                  option?.children?.toString().toLowerCase().includes(input.toLowerCase()) ?? false
+                }
+                maxTagCount="responsive"
+              >
+                {ageRanges.age_ranges.months.map(month => (
+                  <Option key={month} value={month}>
+                    {month} mes{month !== 1 ? 'es' : ''}
+                  </Option>
+                ))}
+              </Select>
+            </div>
+            <div style={{ marginTop: 2 }}>
+              <Text type="secondary" style={{ fontSize: 9 }}>
+                {ageRanges.age_ranges.months.length} valores únicos disponibles
+              </Text>
+            </div>
+          </Col>
+        </Row>
+
+        {hasValidSelection && (
           <div style={{
-            padding: '12px',
-            backgroundColor: '#f0f5ff',
-            border: '2px solid #1890ff',
-            borderRadius: 8,
-            textAlign: 'center'
+            marginBottom: 10,
+            padding: 8,
+            backgroundColor: '#f6ffed',
+            border: '1px solid #b7eb8f',
+            borderRadius: 4
           }}>
-            <CalendarOutlined style={{ fontSize: 24, color: '#1890ff', marginBottom: 8 }} />
-            <div>
-              <Text strong style={{ display: 'block', marginBottom: 4 }}>
-                Fecha de Corte
-              </Text>
-              <Text style={{ fontSize: 18, color: '#1890ff', fontWeight: 600 }}>
-                {dayjs(cutoffDate).format('DD/MM/YYYY')}
-              </Text>
-            </div>
-            <div style={{ marginTop: 4 }}>
-              <Text type="secondary" style={{ fontSize: 11 }}>
-                {dayjs(cutoffDate).format('dddd, D [de] MMMM [de] YYYY')}
-              </Text>
-            </div>
-          </div>
-        </Col>
-        <Col span={16}>
-          <Row gutter={16}>
-            <Col span={8}>
-              <Statistic
-                title="Total Registros"
-                value={ageRanges.statistics.total_registros}
-                prefix={<UserOutlined />}
-                valueStyle={{ fontSize: '16px' }}
-              />
-            </Col>
-            <Col span={8}>
-              <Statistic
-                title="Rango Años"
-                value={`${ageRanges.statistics.rango_años.min}-${ageRanges.statistics.rango_años.max}`}
-                prefix={<CalendarOutlined />}
-                valueStyle={{ fontSize: '16px' }}
-              />
-            </Col>
-            <Col span={8}>
-              <Statistic
-                title="Rango Meses"
-                value={`${ageRanges.statistics.rango_meses.min}-${ageRanges.statistics.rango_meses.max}`}
-                prefix={<CalendarOutlined />}
-                valueStyle={{ fontSize: '16px' }}
-              />
-            </Col>
-          </Row>
-        </Col>
-      </Row>
-
-      {/* ✅ SELECTORES DE EDAD */}
-      <Row gutter={16} style={{ marginBottom: 16 }}>
-        <Col span={12}>
-          <Text strong>🗓️ Edades en Años:</Text>
-          <div style={{ marginTop: 4 }}>
-            <Select
-              mode="multiple"
-              style={{ width: '100%' }}
-              placeholder="Seleccionar edades en años"
-              value={selectedYears}
-              onChange={setSelectedYears}
-              disabled={isGenerating}
-              showSearch
-              filterOption={(input, option) =>
-                option?.children?.toString().toLowerCase().includes(input.toLowerCase()) ?? false
-              }
-              maxTagCount="responsive"
-            >
-              {ageRanges.age_ranges.years.map(year => (
-                <Option key={year} value={year}>
-                  {year} año{year !== 1 ? 's' : ''}
-                </Option>
-              ))}
-            </Select>
-          </div>
-          <div style={{ marginTop: 4 }}>
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              {ageRanges.age_ranges.years.length} valores únicos disponibles
-            </Text>
-          </div>
-        </Col>
-
-        <Col span={12}>
-          <Text strong>📅 Edades en Meses:</Text>
-          <div style={{ marginTop: 4 }}>
-            <Select
-              mode="multiple"
-              style={{ width: '100%' }}
-              placeholder="Seleccionar edades en meses"
-              value={selectedMonths}
-              onChange={setSelectedMonths}
-              disabled={isGenerating}
-              showSearch
-              filterOption={(input, option) =>
-                option?.children?.toString().toLowerCase().includes(input.toLowerCase()) ?? false
-              }
-              maxTagCount="responsive"
-            >
-              {ageRanges.age_ranges.months.map(month => (
-                <Option key={month} value={month}>
-                  {month} mes{month !== 1 ? 'es' : ''}
-                </Option>
-              ))}
-            </Select>
-          </div>
-          <div style={{ marginTop: 4 }}>
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              {ageRanges.age_ranges.months.length} valores únicos disponibles
-            </Text>
-          </div>
-        </Col>
-      </Row>
-
-      {/* ✅ INFORMACIÓN DE SELECCIÓN ACTUAL */}
-      {hasValidSelection && (
-        <div style={{
-          marginBottom: 16,
-          padding: 12,
-          backgroundColor: '#f6ffed',
-          border: '1px solid #b7eb8f',
-          borderRadius: 6
-        }}>
-          <Text strong style={{ color: '#52c41a' }}>📋 Filtros Seleccionados:</Text>
-          <div style={{ marginTop: 4 }}>
-            {selectedYears.length > 0 && (
-              <div>
-                <Text style={{ fontSize: 12 }}>
-                  🗓️ <strong>Años:</strong> {selectedYears.sort((a, b) => a - b).join(', ')}
+            <Text strong style={{ color: '#52c41a', fontSize: '10px' }}>📋 Filtros Seleccionados:</Text>
+            <div style={{ marginTop: 3 }}>
+              {selectedYears.length > 0 && (
+                <div>
+                  <Text style={{ fontSize: 9 }}>
+                    🗓️ <strong>Años:</strong> {selectedYears.sort((a, b) => a - b).join(', ')}
+                  </Text>
+                </div>
+              )}
+              {selectedMonths.length > 0 && (
+                <div>
+                  <Text style={{ fontSize: 9 }}>
+                    📅 <strong>Meses:</strong> {selectedMonths.sort((a, b) => a - b).slice(0, 15).join(', ')}{selectedMonths.length > 15 ? '...' : ''}
+                  </Text>
+                </div>
+              )}
+              <div style={{ marginTop: 2 }}>
+                <Text type="secondary" style={{ fontSize: 9 }}>
+                  💡 Presione "Generar Reporte" para procesar los inasistentes con la fecha de corte {dayjs(cutoffDate).format('DD/MM/YYYY')}
                 </Text>
               </div>
-            )}
-            {selectedMonths.length > 0 && (
-              <div>
-                <Text style={{ fontSize: 12 }}>
-                  📅 <strong>Meses:</strong> {selectedMonths.sort((a, b) => a - b).slice(0, 15).join(', ')}{selectedMonths.length > 15 ? '...' : ''}
-                </Text>
-              </div>
-            )}
-            <div style={{ marginTop: 4 }}>
-              <Text type="secondary" style={{ fontSize: 11 }}>
-                💡 Presione "Generar Reporte" para procesar los inasistentes con la fecha de corte {dayjs(cutoffDate).format('DD/MM/YYYY')}
-              </Text>
             </div>
           </div>
+        )}
+
+        <Divider style={{ margin: '8px 0' }} />
+
+        <div style={{ textAlign: 'center' }}>
+          <Space size={8}>
+            {!hasValidSelection && (
+              <Text type="secondary" style={{ fontSize: '10px' }}>
+                ⚠️ Seleccione al menos una edad en años o meses
+              </Text>
+            )}
+
+            {hasValidSelection && (
+              <Button
+                type="primary"
+                size="small"
+                icon={<PlayCircleOutlined style={{ fontSize: '11px' }} />}
+                onClick={handleGenerateReport}
+                loading={isGenerating}
+                disabled={isGenerating}
+                style={{ fontSize: '11px', height: '28px', padding: '0 12px' }}
+              >
+                {isGenerating ? 'Generando Reporte...' : 'Generar Reporte de Inasistentes'}
+              </Button>
+            )}
+
+            {hasValidSelection && !isGenerating && (
+              <Button
+                icon={<StopOutlined style={{ fontSize: '11px' }} />}
+                onClick={handleClearSelection}
+                size="small"
+                style={{ fontSize: '11px', height: '28px', padding: '0 10px' }}
+              >
+                Limpiar Selección
+              </Button>
+            )}
+          </Space>
         </div>
-      )}
 
-      <Divider style={{ margin: '16px 0' }} />
+        {error && (
+          <Alert
+            message="Error"
+            description={error}
+            type="error"
+            showIcon
+            closable
+            onClose={() => setError(null)}
+            style={{ marginTop: 10, fontSize: '10px', padding: '6px 10px' }}
+          />
+        )}
 
-      {/* ✅ BOTONES DE ACCIÓN */}
-      <div style={{ textAlign: 'center' }}>
-        <Space size="middle">
-          {!hasValidSelection && (
-            <Text type="secondary">
-              ⚠️ Seleccione al menos una edad en años o meses
-            </Text>
-          )}
-
-          {hasValidSelection && (
-            <Button
-              type="primary"
-              size="large"
-              icon={<PlayCircleOutlined />}
-              onClick={handleGenerateReport}
-              loading={isGenerating}
-              disabled={isGenerating}
-              className="generate-report-button"
-            >
-              {isGenerating ? 'Generando Reporte...' : 'Generar Reporte de Inasistentes'}
-            </Button>
-          )}
-
-          {hasValidSelection && !isGenerating && (
-            <Button
-              icon={<StopOutlined />}
-              onClick={handleClearSelection}
-            >
-              Limpiar Selección
-            </Button>
-          )}
-        </Space>
-      </div>
-
-      {/* ✅ ALERTAS DE ESTADO */}
-      {error && (
-        <Alert
-          message="Error"
-          description={error}
-          type="error"
-          showIcon
-          closable
-          onClose={() => setError(null)}
-          style={{ marginTop: 16 }}
-        />
-      )}
-
-      {hasGenerated && lastSuccessfulSelection && !isGenerating && !error && (
-        <Alert
-          message="✅ Reporte Generado Exitosamente"
-          description={
-            <div>
-              <Text>El reporte de inasistentes se ha generado correctamente.</Text>
-              <div style={{ marginTop: 4, fontSize: 12 }}>
-                {lastSuccessfulSelection.selectedYears.length > 0 && (
-                  <div>🗓️ Años: {lastSuccessfulSelection.selectedYears.join(', ')}</div>
-                )}
-                {lastSuccessfulSelection.selectedMonths.length > 0 && (
-                  <div>📅 Meses: {lastSuccessfulSelection.selectedMonths.slice(0, 10).join(', ')}{lastSuccessfulSelection.selectedMonths.length > 10 ? '...' : ''}</div>
-                )}
-                <div>📅 Fecha corte: {dayjs(lastSuccessfulSelection.corteFecha).format('DD/MM/YYYY')}</div>
+        {hasGenerated && lastSuccessfulSelection && !isGenerating && !error && (
+          <Alert
+            message="✅ Reporte Generado Exitosamente"
+            description={
+              <div style={{ fontSize: '10px' }}>
+                <Text style={{ fontSize: '10px' }}>El reporte de inasistentes se ha generado correctamente.</Text>
+                <div style={{ marginTop: 3 }}>
+                  {lastSuccessfulSelection.selectedYears.length > 0 && (
+                    <div style={{ fontSize: '9px' }}>🗓️ Años: {lastSuccessfulSelection.selectedYears.join(', ')}</div>
+                  )}
+                  {lastSuccessfulSelection.selectedMonths.length > 0 && (
+                    <div style={{ fontSize: '9px' }}>📅 Meses: {lastSuccessfulSelection.selectedMonths.slice(0, 10).join(', ')}{lastSuccessfulSelection.selectedMonths.length > 10 ? '...' : ''}</div>
+                  )}
+                  <div style={{ fontSize: '9px' }}>📅 Fecha corte: {dayjs(lastSuccessfulSelection.corteFecha).format('DD/MM/YYYY')}</div>
+                </div>
               </div>
-            </div>
-          }
-          type="success"
-          showIcon
-          style={{ marginTop: 16 }}
-        />
-      )}
+            }
+            type="success"
+            showIcon
+            style={{ marginTop: 10, fontSize: '10px', padding: '6px 10px' }}
+          />
+        )}
 
-      {/* ✅ MENSAJE DE AYUDA */}
-      {!hasValidSelection && !isGenerating && (
-        <div style={{
-          textAlign: 'center',
-          padding: '20px',
-          backgroundColor: '#fafafa',
-          borderRadius: 6,
-          marginTop: 16
-        }}>
-          <Text type="secondary">
-            🎯 <strong>Instrucciones:</strong><br />
-            1. Las edades se calcularán basándose en la fecha de corte: {dayjs(cutoffDate).format('DD/MM/YYYY')}<br />
-            2. Seleccione las edades en años y/o meses que desea evaluar<br />
-            3. Presione "Generar Reporte" para procesar los inasistentes<br />
-            4. Los resultados aparecerán en la tabla inferior
-          </Text>
-        </div>
-      )}
-    </Card>
+        {!hasValidSelection && !isGenerating && (
+          <div style={{
+            textAlign: 'center',
+            padding: '12px',
+            backgroundColor: '#fafafa',
+            borderRadius: 4,
+            marginTop: 10
+          }}>
+            <Text type="secondary" style={{ fontSize: '10px' }}>
+              🎯 <strong>Instrucciones:</strong><br />
+              1. Las edades se calcularán basándose en la fecha de corte: {dayjs(cutoffDate).format('DD/MM/YYYY')}<br />
+              2. Seleccione las edades en años y/o meses que desea evaluar<br />
+              3. Presione "Generar Reporte" para procesar los inasistentes<br />
+              4. Los resultados aparecerán en la tabla inferior
+            </Text>
+          </div>
+        )}
+      </Card>
+    </>
   );
 };

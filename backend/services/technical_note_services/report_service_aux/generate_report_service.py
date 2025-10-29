@@ -454,12 +454,15 @@ class GenerateReport:
         año: int, edad_meses_field: str, corte_fecha: str, column_name: str
     ) -> int:
         """
-        ✅ CORREGIDO: Calcular denominador ANUAL específico
+        ✅ DENOMINADOR ANUAL CORRECTO:
         
-        El denominador anual debe contar TODAS las personas que en ALGÚN MES
-        del año especificado tuvieron la edad del rango.
+        Cuenta personas que:
+        1. Tienen la edad correcta al fecha de corte
+        2. Tienen consulta en ese año específico, O
+        3. NO tienen consulta (vacío)
         
-        IMPORTANTE: Es la UNIÓN de todos los meses, no la suma.
+        EXCLUYE:
+        - Personas con consulta en otros años
         """
         try:
             min_age = getattr(age_range_obj, 'min_age', 1)
@@ -468,78 +471,130 @@ class GenerateReport:
             
             print(f"\n   🔍 Calculando DENOMINADOR ANUAL {año}")
             print(f"      Rango edad: {min_age}-{max_age} {unit}")
+            print(f"      Fecha corte: {corte_fecha}")
             
-            # ✅ USAR FECHA DE FIN DE AÑO COMO REFERENCIA
-            ultimo_dia_año = f"{año}-12-31"
-            
-            print(f"      📅 Fecha referencia año: {ultimo_dia_año}")
-            
-            # ✅ CONSTRUIR FILTRO DE EDAD PARA EL AÑO
+            # ✅ FILTRO DE EDAD usando la fecha de corte global
             if unit.lower() == 'months':
-                edad_filter_año = f"""(
-                    (date_part('year', DATE '{ultimo_dia_año}') - date_part('year', strptime("Fecha Nacimiento", '%d/%m/%Y'))) * 12
-                    + (date_part('month', DATE '{ultimo_dia_año}') - date_part('month', strptime("Fecha Nacimiento", '%d/%m/%Y')))
+                edad_filter = f"""(
+                    (date_part('year', DATE '{corte_fecha}') - date_part('year', strptime("Fecha Nacimiento", '%d/%m/%Y'))) * 12
+                    + (date_part('month', DATE '{corte_fecha}') - date_part('month', strptime("Fecha Nacimiento", '%d/%m/%Y')))
                     + CASE 
-                        WHEN date_part('day', strptime("Fecha Nacimiento", '%d/%m/%Y')) <= date_part('day', DATE '{ultimo_dia_año}')
+                        WHEN date_part('day', strptime("Fecha Nacimiento", '%d/%m/%Y')) <= date_part('day', DATE '{corte_fecha}')
                         THEN 0
                         ELSE -1
                     END
-                ) <= {max_age}
-                AND 
-                (
-                    (date_part('year', DATE '{año}-01-01') - date_part('year', strptime("Fecha Nacimiento", '%d/%m/%Y'))) * 12
-                    + (date_part('month', DATE '{año}-01-01') - date_part('month', strptime("Fecha Nacimiento", '%d/%m/%Y')))
-                    + CASE 
-                        WHEN date_part('day', strptime("Fecha Nacimiento", '%d/%m/%Y')) <= date_part('day', DATE '{año}-01-01')
-                        THEN 0
-                        ELSE -1
-                    END
-                ) >= {min_age}"""
+                ) BETWEEN {min_age} AND {max_age}"""
             else:
-                # Para años
+                # Para años, convertir a meses
                 min_months = min_age * 12
                 max_months = (max_age + 1) * 12 - 1
-                edad_filter_año = f"""(
-                    (date_part('year', DATE '{ultimo_dia_año}') - date_part('year', strptime("Fecha Nacimiento", '%d/%m/%Y'))) * 12
-                    + (date_part('month', DATE '{ultimo_dia_año}') - date_part('month', strptime("Fecha Nacimiento", '%d/%m/%Y')))
+                edad_filter = f"""(
+                    (date_part('year', DATE '{corte_fecha}') - date_part('year', strptime("Fecha Nacimiento", '%d/%m/%Y'))) * 12
+                    + (date_part('month', DATE '{corte_fecha}') - date_part('month', strptime("Fecha Nacimiento", '%d/%m/%Y')))
                     + CASE 
-                        WHEN date_part('day', strptime("Fecha Nacimiento", '%d/%m/%Y')) <= date_part('day', DATE '{ultimo_dia_año}')
+                        WHEN date_part('day', strptime("Fecha Nacimiento", '%d/%m/%Y')) <= date_part('day', DATE '{corte_fecha}')
                         THEN 0
                         ELSE -1
                     END
-                ) <= {max_months}
-                AND 
-                (
-                    (date_part('year', DATE '{año}-01-01') - date_part('year', strptime("Fecha Nacimiento", '%d/%m/%Y'))) * 12
-                    + (date_part('month', DATE '{año}-01-01') - date_part('month', strptime("Fecha Nacimiento", '%d/%m/%Y')))
-                    + CASE 
-                        WHEN date_part('day', strptime("Fecha Nacimiento", '%d/%m/%Y')) <= date_part('day', DATE '{año}-01-01')
-                        THEN 0
-                        ELSE -1
-                    END
-                ) >= {min_months}"""
+                ) BETWEEN {min_months} AND {max_months}"""
             
-            # ✅ DENOMINADOR ANUAL: Personas que tuvieron esa edad en algún momento del año
+            # ✅ PARSER DE FECHA FLEXIBLE
+            column_safe = f'"{column_name}"' if not column_name.startswith('"') else column_name
+            date_parser = self._parse_date_flexible(column_safe)
+            
+            print(f"      📅 Filtro: Consultas en año {año} O vacías")
+            
+            # ✅ DENOMINADOR ANUAL: Edad correcta + (Consulta en ese año O vacío)
             denominador_anual_sql = f"""
             SELECT COUNT({document_field}) as denominador_anual
             FROM {data_source}
             WHERE 
-                {edad_filter_año}
+                ({edad_filter})
                 AND "Fecha Nacimiento" IS NOT NULL 
                 AND TRIM("Fecha Nacimiento") != ''
                 AND TRY_CAST(strptime("Fecha Nacimiento", '%d/%m/%Y') AS DATE) IS NOT NULL
-                AND strptime("Fecha Nacimiento", '%d/%m/%Y') <= DATE '{ultimo_dia_año}'
+                AND strptime("Fecha Nacimiento", '%d/%m/%Y') <= DATE '{corte_fecha}'
                 AND {document_field} IS NOT NULL
                 AND TRIM({document_field}) != ''
                 AND {geo_filter}
+                AND (
+                    -- OPCIÓN 1: Consulta en el año específico
+                    (
+                        {column_safe} IS NOT NULL 
+                        AND TRIM(CAST({column_safe} AS VARCHAR)) != ''
+                        AND TRIM(CAST({column_safe} AS VARCHAR)) NOT IN ('NULL', 'null', 'None', 'none', 'NaN', 'nan', 'N/A', 'n/a', '-', 'No')
+                        AND ({date_parser}) IS NOT NULL
+                        AND date_part('year', {date_parser}) = {año}
+                    )
+                    OR
+                    -- OPCIÓN 2: Sin consulta (vacío)
+                    (
+                        {column_safe} IS NULL 
+                        OR TRIM(CAST({column_safe} AS VARCHAR)) = ''
+                        OR TRIM(CAST({column_safe} AS VARCHAR)) IN ('NULL', 'null', 'None', 'none', 'NaN', 'nan', 'N/A', 'n/a', '-', 'No')
+                    )
+                )
             """
+            
+            print(f"      🔍 SQL (primeros 300 chars):")
+            print(f"         {denominador_anual_sql[:300]}...")
             
             result = duckdb_service.conn.execute(denominador_anual_sql).fetchone()
             denominador_anual = int(result[0]) if result and result[0] else 0
             
             print(f"      ✅ DENOMINADOR ANUAL {año}: {denominador_anual:,}")
             
+            # Debug adicional
+            if denominador_anual > 0:
+                debug_sql = f"""
+                SELECT 
+                    COUNT(CASE 
+                        WHEN {column_safe} IS NOT NULL 
+                            AND TRIM(CAST({column_safe} AS VARCHAR)) != ''
+                            AND TRIM(CAST({column_safe} AS VARCHAR)) NOT IN ('NULL', 'null', 'None', 'none', 'NaN', 'nan', 'N/A', 'n/a', '-', 'No')
+                            AND ({date_parser}) IS NOT NULL
+                            AND date_part('year', {date_parser}) = {año}
+                        THEN 1 END) as con_consulta,
+                    COUNT(CASE 
+                        WHEN {column_safe} IS NULL 
+                            OR TRIM(CAST({column_safe} AS VARCHAR)) = ''
+                            OR TRIM(CAST({column_safe} AS VARCHAR)) IN ('NULL', 'null', 'None', 'none', 'NaN', 'nan', 'N/A', 'n/a', '-', 'No')
+                        THEN 1 END) as sin_consulta
+                FROM {data_source}
+                WHERE 
+                    ({edad_filter})
+                    AND "Fecha Nacimiento" IS NOT NULL 
+                    AND {document_field} IS NOT NULL
+                    AND {geo_filter}
+                    AND (
+                        (
+                            {column_safe} IS NOT NULL 
+                            AND TRIM(CAST({column_safe} AS VARCHAR)) != ''
+                            AND TRIM(CAST({column_safe} AS VARCHAR)) NOT IN ('NULL', 'null', 'None', 'none', 'NaN', 'nan', 'N/A', 'n/a', '-', 'No')
+                            AND ({date_parser}) IS NOT NULL
+                            AND date_part('year', {date_parser}) = {año}
+                        )
+                        OR
+                        (
+                            {column_safe} IS NULL 
+                            OR TRIM(CAST({column_safe} AS VARCHAR)) = ''
+                            OR TRIM(CAST({column_safe} AS VARCHAR)) IN ('NULL', 'null', 'None', 'none', 'NaN', 'nan', 'N/A', 'n/a', '-', 'No')
+                        )
+                    )
+                """
+                
+                try:
+                    debug_result = duckdb_service.conn.execute(debug_sql).fetchone()
+                    con_consulta = debug_result[0] if debug_result else 0
+                    sin_consulta = debug_result[1] if debug_result else 0
+                    print(f"         📊 Con consulta en {año}: {con_consulta:,}")
+                    print(f"         📊 Sin consulta: {sin_consulta:,}")
+                    print(f"         📊 TOTAL: {con_consulta + sin_consulta:,}")
+                except Exception as debug_error:
+                    print(f"         ⚠️ Error en debug: {debug_error}")
+            
             if denominador_anual == 0:
+                print(f"      ⚠️ Denominador anual = 0, usando fallback")
                 denominador_anual = self._calculate_fallback_denominator(
                     data_source, age_range_obj, document_field, geo_filter, 
                     edad_meses_field, corte_fecha

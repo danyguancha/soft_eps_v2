@@ -253,21 +253,6 @@ export const Report: React.FC<ReportPropsExtended> = memo(({
             <Text type="secondary" className="temporal-empty-description">
               Analiza las columnas con palabras clave y filtros geográficos
             </Text>
-            
-            {/* ✅ DEBUG: Mostrar valor exacto de cutoffDate */}
-            <div style={{ 
-              marginTop: 12, 
-              padding: '8px', 
-              backgroundColor: '#f0f0f0',
-              borderRadius: 4,
-              fontSize: 11,
-              fontFamily: 'monospace'
-            }}>
-              <div>cutoffDate: {JSON.stringify(cutoffDate)}</div>
-              <div>type: {typeof cutoffDate}</div>
-              <div>Boolean(cutoffDate): {String(Boolean(cutoffDate))}</div>
-              <div>canGenerateReport: {String(canGenerateReport)}</div>
-            </div>
 
             {!canGenerateReport && (
               <Text type="danger" style={{ display: 'block', marginTop: 8, fontSize: 12 }}>

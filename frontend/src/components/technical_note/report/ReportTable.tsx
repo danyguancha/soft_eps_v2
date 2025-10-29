@@ -1,20 +1,14 @@
-// components/technical-note/report/ReportTable.tsx - ✅ VERSIÓN COMPLETA CORREGIDA
+// components/technical-note/report/ReportTable.tsx - ✅ SIMPLIFICADO
 import { memo, useMemo, useCallback, useState } from 'react';
-import { Table, Typography, Tag, Space, Button, Tooltip, Empty, Row, Col, message, Modal, Dropdown } from 'antd';
-import type { MenuProps } from 'antd';
+import { Table, Typography, Tag, Space, Button, Tooltip, Empty, Row, Col, message } from 'antd';
+import api from '../../../Api';
 import { 
   CalendarOutlined, 
   ExpandAltOutlined, 
   CompressOutlined,
   FileTextOutlined,
   FilePdfOutlined,
-  ExportOutlined,
-  LoadingOutlined,
-  DownOutlined,
-  DatabaseOutlined,
-  TableOutlined,
-  BarChartOutlined,
-  PieChartOutlined
+  LoadingOutlined
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import type { GeographicFilters, KeywordAgeReportItem } from '../../../services/TechnicalNoteService';
@@ -26,7 +20,7 @@ dayjs.locale('es');
 
 const { Text, Title } = Typography;
 
-/* ──────────────────────────── utilidades ──────────────────────────── */
+/* ──────────────────────────── UTILIDADES ──────────────────────────── */
 const normalizeSpaces = (s: string) => s.trim().replace(/\s+/g, ' ');
 const normalizeAge = (s: string) =>
   s === 'Sin especificar' ? s : s.replace(/months?/gi, 'meses').replace(/years?/gi, 'años');
@@ -40,28 +34,27 @@ const KEYWORD_COLORS: Record<string, string> = {
 };
 const kwColor = (k: string) => KEYWORD_COLORS[k.toLowerCase()] || 'default';
 
-/* 🚦 FUNCIÓN PARA ESTILIZAR SOLO LA CELDA DE SEMAFORIZACIÓN */
 const getSemaforizacionCellStyle = (color?: string, estado?: string) => {
   const mainColor = color || '#6c757d';
   const hex = mainColor.replace('#', '');
   const r = parseInt(hex.substr(0, 2), 16);
   const g = parseInt(hex.substr(2, 2), 16);
   const b = parseInt(hex.substr(4, 2), 16);
-  const lightBg = `rgba(${r}, ${g}, ${b}, 0.15)`;
+  const lightBg = `rgba(${r}, ${g}, ${b}, 0.12)`;
   
   return {
     backgroundColor: lightBg,
     color: mainColor,
-    border: `2px solid ${mainColor}`,
-    padding: '6px 10px',
-    borderRadius: '6px',
+    border: `1px solid ${mainColor}`,
+    padding: '2px 6px',
+    borderRadius: '3px',
     fontWeight: 600,
-    fontSize: '11px',
+    fontSize: '9px',
     textAlign: 'center' as const,
     whiteSpace: 'nowrap' as const,
     display: 'inline-block',
-    minWidth: '90px',
-    boxShadow: `0 1px 3px ${mainColor}30`
+    minWidth: '70px',
+    lineHeight: '1.2'
   };
 };
 
@@ -75,7 +68,7 @@ const findTemporal = (data: Record<string, any>, col: string, kw: string, age: s
   return null;
 };
 
-/* ──────────────────────────── props ──────────────────────────── */
+/* ──────────────────────────── PROPS ──────────────────────────── */
 interface Props {
   keywordReport: {
     items: KeywordAgeReportItem[];
@@ -90,13 +83,13 @@ interface Props {
   filename?: string;
   selectedKeywords?: string[];
   geographicFilters?: GeographicFilters;
-  cutoffDate?: string; // ✅ Fecha de corte desde padre (YYYY-MM-DD)
+  cutoffDate?: string;
   onExportStart?: () => void;
   onExportComplete?: (files: Record<string, string>) => void;
   onExportError?: (error: string) => void;
 }
 
-/* ──────────────────────────── COMPONENTE DE EXPORTACIÓN MEJORADO ──────────────────────────── */
+/* ──────────────────────────── COMPONENTE DE EXPORTACIÓN SIMPLIFICADO ──────────────────────────── */
 interface ExportControlsProps {
   keywordReport: NonNullable<Props['keywordReport']>;
   filename: string;
@@ -118,527 +111,228 @@ const ExportControls = memo<ExportControlsProps>(({
   onExportComplete,
   onExportError
 }) => {
-  const [exportLoading, setExportLoading] = useState(false);
-  const [csvLoading, setCsvLoading] = useState<string | null>(null);
-  const [exportModalVisible, setExportModalVisible] = useState(false);
-  const [exportOptions, setExportOptions] = useState({
-    export_csv: true,
-    export_pdf: true,
-    include_temporal: true
-  });
+  const [csvLoading, setCsvLoading] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
 
-  // ✅ Usar cutoffDate del padre o corte_fecha del reporte como fallback
   const effectiveCutoffDate = cutoffDate || keywordReport.corte_fecha || "2025-07-31";
 
-  // ✅ FUNCIÓN HELPER: Normalizar filtros geográficos (null → undefined)
-  const normalizeGeographicFilters = useCallback((
-    filters?: GeographicFilters
-  ): { departamento?: string; municipio?: string; ips?: string } | undefined => {
-    if (!filters) return undefined;
-
-    const normalized: { departamento?: string; municipio?: string; ips?: string } = {};
-    
-    if (filters.departamento) normalized.departamento = filters.departamento;
-    if (filters.municipio) normalized.municipio = filters.municipio;
-    if (filters.ips) normalized.ips = filters.ips;
-
-    return Object.keys(normalized).length > 0 ? normalized : undefined;
-  }, []);
-
-  // ✅ Preparar parámetros con filtros normalizados
-  const prepareExportRequest = useCallback(() => {
-    const cleanFilename = filename?.replace(/\.csv$/, '') || 'reporte';
-    
-    return {
-      data_source: filename || keywordReport.filename || 'reporte.csv',
-      filename: `${cleanFilename}_${new Date().toISOString().split('T')[0]}`,
-      keywords: selectedKeywords.length > 0 ? selectedKeywords : undefined,
-      min_count: 0,
-      include_temporal: true,
-      geographic_filters: normalizeGeographicFilters(geographicFilters),
-      corte_fecha: effectiveCutoffDate
-    };
-  }, [filename, keywordReport, selectedKeywords, geographicFilters, effectiveCutoffDate, normalizeGeographicFilters]);
-
-  // 📥 EXPORTACIÓN INDIVIDUAL POR TIPO CSV
-  const handleExportCSVType = useCallback(async (csvType: string, csvLabel: string) => {
+  // EXPORTAR CSV TEMPORAL DIRECTAMENTE
+  const handleExportCSV = useCallback(async () => {
     try {
-      setCsvLoading(csvType);
+      setCsvLoading(true);
       onExportStart?.();
       
-      message.loading({ content: `Generando ${csvLabel}...`, key: `export-${csvType}`, duration: 0 });
+      message.loading({ content: 'Exportando CSV...', key: 'export-csv', duration: 0 });
+
+      const cleanFilename = filename?.replace(/\.csv$/, '') || 'reporte';
+      const timestampedFilename = `${cleanFilename}_${new Date().toISOString().split('T')[0]}`;
       
-      const request = prepareExportRequest();
-      
-      const result = await TechnicalNoteService.generateAndExportAdvancedReport(
-        request,
-        { export_csv: true, export_pdf: false, include_temporal: true }
+      const exportData = {
+        report_data: keywordReport,
+        filename: timestampedFilename,
+        export_type: 'temporal',
+        export_options: {
+          export_csv: true,
+          export_pdf: false,
+          include_temporal: true
+        }
+      };
+
+      console.log('📤 Exportando CSV:', {
+        items: keywordReport.items?.length,
+        fecha: effectiveCutoffDate
+      });
+
+      const response = await api.post(
+        '/technical-note/reports/export-current',
+        exportData,
+        { timeout: 90000 }
       );
-      
+
+      const result = response.data;
+
       if (result.success && result.download_links) {
-        const csvKey = Object.keys(result.download_links).find(key => 
-          key.includes('csv') && key.includes(csvType.toLowerCase())
-        );
+        console.log('✅ Enlaces recibidos:', result.download_links);
+
+        // Buscar el enlace CSV temporal
+        const csvLink = result.download_links.csv_temporal || result.download_links.temporal;
         
-        if (csvKey && result.download_links[csvKey]) {
-          const downloadFilename = `${request.filename}_${csvType}.csv`;
+        if (csvLink) {
           await TechnicalNoteService.downloadFromLink(
-            result.download_links[csvKey], 
-            downloadFilename
+            csvLink,
+            `${timestampedFilename}_temporal.csv`
           );
           
-          message.success({ content: `✅ ${csvLabel} descargado exitosamente`, key: `export-${csvType}` });
-          onExportComplete?.({ [csvType]: 'descargado' });
+          message.success({ 
+            content: 'CSV descargado exitosamente', 
+            key: 'export-csv' 
+          });
+          
+          onExportComplete?.({ csv: 'descargado' });
         } else {
-          throw new Error(`No se encontró el archivo ${csvLabel}`);
+          throw new Error('No se encontró el enlace de descarga CSV');
         }
       } else {
-        throw new Error(result.message || 'Error generando el reporte');
+        throw new Error(result.message || 'Error en la exportación');
       }
-      
+
     } catch (error) {
-      console.error(`❌ Error exportando ${csvLabel}:`, error);
+      console.error('❌ Error exportando CSV:', error);
       const errorMsg = error instanceof Error ? error.message : 'Error desconocido';
-      message.error({ content: `❌ Error ${csvLabel}: ${errorMsg}`, key: `export-${csvType}` });
+      message.error({ content: `❌ Error: ${errorMsg}`, key: 'export-csv' });
       onExportError?.(errorMsg);
     } finally {
-      setCsvLoading(null);
+      setCsvLoading(false);
     }
-  }, [prepareExportRequest, onExportStart, onExportComplete, onExportError]);
+  }, [keywordReport, filename, effectiveCutoffDate, onExportStart, onExportComplete, onExportError]);
 
-  // 📄 EXPORTACIÓN SOLO PDF
+  // ✅ EXPORTAR PDF
   const handleExportPDF = useCallback(async () => {
     try {
-      setExportLoading(true);
+      setPdfLoading(true);
       onExportStart?.();
       
-      message.loading({ content: 'Generando reporte PDF...', key: 'export-pdf', duration: 0 });
+      message.loading({ content: 'Generando PDF...', key: 'export-pdf', duration: 0 });
+
+      const cleanFilename = filename?.replace(/\.csv$/, '') || 'reporte';
+      const timestampedFilename = `${cleanFilename}_${new Date().toISOString().split('T')[0]}`;
       
-      const request = prepareExportRequest();
-      
-      const result = await TechnicalNoteService.generateAndExportAdvancedReport(
-        request,
-        { export_csv: false, export_pdf: true, include_temporal: true }
+      const exportData = {
+        report_data: keywordReport,
+        filename: timestampedFilename,
+        export_type: 'pdf',
+        export_options: {
+          export_csv: false,
+          export_pdf: true,
+          include_temporal: true
+        }
+      };
+
+      const response = await api.post(
+        '/technical-note/reports/export-current',
+        exportData,
+        { timeout: 120000 }
       );
-      
+
+      const result = response.data;
+
       if (result.success && result.download_links?.pdf) {
         await TechnicalNoteService.downloadFromLink(
           result.download_links.pdf,
-          `${request.filename}.pdf`
+          `${timestampedFilename}.pdf`
         );
         
-        message.success({ content: '✅ Archivo PDF descargado exitosamente', key: 'export-pdf' });
+        message.success({ content: '✅ PDF descargado exitosamente', key: 'export-pdf' });
         onExportComplete?.({ pdf: 'descargado' });
       } else {
         throw new Error(result.message || 'Error generando PDF');
       }
-      
+
     } catch (error) {
       console.error('❌ Error exportando PDF:', error);
       const errorMsg = error instanceof Error ? error.message : 'Error desconocido';
       message.error({ content: `❌ Error PDF: ${errorMsg}`, key: 'export-pdf' });
       onExportError?.(errorMsg);
     } finally {
-      setExportLoading(false);
+      setPdfLoading(false);
     }
-  }, [prepareExportRequest, onExportStart, onExportComplete, onExportError]);
-
-  // 📥 EXPORTACIÓN COMPLETA
-  const handleCompleteExport = useCallback(async () => {
-    try {
-      setExportLoading(true);
-      onExportStart?.();
-      
-      message.loading({ content: 'Generando reporte completo...', key: 'export-complete', duration: 0 });
-      
-      const request = prepareExportRequest();
-      
-      const result = await TechnicalNoteService.generateAndExportAdvancedReport(
-        request,
-        { export_csv: true, export_pdf: true, include_temporal: true }
-      );
-      
-      if (result.success && result.download_links) {
-        const downloadPromises = Object.entries(result.download_links).map(([type, link]) => {
-          let downloadFilename: string;
-          
-          if (type.includes('pdf')) {
-            downloadFilename = `${request.filename}.pdf`;
-          } else {
-            const csvType = type.replace('csv_', '');
-            downloadFilename = `${request.filename}_${csvType}.csv`;
-          }
-          
-          return TechnicalNoteService.downloadFromLink(link, downloadFilename);
-        });
-        
-        await Promise.all(downloadPromises);
-        
-        const fileCount = Object.keys(result.download_links).length;
-        message.success({ 
-          content: `✅ ${fileCount} archivos descargados exitosamente`, 
-          key: 'export-complete' 
-        });
-        
-        onExportComplete?.({ complete: 'descargado' });
-      } else {
-        throw new Error(result.message || 'Error generando el reporte completo');
-      }
-      
-    } catch (error) {
-      console.error('❌ Error en exportación completa:', error);
-      const errorMsg = error instanceof Error ? error.message : 'Error desconocido';
-      message.error({ content: `❌ Error: ${errorMsg}`, key: 'export-complete' });
-      onExportError?.(errorMsg);
-    } finally {
-      setExportLoading(false);
-    }
-  }, [prepareExportRequest, onExportStart, onExportComplete, onExportError]);
-
-  // 🔧 EXPORTACIÓN AVANZADA CON OPCIONES
-  const handleAdvancedExport = useCallback(async () => {
-    try {
-      setExportLoading(true);
-      onExportStart?.();
-      
-      const selectedFormats = [];
-      if (exportOptions.export_csv) selectedFormats.push('CSV');
-      if (exportOptions.export_pdf) selectedFormats.push('PDF');
-      
-      if (selectedFormats.length === 0) {
-        message.warning('Selecciona al menos un formato para exportar');
-        setExportLoading(false);
-        return;
-      }
-      
-      message.loading({ 
-        content: `Generando reporte en ${selectedFormats.join(' y ')}...`, 
-        key: 'export-advanced', 
-        duration: 0 
-      });
-      
-      const request = prepareExportRequest();
-      
-      const result = await TechnicalNoteService.generateAndExportAdvancedReport(
-        request,
-        exportOptions
-      );
-      
-      if (result.success && result.download_links) {
-        const downloadPromises = Object.entries(result.download_links).map(([type, link]) => {
-          let downloadFilename: string;
-          
-          if (type.includes('pdf')) {
-            downloadFilename = `${request.filename}.pdf`;
-          } else {
-            const csvType = type.replace('csv_', '');
-            downloadFilename = `${request.filename}_${csvType}.csv`;
-          }
-          
-          return TechnicalNoteService.downloadFromLink(link, downloadFilename);
-        });
-        
-        await Promise.all(downloadPromises);
-        
-        message.success({ 
-          content: `✅ Reporte en ${selectedFormats.join(' y ')} descargado exitosamente`, 
-          key: 'export-advanced' 
-        });
-        
-        const files: Record<string, string> = {};
-        if (exportOptions.export_csv) files.csv = 'descargado';
-        if (exportOptions.export_pdf) files.pdf = 'descargado';
-        
-        onExportComplete?.(files);
-        setExportModalVisible(false);
-      } else {
-        throw new Error(result.message || 'Error en exportación avanzada');
-      }
-      
-    } catch (error) {
-      console.error('❌ Error en exportación avanzada:', error);
-      const errorMsg = error instanceof Error ? error.message : 'Error desconocido';
-      message.error({ content: `❌ Error: ${errorMsg}`, key: 'export-advanced' });
-      onExportError?.(errorMsg);
-    } finally {
-      setExportLoading(false);
-    }
-  }, [exportOptions, prepareExportRequest, onExportStart, onExportComplete, onExportError]);
-
-  // 🔧 MENÚ DROPDOWN PARA CSV INDIVIDUAL
-  const csvMenuItems: MenuProps['items'] = [
-    {
-      key: 'actividades',
-      label: 'Actividades Principales',
-      icon: <TableOutlined style={{ color: '#1890ff' }} />,
-      onClick: () => handleExportCSVType('actividades', 'CSV Actividades'),
-      disabled: csvLoading !== null
-    },
-    {
-      key: 'estadisticas',
-      label: 'Estadísticas Globales',
-      icon: <BarChartOutlined style={{ color: '#52c41a' }} />,
-      onClick: () => handleExportCSVType('estadisticas', 'CSV Estadísticas'),
-      disabled: csvLoading !== null
-    },
-    {
-      key: 'temporal',
-      label: 'Análisis Temporal',
-      icon: <CalendarOutlined style={{ color: '#fa8c16' }} />,
-      onClick: () => handleExportCSVType('temporal', 'CSV Temporal'),
-      disabled: csvLoading !== null
-    },
-    {
-      key: 'totales',
-      label: 'Totales por Palabra',
-      icon: <PieChartOutlined style={{ color: '#722ed1' }} />,
-      onClick: () => handleExportCSVType('totales', 'CSV Totales'),
-      disabled: csvLoading !== null
-    },
-    { type: 'divider' },
-    {
-      key: 'all-csv',
-      label: 'Descargar Todos los CSV',
-      icon: <DatabaseOutlined style={{ color: '#f5222d' }} />,
-      disabled: csvLoading !== null,
-      onClick: async () => {
-        try {
-          setCsvLoading('all');
-          onExportStart?.();
-          
-          message.loading({ content: 'Generando todos los CSV...', key: 'export-all-csv', duration: 0 });
-          
-          const request = prepareExportRequest();
-          
-          const result = await TechnicalNoteService.generateAndExportAdvancedReport(
-            request,
-            { export_csv: true, export_pdf: false, include_temporal: true }
-          );
-          
-          if (result.success && result.download_links) {
-            const csvLinks = Object.entries(result.download_links).filter(([key]) => 
-              key.includes('csv')
-            );
-            
-            const downloadPromises = csvLinks.map(([type, link]) => {
-              const csvType = type.replace('csv_', '');
-              return TechnicalNoteService.downloadFromLink(link, `${request.filename}_${csvType}.csv`);
-            });
-            
-            await Promise.all(downloadPromises);
-            
-            message.success({ 
-              content: `✅ ${csvLinks.length} archivos CSV descargados`, 
-              key: 'export-all-csv' 
-            });
-            
-            onExportComplete?.({ csv: 'todos descargados' });
-          } else {
-            throw new Error(result.message || 'Error generando CSV');
-          }
-          
-        } catch (error) {
-          console.error('❌ Error exportando todos los CSV:', error);
-          const errorMsg = error instanceof Error ? error.message : 'Error desconocido';
-          message.error({ content: `❌ Error CSV: ${errorMsg}`, key: 'export-all-csv' });
-          onExportError?.(errorMsg);
-        } finally {
-          setCsvLoading(null);
-        }
-      }
-    }
-  ];
+  }, [keywordReport, filename, onExportStart, onExportComplete, onExportError]);
 
   const totalItems = keywordReport.items?.length || 0;
 
   return (
-    <>
-      <div style={{ 
-        background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
-        padding: '16px',
-        borderRadius: '8px',
-        marginBottom: '16px',
-        border: '1px solid #e8e8e8'
-      }}>
-        <Row gutter={[16, 12]} align="middle">
-          <Col flex="auto">
-            <Space direction="vertical" size={4}>
-              <Title level={5} style={{ margin: 0, color: '#1890ff' }}>
-                📊 Reporte de Indicadores - {totalItems} actividades
-              </Title>
-              
-              <Space size={16}>
-                <div style={{
-                  padding: '4px 10px',
-                  backgroundColor: '#e6f7ff',
-                  border: '1px solid #91d5ff',
-                  borderRadius: 4
-                }}>
-                  <Space size={4}>
-                    <CalendarOutlined style={{ color: '#1890ff' }} />
-                    <Text strong style={{ color: '#1890ff' }}>
-                      Corte: {dayjs(effectiveCutoffDate).format('DD/MM/YYYY')}
-                    </Text>
-                  </Space>
-                </div>
-                
-                {selectedKeywords.length > 0 && (
-                  <Text>
-                    🔍 Filtros: {selectedKeywords.join(', ')}
+    <div style={{ 
+      background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+      padding: '8px 10px',
+      borderRadius: '4px',
+      marginBottom: '8px',
+      border: '1px solid #e8e8e8'
+    }}>
+      <Row gutter={[8, 6]} align="middle">
+        <Col flex="auto">
+          <Space direction="vertical" size={2}>
+            <Title level={5} style={{ margin: 0, color: '#1890ff', fontSize: '13px', lineHeight: '1.3' }}>
+              📊 Reporte de Indicadores - {totalItems} actividades
+            </Title>
+            
+            <Space size={8}>
+              <div style={{
+                padding: '2px 6px',
+                backgroundColor: '#e6f7ff',
+                border: '1px solid #91d5ff',
+                borderRadius: 3,
+                fontSize: '10px'
+              }}>
+                <Space size={3}>
+                  <CalendarOutlined style={{ color: '#1890ff', fontSize: '10px' }} />
+                  <Text strong style={{ color: '#1890ff', fontSize: '10px' }}>
+                    Corte: {dayjs(effectiveCutoffDate).format('DD/MM/YYYY')}
                   </Text>
-                )}
-              </Space>
+                </Space>
+              </div>
               
-              {geographicFilters?.departamento && (
-                <Text type="secondary">
-                  🗺️ {geographicFilters.departamento}
-                  {geographicFilters.municipio && ` → ${geographicFilters.municipio}`}
-                  {geographicFilters.ips && ` → ${geographicFilters.ips}`}
+              {selectedKeywords.length > 0 && (
+                <Text style={{ fontSize: '10px' }}>
+                  🔍 Filtros: {selectedKeywords.join(', ')}
                 </Text>
               )}
             </Space>
-          </Col>
-
-          <Col>
-            <Space size={8}>
-              <Dropdown
-                menu={{ items: csvMenuItems }}
-                trigger={['click']}
-                disabled={totalItems === 0 || exportLoading}
-              >
-                <Button
-                  icon={csvLoading ? <LoadingOutlined /> : <FileTextOutlined />}
-                  loading={csvLoading !== null}
-                  style={{ 
-                    color: '#52c41a', 
-                    borderColor: '#52c41a',
-                    minWidth: '100px'
-                  }}
-                  disabled={totalItems === 0 || exportLoading}
-                >
-                  {csvLoading ? 'Generando...' : 'CSV'} <DownOutlined />
-                </Button>
-              </Dropdown>
-
-              <Tooltip title="Descargar reporte en PDF">
-                <Button
-                  icon={exportLoading ? <LoadingOutlined /> : <FilePdfOutlined />}
-                  onClick={handleExportPDF}
-                  loading={exportLoading}
-                  disabled={totalItems === 0 || csvLoading !== null}
-                  style={{ color: '#f5222d', borderColor: '#f5222d' }}
-                >
-                  PDF
-                </Button>
-              </Tooltip>
-            </Space>
-          </Col>
-        </Row>
-      </div>
-
-      <Modal
-        title={
-          <Space>
-            <ExportOutlined style={{ color: '#1890ff' }} />
-            <span>Opciones Avanzadas de Exportación</span>
-          </Space>
-        }
-        open={exportModalVisible}
-        onCancel={() => setExportModalVisible(false)}
-        onOk={handleAdvancedExport}
-        okText={exportLoading ? 'Exportando...' : 'Exportar Seleccionados'}
-        cancelText="Cancelar"
-        confirmLoading={exportLoading}
-        width={600}
-      >
-        <div style={{ padding: '16px 0' }}>
-          <Space direction="vertical" size={16} style={{ width: '100%' }}>
-            <div style={{
-              padding: '10px',
-              backgroundColor: '#f0f5ff',
-              border: '1px solid #adc6ff',
-              borderRadius: 6
-            }}>
-              <Space>
-                <CalendarOutlined style={{ color: '#1890ff' }} />
-                <Text strong>Fecha de Corte:</Text>
-                <Text style={{ color: '#1890ff', fontWeight: 600 }}>
-                  {dayjs(effectiveCutoffDate).format('DD/MM/YYYY')}
-                </Text>
-              </Space>
-            </div>
-
-            <div>
-              <Text strong>Selecciona los formatos a exportar:</Text>
-              <div style={{ marginTop: 8 }}>
-                <Space direction="vertical">
-                  <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
-                    <input
-                      type="checkbox"
-                      checked={exportOptions.export_csv}
-                      onChange={(e) => setExportOptions(prev => ({ ...prev, export_csv: e.target.checked }))}
-                      style={{ marginRight: 8 }}
-                    />
-                    <FileTextOutlined style={{ color: '#52c41a', marginRight: 4 }} />
-                    <Text>CSV (4 archivos: actividades, estadísticas, temporal, totales)</Text>
-                  </label>
-                  
-                  <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
-                    <input
-                      type="checkbox"
-                      checked={exportOptions.export_pdf}
-                      onChange={(e) => setExportOptions(prev => ({ ...prev, export_pdf: e.target.checked }))}
-                      style={{ marginRight: 8 }}
-                    />
-                    <FilePdfOutlined style={{ color: '#f5222d', marginRight: 4 }} />
-                    <Text>PDF (formato profesional con gráficos y semaforización)</Text>
-                  </label>
-                </Space>
-              </div>
-            </div>
-
-            <div>
-              <Text strong>Opciones adicionales:</Text>
-              <div style={{ marginTop: 8 }}>
-                <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={exportOptions.include_temporal}
-                    onChange={(e) => setExportOptions(prev => ({ ...prev, include_temporal: e.target.checked }))}
-                    style={{ marginRight: 8 }}
-                  />
-                  <CalendarOutlined style={{ color: '#1890ff', marginRight: 4 }} />
-                  <Text>Incluir análisis temporal mensual y anual</Text>
-                </label>
-              </div>
-            </div>
-
-            <div style={{ 
-              background: '#f0f9ff', 
-              padding: '12px', 
-              borderRadius: '6px',
-              border: '1px solid #bae7ff'
-            }}>
-              <Text type="secondary" style={{ fontSize: '12px' }}>
-                <strong>📋 Archivos CSV incluidos:</strong><br />
-                • <strong>Actividades:</strong> Datos principales con numerador/denominador<br />
-                • <strong>Estadísticas:</strong> Métricas globales y resúmenes<br />
-                • <strong>Temporal:</strong> Análisis mensual y anual detallado<br />
-                • <strong>Totales:</strong> Resumen por palabras clave<br /><br />
-                
-                <strong>📄 Archivo PDF incluye:</strong><br />
-                • Semaforización automática por desempeño<br />
-                • Numeradores y denominadores por rango de edad<br />
-                • Lógica Excel para cálculo de denominadores<br />
-                • Filtros geográficos aplicados<br />
-                • Análisis de cobertura detallado<br />
-                • Fecha de corte: {dayjs(effectiveCutoffDate).format('DD/MM/YYYY')}
+            
+            {geographicFilters?.departamento && (
+              <Text type="secondary" style={{ fontSize: '9px' }}>
+                🗺️ {geographicFilters.departamento}
+                {geographicFilters.municipio && ` → ${geographicFilters.municipio}`}
+                {geographicFilters.ips && ` → ${geographicFilters.ips}`}
               </Text>
-            </div>
+            )}
           </Space>
-        </div>
-      </Modal>
-    </>
+        </Col>
+
+        <Col>
+          <Space size={6}>
+            {/* ✅ BOTÓN CSV DIRECTO SIN DROPDOWN */}
+            <Tooltip title="Descargar análisis temporal en CSV">
+              <Button
+                icon={csvLoading ? <LoadingOutlined style={{ fontSize: '11px' }} /> : <FileTextOutlined style={{ fontSize: '11px' }} />}
+                onClick={handleExportCSV}
+                loading={csvLoading}
+                size="small"
+                disabled={totalItems === 0 || pdfLoading}
+                style={{ 
+                  color: '#52c41a', 
+                  borderColor: '#52c41a',
+                  fontSize: '11px',
+                  height: '26px',
+                  padding: '0 8px'
+                }}
+              >
+                {csvLoading ? 'Exportando...' : 'Descarga CSV'}
+              </Button>
+            </Tooltip>
+
+            {/* ✅ BOTÓN PDF */}
+            <Tooltip title="Descargar reporte completo en PDF">
+              <Button
+                icon={pdfLoading ? <LoadingOutlined style={{ fontSize: '11px' }} /> : <FilePdfOutlined style={{ fontSize: '11px' }} />}
+                onClick={handleExportPDF}
+                loading={pdfLoading}
+                size="small"
+                disabled={totalItems === 0 || csvLoading}
+                style={{ 
+                  color: '#f5222d', 
+                  borderColor: '#f5222d',
+                  fontSize: '11px',
+                  height: '26px',
+                  padding: '0 8px'
+                }}
+              >
+                Descargar PDF
+              </Button>
+            </Tooltip>
+          </Space>
+        </Col>
+      </Row>
+    </div>
   );
 });
 
@@ -658,7 +352,7 @@ export const ReportTable = memo<Props>(({
 }) => {
   if (!keywordReport?.items?.length) {
     return (
-      <div style={{ padding: 16, textAlign: 'center' }}>
+      <div style={{ padding: 12, textAlign: 'center' }}>
         <Empty
           description={!keywordReport ? 'No hay datos de reporte disponibles'
                                       : 'No se encontraron elementos en el reporte'}
@@ -674,15 +368,14 @@ export const ReportTable = memo<Props>(({
   const hasSemaforizacion = useMemo(() => 
     items.some(i => i.semaforizacion !== undefined), [items]);
 
-  /* ──────────────────── EXPANSIÓN TEMPORAL CON CELDA COLORIDA ──────────────────── */
   const expandedRowRender = useCallback((rec: KeywordAgeReportItem) => {
     if (!showTemporalData) return null;
 
     const res = findTemporal(temporal_data, rec.column ?? '', rec.keyword ?? '', rec.age_range ?? '');
     if (!res?.data?.years) {
       return (
-        <div style={{ padding: 12, textAlign: 'center', color: '#999' }}>
-          <CalendarOutlined /> Sin datos temporales
+        <div style={{ padding: 8, textAlign: 'center', color: '#999', fontSize: '10px' }}>
+          <CalendarOutlined style={{ fontSize: '10px' }} /> Sin datos temporales
         </div>
       );
     }
@@ -721,21 +414,23 @@ export const ReportTable = memo<Props>(({
       });
 
     const cols = [
-      { title: 'Período', dataIndex: 'period', width: 140,
+      { title: 'Período', dataIndex: 'period', width: 120,
         render: (t: string, r: any) => (
-          <Space size={4}>
-            <Tag color={r.isYear ? 'blue' : 'green'}>{r.isYear ? 'AÑO' : 'MES'}</Tag>
-            <Text strong={r.isYear}>{t}</Text>
+          <Space size={2}>
+            <Tag color={r.isYear ? 'blue' : 'green'} style={{ fontSize: '9px', padding: '0 4px', lineHeight: '16px' }}>
+              {r.isYear ? 'AÑO' : 'MES'}
+            </Tag>
+            <Text strong={r.isYear} style={{ fontSize: '10px' }}>{t}</Text>
           </Space>
         )
       },
-      { title: 'Denominador', dataIndex: 'den', width: 90, align:'right' as const,
-        render: (v:number)=><Text style={{color:'#1890ff'}}>{v?.toLocaleString()}</Text> },
-      { title: 'Numerador', dataIndex: 'num', width: 90, align:'right' as const,
-        render: (v:number)=><Text style={{color:'#52c41a'}}>{v?.toLocaleString()}</Text> },
-      { title: '% Cumplimiento', dataIndex:'pct', width: 100, align:'center' as const,
-        render: (v:number)=><Text strong>{v?.toFixed(1)}%</Text> },
-      { title: '🚦 Estado', dataIndex: 'semaforizacion', width: 130, align: 'center' as const,
+      { title: 'Denominador', dataIndex: 'den', width: 75, align:'right' as const,
+        render: (v:number)=><Text style={{color:'#1890ff', fontSize: '10px'}}>{v?.toLocaleString()}</Text> },
+      { title: 'Numerador', dataIndex: 'num', width: 75, align:'right' as const,
+        render: (v:number)=><Text style={{color:'#52c41a', fontSize: '10px'}}>{v?.toLocaleString()}</Text> },
+      { title: '% Cumplimiento', dataIndex:'pct', width: 85, align:'center' as const,
+        render: (v:number)=><Text strong style={{ fontSize: '10px' }}>{v?.toFixed(1)}%</Text> },
+      { title: '🚦 Estado', dataIndex: 'semaforizacion', width: 110, align: 'center' as const,
         render: (estado: string, record: any) => (
           <Tooltip title={record.descripcion || estado}>
             <div style={getSemaforizacionCellStyle(record.color, estado)}>
@@ -747,57 +442,56 @@ export const ReportTable = memo<Props>(({
     ];
 
     return (
-      <div style={{ padding: 8, background: '#fafafa' }}>
-        <Space size={4} style={{ marginBottom: 6 }}>
-          <CalendarOutlined style={{ color:'#1890ff' }} />
-          <Text strong>{rec.column}</Text>
+      <div style={{ padding: 6, background: '#fafafa' }}>
+        <Space size={2} style={{ marginBottom: 4 }}>
+          <CalendarOutlined style={{ color:'#1890ff', fontSize: '10px' }} />
+          <Text strong style={{ fontSize: '10px' }}>{rec.column}</Text>
         </Space>
         <Table
           columns={cols}
           dataSource={rows}
           size="small"
           pagination={false}
-          scroll={{ y:180, x: 650 }}
+          scroll={{ y:160, x: 600 }}
           rowClassName={r=>r.isYear?'temporal-year-row':'temporal-month-row'}
         />
       </div>
     );
   }, [temporal_data, showTemporalData]);
 
-  /* ──────────────────── COLUMNAS PRINCIPALES CON CELDA COLORIDA ──────────────────── */
   const columns: ColumnsType<KeywordAgeReportItem> = useMemo(() => {
     const base: ColumnsType<KeywordAgeReportItem> = [
-      { title: <div style={{textAlign:'center'}}>Procedimiento/Consulta</div>,
-        dataIndex:'column', width: 200,
+      { title: <div style={{textAlign:'center', fontSize: '10px'}}>Procedimiento/Consulta</div>,
+        dataIndex:'column', width: 180,
         render:(t:string)=><Tooltip title={t}>
-          <div style={{fontSize:12,fontWeight:500,lineHeight:1.2}}>{t}</div>
+          <div style={{fontSize:9,fontWeight:500,lineHeight:1.1}}>{t}</div>
         </Tooltip>,
         sorter:(a,b)=> (a.column??'').localeCompare(b.column??'')
       },
-      { title:<div style={{textAlign:'center'}}>Palabra Clave</div>,
-        dataIndex:'keyword', width:90, align:'center',
-        render:(k:string)=><Tag color={kwColor(k)} style={{fontSize:10,fontWeight:500}}>{k?.toUpperCase()}</Tag>
+      { title:<div style={{textAlign:'center', fontSize: '10px'}}>Palabra Clave</div>,
+        dataIndex:'keyword', width:75, align:'center',
+        render:(k:string)=><Tag color={kwColor(k)} style={{fontSize:8,fontWeight:500,padding:'0 4px',lineHeight:'16px'}}>{k?.toUpperCase()}</Tag>
       }
     ];
     
     if (hasND){
       base.push(
-        { title:<div style={{textAlign:'center'}}>Denominador</div>, dataIndex:'denominador',
-          width:85,align:'center',
-          render:(v:number)=><Text style={{color:'#1890ff',fontSize:11}}>{v?.toLocaleString()}</Text>,
+        { title:<div style={{textAlign:'center', fontSize: '10px'}}>Denominador</div>, dataIndex:'denominador',
+          width:70,align:'center',
+          render:(v:number)=><Text style={{color:'#1890ff',fontSize:9}}>{v?.toLocaleString()}</Text>,
           sorter:(a,b)=>(a.denominador??0)-(b.denominador??0)
         },
-        { title:<div style={{textAlign:'center'}}>Numerador</div>, dataIndex:'numerador',
-          width:85,align:'center',
-          render:(v:number)=><Text style={{color:'#52c41a',fontSize:11}}>{v?.toLocaleString()}</Text>,
+        { title:<div style={{textAlign:'center', fontSize: '10px'}}>Numerador</div>, dataIndex:'numerador',
+          width:70,align:'center',
+          render:(v:number)=><Text style={{color:'#52c41a',fontSize:9}}>{v?.toLocaleString()}</Text>,
           sorter:(a,b)=>(a.numerador??0)-(b.numerador??0)
         }
       );
     }
     
     base.push({
-      title:<div style={{textAlign:'center'}}>% Cumplimiento</div>,
-      width:100,align:'center',
+      title:<div style={{textAlign:'center', fontSize: '10px'}}>% Cumplimiento</div>,
+      width:85,align:'center',
       render:(_:any,r:KeywordAgeReportItem)=>{
         let pct:number;
         if(hasND && r.cobertura_porcentaje!==undefined) pct=r.cobertura_porcentaje;
@@ -806,7 +500,7 @@ export const ReportTable = memo<Props>(({
           pct=tot? (r.count||0)/tot*100:0;
         }
         const color = pct>=70?'#52c41a': pct>=50?'#fa8c16':'#ff4d4f';
-        return <Text strong style={{color,fontSize:11}}>{pct.toFixed(1)}%</Text>;
+        return <Text strong style={{color,fontSize:9}}>{pct.toFixed(1)}%</Text>;
       },
       sorter: (a, b) => {
         const getPct = (r: KeywordAgeReportItem) => {
@@ -820,9 +514,9 @@ export const ReportTable = memo<Props>(({
 
     if (hasSemaforizacion) {
       base.push({
-        title: <div style={{textAlign:'center'}}>🚦 Estado</div>,
+        title: <div style={{textAlign:'center', fontSize: '10px'}}>🚦 Estado</div>,
         dataIndex: 'semaforizacion',
-        width: 140,
+        width: 110,
         align: 'center',
         render: (estado: string, record: KeywordAgeReportItem) => (
           <Tooltip title={record.descripcion || estado}>
@@ -856,18 +550,61 @@ export const ReportTable = memo<Props>(({
         .temporal-year-row { background-color: #e6f7ff !important; font-weight: 500; }
         .temporal-month-row { background-color: #f6ffed !important; }
         
-        .compact-table .ant-table-tbody > tr > td {
-          padding: 6px 8px !important;
+        .ultra-compact-table .ant-table-tbody > tr > td {
+          padding: 2px 4px !important;
+          height: 22px !important;
+          line-height: 1.2 !important;
+          font-size: 9px !important;
         }
         
-        .compact-table .ant-table-thead > tr > th {
-          padding: 8px 8px !important;
-          font-size: 11px !important;
+        .ultra-compact-table .ant-table-thead > tr > th {
+          padding: 3px 4px !important;
+          font-size: 10px !important;
           font-weight: 600 !important;
+          height: 26px !important;
+          line-height: 1.2 !important;
         }
         
-        .compact-table .ant-table-tbody > tr:hover > td {
+        .ultra-compact-table .ant-table-tbody > tr:hover > td {
           background-color: rgba(24, 144, 255, 0.05) !important;
+        }
+        
+        .ultra-compact-table .ant-table-expanded-row > td {
+          padding: 4px !important;
+        }
+        
+        .ultra-compact-table .ant-btn-sm {
+          height: 20px !important;
+          padding: 0 4px !important;
+          font-size: 10px !important;
+        }
+        
+        .ultra-compact-table .ant-tag {
+          margin: 0 !important;
+          padding: 0 4px !important;
+          font-size: 8px !important;
+          line-height: 16px !important;
+        }
+        
+        .ultra-compact-table .ant-empty {
+          margin: 8px 0 !important;
+        }
+        
+        .ultra-compact-table .ant-empty-description {
+          font-size: 10px !important;
+        }
+        
+        .ultra-compact-table .ant-pagination {
+          margin: 8px 0 !important;
+        }
+        
+        .ultra-compact-table .ant-pagination-item,
+        .ultra-compact-table .ant-pagination-prev,
+        .ultra-compact-table .ant-pagination-next {
+          min-width: 24px !important;
+          height: 24px !important;
+          line-height: 22px !important;
+          font-size: 11px !important;
         }
       `}</style>
 
@@ -888,20 +625,20 @@ export const ReportTable = memo<Props>(({
         rowKey={rowKey}
         size="small"
         tableLayout="fixed"
-        scroll={{x: hasSemaforizacion ? 670 : 520, y:400}}
+        scroll={{x: hasSemaforizacion ? 600 : 480, y:400}}
         expandable={showTemporalData?{
           expandedRowRender, rowExpandable,
           expandIcon:({expanded,onExpand,record})=> rowExpandable(record)
             ? (<Button type="text" size="small"
-                       icon={expanded?<CompressOutlined/>:<ExpandAltOutlined/>}
+                       icon={expanded?<CompressOutlined style={{fontSize:'10px'}}/>:<ExpandAltOutlined style={{fontSize:'10px'}}/>}
                        onClick={e=>onExpand(record,e)}
-                       style={{padding:0,fontSize:10,color:'#1890ff'}}/>)
-            : <span style={{width:12,display:'inline-block'}}/>
+                       style={{padding:0,fontSize:9,color:'#1890ff',height:'18px',width:'18px'}}/>)
+            : <span style={{width:10,display:'inline-block'}}/>
         }:undefined}
-        pagination={{pageSize:20,showSizeChanger:true,simple:true}}
+        pagination={{pageSize:25,showSizeChanger:true,simple:true,size:'small'}}
         locale={{emptyText:<Empty description="Sin datos" image={Empty.PRESENTED_IMAGE_SIMPLE}/>}}
-        className="compact-table"
-        style={{fontSize:11}}
+        className="ultra-compact-table"
+        style={{fontSize:9}}
       />
     </>
   );

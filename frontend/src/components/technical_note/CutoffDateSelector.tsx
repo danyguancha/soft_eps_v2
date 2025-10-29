@@ -26,7 +26,9 @@ export const CutoffDateSelector: React.FC<CutoffDateSelectorProps> = ({
         border: selectedDate ? '2px solid #52c41a' : '2px solid #ff4d4f',
         boxShadow: selectedDate 
           ? '0 4px 12px rgba(82, 196, 26, 0.2)' 
-          : '0 4px 12px rgba(255, 77, 79, 0.2)'
+          : '0 4px 12px rgba(255, 77, 79, 0.2)',
+          fontSize: 9,
+        
       }}
     >
       <Space direction="vertical" style={{ width: '100%' }} size="middle">
@@ -48,7 +50,7 @@ export const CutoffDateSelector: React.FC<CutoffDateSelectorProps> = ({
             description="La fecha de corte es obligatoria para cargar y visualizar archivos. Por favor, seleccione una fecha del calendario."
             type="error"
             showIcon
-            style={{ marginBottom: 12 }}
+            style={{ marginBottom: 12, width: '100%', height: 'auto', fontSize: 10 }}
           />
         )}
 

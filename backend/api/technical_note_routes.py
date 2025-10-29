@@ -544,5 +544,66 @@ async def download_report_file(file_id: str):
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+    
+@router.post("/reports/export-current")
+async def export_current_report(
+    request_data: dict,
+    background_tasks: BackgroundTasks,
+):
+    """
+    ✅ NUEVO: Exporta el reporte actual visible en el frontend
+    """
+    try:
+        print("📤 Exportando reporte actual del frontend")
+        
+        # Extraer datos del request
+        report_data = request_data.get('report_data')
+        filename = request_data.get('filename', 'reporte')
+        export_type = request_data.get('export_type', 'all')
+        export_options = request_data.get('export_options', {})
+        
+        if not report_data:
+            raise HTTPException(
+                status_code=400,
+                detail="report_data es obligatorio"
+            )
+        
+        # Validar que venga la fecha de corte
+        corte_fecha = report_data.get('corte_fecha')
+        if not corte_fecha:
+            raise HTTPException(
+                status_code=400,
+                detail="corte_fecha es obligatorio en report_data"
+            )
+        
+        print(f"📊 Exportando reporte con {len(report_data.get('items', []))} items")
+        print(f"🗓️ Fecha corte: {corte_fecha}")
+        print(f"📋 Tipo exportación: {export_type}")
+        
+        # Usar el servicio de exportación
+        export_result = report_exporter.export_report(
+            report_data=report_data,
+            base_filename=filename,
+            export_csv=export_options.get('export_csv', True),
+            export_pdf=export_options.get('export_pdf', False),
+            include_temporal=export_options.get('include_temporal', True)
+        )
+        
+        # Limpiar archivos antiguos
+        background_tasks.add_task(report_exporter.cleanup_old_temp_files, 30)
+        
+        print(f"✅ Exportación completada: {len(export_result.get('files', {}))} archivos")
+        
+        return export_result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error en export-current: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
 
 router.include_router(reports_router)
+

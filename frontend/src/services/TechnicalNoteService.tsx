@@ -216,7 +216,7 @@ export interface AdvancedReportRequest {
   min_count?: number;
   include_temporal?: boolean;
   geographic_filters?: AdvancedGeographicFilters;
-  corte_fecha: string; // ✅ OBLIGATORIO
+  corte_fecha: string;
 }
 
 export interface AdvancedExportOptions {
