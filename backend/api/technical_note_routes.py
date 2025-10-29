@@ -4,7 +4,7 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from typing import Any, Dict, List, Optional
 import json
 
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field, validator
 from controllers.technical_note_controller.age_range_extractor import AgeRangeExtractor
 from controllers.technical_note_controller.technical_note import technical_note_controller
@@ -529,20 +529,33 @@ async def generate_and_export_advanced_report(
 
 @router.get("/reports/download/{file_id}")
 async def download_report_file(file_id: str):
-    """Descargar archivo usando el servicio"""
+    """✅ Descargar archivo desde memoria"""
     try:
         file_info = report_exporter.get_temp_file(file_id)
         
         if not file_info:
             raise HTTPException(status_code=404, detail="Archivo no encontrado")
         
-        return FileResponse(
-            path=file_info['file_path'],
-            filename=file_info['original_name'],
-            media_type="application/octet-stream"
+        # Obtener contenido en memoria
+        content = file_info['content']
+        filename = file_info['filename']
+        content_type = file_info['content_type']
+        
+        # Mover puntero al inicio
+        content.seek(0)
+        
+        return StreamingResponse(
+            content,
+            media_type=content_type,
+            headers={
+                'Content-Disposition': f'attachment; filename="{filename}"'
+            }
         )
         
+    except HTTPException:
+        raise
     except Exception as e:
+        print(f"❌ Error descargando archivo: {e}")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
     
 @router.post("/reports/export-current")
