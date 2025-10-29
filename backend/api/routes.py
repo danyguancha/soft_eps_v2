@@ -1,16 +1,14 @@
-
 import os
 import traceback
 import threading
-import time
 from fastapi import APIRouter, UploadFile, File, HTTPException, Query
 from typing import Optional, List
 from fastapi.responses import FileResponse
 
 from models.schemas import (
     BulkDeleteRequest, DeleteResponse, DeleteRowsByFilterRequest, DeleteRowsRequest, 
-    ExportRequest, ExportResponse, FileCrossRequest, FileUploadResponse, DataRequest, TransformRequest, 
-    AIRequest
+    ExportRequest, ExportResponse, FileCrossRequest, FileUploadResponse, DataRequest, 
+    TransformRequest, AIRequest
 )
 from controllers import file_controller
 from controllers.ai_controller import ai_controller
@@ -21,7 +19,6 @@ from controllers.cross_controller import cross_controller
 # IMPORTAR WRAPPER SEGURO DE DUCKDB
 try:
     from services.duckdb_service_wrapper import safe_duckdb_service as duckdb_service
-    
 except ImportError:
     try:
         from services.duckdb_service.duckdb_service import duckdb_service
@@ -30,23 +27,14 @@ except ImportError:
 
 router = APIRouter()
 
-# ========== CONFIGURACIÓN Y UTILIDADES ==========
+# ========== CONFIGURACIÓN ==========
 
 class EndpointConfig:
     """Configuración para endpoints seguros"""
-    OPERATION_TIMEOUT = 60  # segundos
+    OPERATION_TIMEOUT = 60
     MAX_RETRIES = 3
-    RETRY_DELAY = 2  # segundos
+    RETRY_DELAY = 2
     FALLBACK_ENABLED = True
-
-def safe_execute_with_fallback(primary_func, fallback_func, *args, **kwargs):
-    """Ejecuta función primaria con fallback automático"""
-    try:
-        return primary_func(*args, **kwargs)
-    except Exception as e:
-        if EndpointConfig.FALLBACK_ENABLED and fallback_func:
-            return fallback_func(*args, **kwargs)
-        raise e
 
 def execute_with_timeout(func, timeout_seconds=30, *args, **kwargs):
     """Ejecuta función con timeout para prevenir hangs"""
@@ -83,7 +71,7 @@ async def upload_file(file: UploadFile = File(...)):
             timeout_seconds=300,
             file=file
         )
-        # Validar que todas las propiedades estén presentes
+        
         response_data = {
             "message": "Archivo cargado exitosamente",
             "file_id": result["file_id"],
@@ -104,10 +92,7 @@ async def upload_file(file: UploadFile = File(...)):
         return FileUploadResponse(**response_data)
         
     except TimeoutError:
-        raise HTTPException(
-            status_code=408, 
-            detail="Upload timeout - El archivo es muy grande o la conexión es lenta"
-        )
+        raise HTTPException(status_code=408, detail="Upload timeout")
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=400, detail=str(e))
@@ -132,7 +117,7 @@ def transform_data(request: TransformRequest):
     try:
         return execute_with_timeout(
             file_controller.transform_data,
-            timeout_seconds=EndpointConfig.OPERATION_TIMEOUT * 2,  # Más tiempo para transformaciones
+            timeout_seconds=EndpointConfig.OPERATION_TIMEOUT * 2,
             request=request
         )
     except TimeoutError:
@@ -156,33 +141,93 @@ def delete_file(file_id: str):
     except Exception as e:
         raise HTTPException(status_code=404, detail=str(e))
 
+@router.get("/files")
+def list_files():
+    """Lista todos los archivos cargados"""
+    try:
+        return file_controller.list_all_files()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.get("/columns/{file_id}")
+def get_columns(file_id: str, sheet_name: Optional[str] = Query(None)):
+    """Obtiene columnas con soporte para hojas específicas"""
+    try:
+        result = execute_with_timeout(
+            file_controller.get_columns,
+            timeout_seconds=45,
+            file_id=file_id,
+            sheet_name=sheet_name
+        )
+        
+        # Agregar información de hojas si es Excel
+        try:
+            file_info = file_controller.get_file_info(file_id)
+            if file_info and file_info.get("is_excel", False):
+                result["sheet_info"] = {
+                    "available_sheets": file_info.get("sheets", []),
+                    "default_sheet": file_info.get("default_sheet"),
+                    "selected_sheet": sheet_name,
+                    "is_excel": True
+                }
+        except:
+            pass
+        
+        return result
+        
+    except TimeoutError:
+        raise HTTPException(status_code=408, detail="Timeout obteniendo columnas")
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+# ========== ENDPOINTS DE CRUCE ==========
+
 @router.post("/cross")
 def cross_files(request: FileCrossRequest):
     """Realiza cruce entre dos archivos"""
     try:        
         return execute_with_timeout(
             cross_controller.perform_cross,
-            timeout_seconds=EndpointConfig.OPERATION_TIMEOUT * 3,  # Más tiempo para cruces
+            timeout_seconds=EndpointConfig.OPERATION_TIMEOUT * 3,
+            request=request
+        )
+    except TimeoutError:
+        raise HTTPException(status_code=408, detail="Timeout en operación de cruce")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+cross_handler_instance = CrossService()
+
+@router.post("/cross-download")
+def cross_files_download(request: FileCrossRequest):
+    """Realiza cruce y descarga resultado como CSV"""
+    try:        
+        result = execute_with_timeout(
+            cross_handler_instance.perform_cross_for_streaming,
+            timeout_seconds=600,
             request=request
         )
         
+        if not result["success"]:
+            raise HTTPException(status_code=400, detail=result.get("error", "Error en cruce"))
+        
+        return result["streaming_response"]
+        
     except TimeoutError:
-        raise HTTPException(status_code=408, detail="Timeout en operación de cruce")
+        raise HTTPException(status_code=408, detail="Timeout en cruce con descarga")
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/cross/columns/{file_id}")
 async def get_columns_for_cross(
     file_id: str, 
-    sheet_name: str = Query(None, description="Nombre de la hoja (para Excel)")
+    sheet_name: str = Query(None)
 ):
-    """Obtiene columnas de un archivo para realizar cruces - VERSIÓN ULTRA-SEGURA"""
+    """Obtiene columnas de un archivo para realizar cruces"""
     try:        
-        # Validar formato de file_id
         if not file_id or file_id.strip() == "":
             raise HTTPException(status_code=400, detail="File ID no puede estar vacío")
         
-        # Obtener información del archivo
         try:
             file_info = file_controller.get_file_info(file_id)
         except ValueError as e:
@@ -193,21 +238,18 @@ async def get_columns_for_cross(
                 detail=f"Archivo no encontrado: {file_id}. Disponibles: {available_files[:5]}"
             )
         
-        # ESTRATEGIA 1: Intentar con DuckDB Service (si está disponible)
+        # ESTRATEGIA 1: Intentar con DuckDB
         if duckdb_service:
             try:
-                # Verificar si está cargado en DuckDB
                 loaded_tables = getattr(duckdb_service, 'loaded_tables', {})
                 
                 if file_id not in loaded_tables:
-                    
                     file_path = file_info.get("path")
                     if file_path and os.path.exists(file_path):
                         try:
-                            # Conversión con timeout
                             result = execute_with_timeout(
                                 duckdb_service.convert_file_to_parquet,
-                                timeout_seconds=180,  # 3 minutos para conversión
+                                timeout_seconds=180,
                                 file_path=file_path,
                                 file_id=file_id,
                                 original_name=file_info["original_name"],
@@ -216,16 +258,9 @@ async def get_columns_for_cross(
                             
                             if result.get("success"):
                                 duckdb_service.load_parquet_lazy(file_id, result["parquet_path"])
-                            else:
-                                raise Exception(f"Error en conversión: {result.get('error')}")
                         except Exception as conv_error:
                             print(f"⚠️ Error cargando en DuckDB: {conv_error}")
-                            # Continuar con fallback
-                    else:
-                        print(f"⚠️ Archivo físico no encontrado: {file_path}")
-                        # Continuar con fallback
                 
-                # Intentar obtener columnas con DuckDB
                 try:
                     columns_info = execute_with_timeout(
                         duckdb_service.get_file_columns_for_cross,
@@ -244,20 +279,13 @@ async def get_columns_for_cross(
                             "file_name": file_info["original_name"],
                             "method": "duckdb_ultra_fast"
                         }
-                    else:
-                        print(f"⚠️ DuckDB falló: {columns_info.get('error')}")
-                        # Continuar con fallback
-                        
                 except Exception as duckdb_error:
                     print(f"⚠️ Error con DuckDB: {duckdb_error}")
-                    # Continuar con fallback
                     
             except Exception as e:
                 print(f"⚠️ Error general con DuckDB: {e}")
-                # Continuar con fallback
         
-        # ESTRATEGIA 2: Fallback al sistema existente (siempre funciona)
-        
+        # ESTRATEGIA 2: Fallback
         try:
             existing_columns = execute_with_timeout(
                 file_controller.get_columns,
@@ -268,7 +296,8 @@ async def get_columns_for_cross(
             
             columns = existing_columns.get("columns", [])
             if not columns:
-                raise Exception("No se encontraron columnas")            
+                raise Exception("No se encontraron columnas")
+            
             response = {
                 "success": True,
                 "file_id": file_id,
@@ -279,7 +308,6 @@ async def get_columns_for_cross(
                 "method": "fallback_file_controller"
             }
             
-            # Agregar información adicional si está disponible
             if file_info:
                 response["file_info"] = {
                     "original_name": file_info.get("original_name", ""),
@@ -302,342 +330,9 @@ async def get_columns_for_cross(
         raise
     except Exception as e:
         traceback.print_exc()
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error interno del servidor: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
-# ========== ENDPOINTS DE DEBUG Y DIAGNÓSTICO ==========
-
-@router.get("/debug/files")
-async def debug_files():
-    """Endpoint de debug para ver archivos disponibles - VERSIÓN COMPLETA"""
-    try:
-        # Información del file_controller
-        all_files = file_controller.list_all_files()
-        
-        # Información de DuckDB (si está disponible)
-        duckdb_info = {
-            "available": duckdb_service is not None,
-            "loaded_tables": [],
-            "detailed_info": {},
-            "service_type": "none"
-        }
-        
-        if duckdb_service:
-            try:
-                loaded_tables = list(getattr(duckdb_service, 'loaded_tables', {}).keys())
-                duckdb_info.update({
-                    "loaded_tables": loaded_tables,
-                    "service_type": "wrapper" if hasattr(duckdb_service, '_service') else "direct"
-                })
-                
-                # Información detallada de cada tabla
-                for file_id in loaded_tables:
-                    try:
-                        stats = duckdb_service.get_file_stats(file_id)
-                        duckdb_info["detailed_info"][file_id] = stats
-                    except Exception as e:
-                        duckdb_info["detailed_info"][file_id] = {"error": str(e)}
-                        
-            except Exception as e:
-                duckdb_info["error"] = str(e)
-        
-        # Análisis de archivos
-        files_analysis = {
-            "in_file_controller": all_files.get("total", 0),
-            "in_duckdb": len(duckdb_info["loaded_tables"]),
-            "missing_in_duckdb": [],
-            "file_controller_files": all_files.get("files", [])
-        }
-        
-        # Encontrar archivos que faltan en DuckDB
-        for file_info in all_files.get("files", []):
-            file_id = file_info.get("file_id")
-            if file_id and file_id not in duckdb_info["loaded_tables"]:
-                files_analysis["missing_in_duckdb"].append({
-                    "file_id": file_id,
-                    "name": file_info.get("original_name", "Unknown"),
-                    "exists": file_info.get("file_exists", False)
-                })
-        
-        return {
-            "timestamp": time.time(),
-            "file_controller": all_files,
-            "duckdb": duckdb_info,
-            "analysis": files_analysis,
-            "system_status": {
-                "duckdb_available": duckdb_service is not None,
-                "fallback_available": True,
-                "timeout_config": EndpointConfig.OPERATION_TIMEOUT
-            }
-        }
-        
-    except Exception as e:
-        traceback.print_exc()
-        return {
-            "error": str(e), 
-            "traceback": traceback.format_exc(),
-            "timestamp": time.time()
-        }
-
-@router.get("/debug/health")
-async def health_check():
-    """Endpoint de salud del sistema"""
-    try:
-        health_status = {
-            "status": "healthy",
-            "timestamp": time.time(),
-            "components": {}
-        }
-        
-        # Check file_controller
-        try:
-            file_controller.list_all_files()
-            health_status["components"]["file_controller"] = "healthy"
-        except Exception as e:
-            health_status["components"]["file_controller"] = f"error: {str(e)}"
-            health_status["status"] = "degraded"
-        
-        # Check DuckDB
-        if duckdb_service:
-            try:
-                # Test básico
-                if hasattr(duckdb_service, '_service'):
-                    # Es wrapper
-                    test_result = duckdb_service._service is not None
-                else:
-                    # Es directo
-                    test_result = hasattr(duckdb_service, 'conn')
-                
-                health_status["components"]["duckdb"] = "healthy" if test_result else "unavailable"
-            except Exception as e:
-                health_status["components"]["duckdb"] = f"error: {str(e)}"
-                health_status["status"] = "degraded"
-        else:
-            health_status["components"]["duckdb"] = "not_loaded"
-        
-        return health_status
-        
-    except Exception as e:
-        return {
-            "status": "error",
-            "error": str(e),
-            "timestamp": time.time()
-        }
-
-# ========== ENDPOINTS DE EXCEL Y HOJAS ==========
-
-@router.get("/excel/diagnostic/{file_id}")
-def excel_diagnostic(file_id: str):
-    """Diagnóstico completo de archivo Excel"""
-    try:
-        file_info = file_controller.get_file_info(file_id)
-        
-        if not file_info:
-            raise HTTPException(status_code=404, detail="Archivo no encontrado")
-        
-        file_path = file_info.get("path")
-        
-        diagnostic = {
-            "file_id": file_id,
-            "original_name": file_info.get("original_name", ""),
-            "file_exists": os.path.exists(file_path) if file_path else False,
-            "file_size_mb": os.path.getsize(file_path) / 1024 / 1024 if file_path and os.path.exists(file_path) else 0,
-            "extension": file_info.get("extension", ""),
-            "stored_sheets": file_info.get("sheets", []),
-            "stored_default_sheet": file_info.get("default_sheet"),
-            "is_excel_flag": file_info.get("is_excel", False),
-            "has_sheets_flag": file_info.get("has_sheets", False),
-            "sheet_count": file_info.get("sheet_count", 0)
-        }
-        
-        # Intentar redetección en tiempo real (con timeout)
-        if file_path and os.path.exists(file_path) and duckdb_service:
-            try:
-                live_detection = execute_with_timeout(
-                    duckdb_service.get_excel_sheets,
-                    timeout_seconds=30,
-                    file_path=file_path
-                )
-                diagnostic["live_detection"] = live_detection
-            except Exception as e:
-                diagnostic["live_detection"] = {"error": str(e)}
-        
-        return diagnostic
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error en diagnóstico: {str(e)}")
-
-@router.get("/sheets/{file_id}")
-def get_file_sheets(file_id: str):
-    """Obtiene hojas disponibles de un archivo Excel ya subido"""
-    try:        
-        file_info = file_controller.get_file_info(file_id)
-        
-        if not file_info:
-            raise HTTPException(status_code=404, detail=f"Archivo no encontrado: {file_id}")
-        
-        # Verificar si es Excel
-        is_excel = (
-            file_info.get("is_excel", False) or 
-            file_info.get("extension") in ["xlsx", "xls"] or
-            len(file_info.get("sheets", [])) > 0
-        )
-        
-        if not is_excel:
-            return {
-                "success": True,
-                "file_id": file_id,
-                "is_excel": False,
-                "sheets": [],
-                "default_sheet": None,
-                "message": "Este archivo no es Excel, no tiene hojas"
-            }
-        
-        sheets = file_info.get("sheets", [])
-        default_sheet = file_info.get("default_sheet")
-        
-        return {
-            "success": True,
-            "file_id": file_id,
-            "is_excel": True,
-            "sheets": sheets,
-            "default_sheet": default_sheet,
-            "has_multiple_sheets": len(sheets) > 1,
-            "sheet_count": len(sheets),
-            "original_name": file_info.get("original_name", "")
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error obteniendo hojas: {str(e)}")
-
-@router.post("/sheets/{file_id}/redetect")
-def redetect_file_sheets(file_id: str):
-    """Redetecta hojas de un archivo Excel"""
-    try:        
-        file_info = file_controller.get_file_info(file_id)
-        if not file_info:
-            raise HTTPException(status_code=404, detail=f"Archivo no encontrado: {file_id}")
-        
-        file_path = file_info.get("path")
-        if not file_path or not os.path.exists(file_path):
-            raise HTTPException(status_code=404, detail="Archivo físico no encontrado")
-        
-        if not duckdb_service:
-            raise HTTPException(status_code=503, detail="DuckDB Service no disponible")
-        
-        # Redetectar con timeout
-        sheet_info = execute_with_timeout(
-            duckdb_service.get_excel_sheets,
-            timeout_seconds=60,
-            file_path=file_path
-        )
-        
-        if sheet_info.get("success"):            
-            return {
-                "success": True,
-                "file_id": file_id,
-                "sheets": sheet_info.get("sheets", []),
-                "default_sheet": sheet_info.get("default_sheet"),
-                "method": sheet_info.get("method", "unknown"),
-                "detection_time": sheet_info.get("processing_time", 0),
-                "message": "Hojas redetectadas exitosamente"
-            }
-        else:
-            return {
-                "success": False,
-                "file_id": file_id,
-                "error": sheet_info.get("error", "No se pudieron detectar hojas"),
-                "sheets": ["Sheet1"],  # Fallback
-                "default_sheet": "Sheet1"
-            }
-            
-    except HTTPException:
-        raise
-    except TimeoutError:
-        raise HTTPException(status_code=408, detail="Timeout redetectando hojas")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
-
-# ========== RESTO DE ENDPOINTS (CON TIMEOUTS) ==========
-
-@router.post("/ai")
-async def ask_ai(request: AIRequest):
-    """Consulta al asistente IA con contexto de archivos - VERSIÓN COMPLETA"""
-    try:
-        print(f"🤖 Consulta AI recibida: file_context={request.file_context}")
-        
-        result = await execute_with_timeout(
-            ai_controller.ask_ai,
-            timeout_seconds=120,  # 2 minutos para IA
-            request=request
-        )
-        
-        return {
-            "success": result.get("success", True),
-            "response": result.get("response", ""),
-            "context_type": result.get("context_type", "unknown"),
-            "query_type": result.get("query_type", "general"),
-            "file_context": request.file_context
-        }
-        
-    except TimeoutError:
-        raise HTTPException(
-            status_code=408, 
-            detail="La consulta está tomando demasiado tiempo. Intenta con una pregunta más específica."
-        )
-    except Exception as e:
-        print(f"❌ Error en endpoint AI: {e}")
-        raise HTTPException(
-            status_code=500, 
-            detail=f"Error procesando consulta: {str(e)}"
-        )
-
-@router.get("/files")
-def list_files():
-    """Lista todos los archivos cargados"""
-    try:
-        return file_controller.list_all_files()
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-@router.get("/columns/{file_id}")
-def get_columns(file_id: str, sheet_name: Optional[str] = Query(None, description="Hoja específica de Excel")):
-    """Obtiene columnas con soporte para hojas específicas"""
-    try:
-        result = execute_with_timeout(
-            file_controller.get_columns,
-            timeout_seconds=45,
-            file_id=file_id,
-            sheet_name=sheet_name
-        )
-        
-        # Agregar información de hojas si es Excel
-        try:
-            file_info = file_controller.get_file_info(file_id)
-            if file_info and file_info.get("is_excel", False):
-                result["sheet_info"] = {
-                    "available_sheets": file_info.get("sheets", []),
-                    "default_sheet": file_info.get("default_sheet"),
-                    "selected_sheet": sheet_name,
-                    "is_excel": True
-                }
-        except:
-            pass  # No es crítico si falla
-        
-        return result
-        
-    except TimeoutError:
-        raise HTTPException(status_code=408, detail="Timeout obteniendo columnas")
-    except Exception as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-# ========== ENDPOINTS DE EXPORTACIÓN (CON TIMEOUTS) ==========
+# ========== ENDPOINTS DE EXPORTACIÓN ==========
 
 @router.post("/export", response_model=ExportResponse)
 def export_data(request: ExportRequest):
@@ -645,7 +340,7 @@ def export_data(request: ExportRequest):
     try:
         result = execute_with_timeout(
             file_controller.export_processed_data,
-            timeout_seconds=300,  # 5 minutos para exportación
+            timeout_seconds=300,
             request=request
         )
         return ExportResponse(
@@ -675,7 +370,35 @@ def download_exported_file(filename: str):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-# ========== ENDPOINTS DE ELIMINACIÓN (CON TIMEOUTS) ==========
+@router.get("/exports")
+def list_exported_files():
+    """Lista archivos exportados disponibles"""
+    try:
+        export_dir = ExportService.EXPORT_DIR
+        if not os.path.exists(export_dir):
+            return {"files": []}
+        
+        files = []
+        for filename in os.listdir(export_dir):
+            try:
+                file_info = ExportService.get_export_info(filename)
+                files.append(file_info)
+            except:
+                continue
+        
+        return {"files": files, "total": len(files)}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.post("/cleanup-exports")
+def cleanup_old_exports(days_old: int = Query(7, ge=1, le=365)):
+    """Limpia archivos de exportación antiguos"""
+    try:
+        return file_controller.cleanup_exports(days_old)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+# ========== ENDPOINTS DE ELIMINACIÓN ==========
 
 @router.delete("/rows", response_model=DeleteResponse)
 def delete_rows(request: DeleteRowsRequest):
@@ -761,160 +484,30 @@ def remove_duplicates(
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-# ========== ENDPOINTS DE UTILIDADES ==========
+# ========== ENDPOINT DE IA ==========
 
-@router.post("/cleanup-exports")
-def cleanup_old_exports(days_old: int = Query(7, ge=1, le=365)):
-    """Limpia archivos de exportación antiguos"""
+@router.post("/ai")
+async def ask_ai(request: AIRequest):
+    """Consulta al asistente IA con contexto de archivos"""
     try:
-        return file_controller.cleanup_exports(days_old)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-@router.get("/exports")
-def list_exported_files():
-    """Lista archivos exportados disponibles"""
-    try:
-        export_dir = ExportService.EXPORT_DIR
-        if not os.path.exists(export_dir):
-            return {"files": []}
+        print(f"🤖 Consulta AI recibida: file_context={request.file_context}")
         
-        files = []
-        for filename in os.listdir(export_dir):
-            try:
-                file_info = ExportService.get_export_info(filename)
-                files.append(file_info)
-            except:
-                continue
-        
-        return {"files": files, "total": len(files)}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-# ========== ENDPOINTS DE CRUCE AVANZADO ==========
-
-cross_handler_instance = CrossService()
-
-@router.post("/cross-download")
-def cross_files_download(request: FileCrossRequest):
-    """Realiza cruce y descarga resultado como CSV"""
-    try:        
-        result = execute_with_timeout(
-            cross_handler_instance.perform_cross_for_streaming,
-            timeout_seconds=600,  # 10 minutos para cruces grandes
+        result = await execute_with_timeout(
+            ai_controller.ask_ai,
+            timeout_seconds=120,
             request=request
         )
         
-        if not result["success"]:
-            raise HTTPException(status_code=400, detail=result.get("error", "Error en cruce"))
-        
-        return result["streaming_response"]
+        return {
+            "success": result.get("success", True),
+            "response": result.get("response", ""),
+            "context_type": result.get("context_type", "unknown"),
+            "query_type": result.get("query_type", "general"),
+            "file_context": request.file_context
+        }
         
     except TimeoutError:
-        raise HTTPException(status_code=408, detail="Timeout en cruce con descarga")
+        raise HTTPException(status_code=408, detail="Timeout en consulta AI")
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-# ========== ENDPOINTS ESPECÍFICOS DE EXCEL ==========
-
-@router.get("/columns/{file_id}/sheet/{sheet_name}")
-def get_columns_from_specific_sheet(file_id: str, sheet_name: str):
-    """Obtiene columnas de una hoja específica de Excel"""
-    try:        
-        file_info = file_controller.get_file_info(file_id)
-        if not file_info:
-            raise HTTPException(status_code=404, detail="Archivo no encontrado")
-        
-        file_path = file_info.get("path")
-        if not file_path or not os.path.exists(file_path):
-            raise HTTPException(status_code=404, detail="Archivo físico no encontrado")
-        
-        if not file_info.get("is_excel", False):
-            raise HTTPException(status_code=400, detail="Este endpoint es solo para archivos Excel")
-        
-        available_sheets = file_info.get("sheets", [])
-        if sheet_name not in available_sheets:
-            raise HTTPException(
-                status_code=400, 
-                detail=f"La hoja '{sheet_name}' no existe. Hojas disponibles: {available_sheets}"
-            )
-        
-        if not duckdb_service:
-            raise HTTPException(status_code=503, detail="DuckDB Service no disponible")
-        
-        # Obtener columnas con timeout
-        result = execute_with_timeout(
-            duckdb_service.get_columns_from_sheet,
-            timeout_seconds=60,
-            file_path=file_path,
-            sheet_name=sheet_name
-        )
-        
-        if result["success"]:            
-            return {
-                "success": True,
-                "file_id": file_id,
-                "sheet_name": sheet_name,
-                "columns": result["columns"],
-                "total_columns": len(result["columns"]),
-                "header_row_detected": result.get("header_row_detected", 0),
-                "available_sheets": available_sheets,
-                "method": "specific_sheet_analysis"
-            }
-        else:
-            raise HTTPException(status_code=500, detail=result["error"])
-            
-    except HTTPException:
-        raise
-    except TimeoutError:
-        raise HTTPException(status_code=408, detail="Timeout obteniendo columnas de hoja")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
-
-@router.get("/preview/{file_id}/sheet/{sheet_name}")
-def get_sheet_preview(
-    file_id: str, 
-    sheet_name: str,
-    max_rows: int = Query(5, ge=1, le=20, description="Máximo número de filas para preview")
-):
-    """Preview de datos de una hoja específica"""
-    try:
-        file_info = file_controller.get_file_info(file_id)
-        if not file_info:
-            raise HTTPException(status_code=404, detail="Archivo no encontrado")
-        
-        file_path = file_info.get("path")
-        if not os.path.exists(file_path):
-            raise HTTPException(status_code=404, detail="Archivo físico no encontrado")
-        
-        if not duckdb_service:
-            raise HTTPException(status_code=503, detail="DuckDB Service no disponible")
-        
-        # Obtener preview con timeout
-        result = execute_with_timeout(
-            duckdb_service.get_sheet_preview,
-            timeout_seconds=45,
-            file_path=file_path,
-            sheet_name=sheet_name,
-            max_rows=max_rows
-        )
-        
-        if result["success"]:
-            return {
-                "success": True,
-                "file_id": file_id,
-                "sheet_name": sheet_name,
-                "columns": result["columns"],
-                "preview_data": result["preview_data"],
-                "header_row": result["header_row"],
-                "sample_rows": result["sample_rows"]
-            }
-        else:
-            raise HTTPException(status_code=500, detail=result["error"])
-            
-    except HTTPException:
-        raise
-    except TimeoutError:
-        raise HTTPException(status_code=408, detail="Timeout obteniendo preview")
-    except Exception as e:
+        print(f"❌ Error en endpoint AI: {e}")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")

@@ -34,7 +34,7 @@ class ReportExporter:
         # Inyección de dependencias
         self.csv_exporter = CSVExporter(separator=';', encoding='latin1')
         self.pdf_exporter = PDFExporter(
-            watermark_image="assets/mallamas.png",  # ← Ruta a tu logo
+            watermark_image="assets/mallamas.png",
             watermark_opacity=0.2,
             image_width=6 * inch,
             image_height=6 * inch,
