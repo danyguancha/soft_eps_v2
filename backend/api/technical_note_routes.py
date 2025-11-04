@@ -460,5 +460,3 @@ async def export_current_report(
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
-
-

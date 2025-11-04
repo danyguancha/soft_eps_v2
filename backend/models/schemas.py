@@ -16,10 +16,10 @@ class PaginatedResponse(BaseModel, Generic[T]):
 class FileUploadResponse(BaseModel):
     message: str
     file_id: str
-    columns: List[str] = Field(default_factory=list)  # ✅ Usar default_factory para listas
-    sheets: List[str] = Field(default_factory=list)   # ✅ Una sola definición
+    columns: List[str] = Field(default_factory=list) 
+    sheets: List[str] = Field(default_factory=list) 
     default_sheet: Optional[str] = None
-    total_rows: int = 0  # ✅ Una sola definición con default
+    total_rows: int = 0 
     
     # CAMPOS PARA EXCEL
     is_excel: bool = False  
