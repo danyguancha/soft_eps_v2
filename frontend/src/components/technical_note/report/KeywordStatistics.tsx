@@ -1,7 +1,5 @@
 // components/technical-note/report/KeywordStatistics.tsx - ✅ ACTUALIZADO PARA NUMERADOR/DENOMINADOR
 import React, { memo } from 'react';
-import { Row, Col, Statistic, Card, Progress, Tooltip, Tag } from 'antd';
-import { BarChartOutlined, CheckCircleOutlined, ExclamationCircleOutlined, TrophyOutlined } from '@ant-design/icons';
 
 // ✅ INTERFACES ACTUALIZADAS
 interface KeywordStat {

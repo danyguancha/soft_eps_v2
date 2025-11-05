@@ -1,5 +1,5 @@
 # controllers/delete_handler.py
-from typing import Dict, Any, List
+from typing import Dict, Any
 from models.schemas import DeleteRowsRequest, DeleteRowsByFilterRequest, BulkDeleteRequest
 from services.delete_service import DeleteService
 from controllers.files_controllers.storage_manager import FileStorageManager

@@ -4,7 +4,7 @@ import { Card, DatePicker, Alert, Space, Typography } from 'antd';
 import { CalendarOutlined } from '@ant-design/icons';
 import dayjs, { Dayjs } from 'dayjs';
 import 'dayjs/locale/es';
-import locale from 'antd/es/date-picker/locale/es_ES'; // IMPORTAR LOCALE OFICIAL
+import locale from 'antd/es/date-picker/locale/es_ES';
 
 dayjs.locale('es');
 

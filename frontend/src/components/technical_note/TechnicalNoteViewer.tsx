@@ -1,4 +1,4 @@
-// components/technical-note/TechnicalNoteViewer.tsx - ✅ CORREGIDO
+// components/technical-note/TechnicalNoteViewer.tsx
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Modal, message } from 'antd';

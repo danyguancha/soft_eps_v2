@@ -1,13 +1,13 @@
 // components/CrossPage.tsx
-import React, { useState, useEffect } from 'react';
 import { Box } from '@mui/material';
-import FileCrossManager from './FileCrossManager';
-import type { FileInfo } from '../../types/api.types';
+import React, { useEffect, useState } from 'react';
 import api from '../../Api';
+import type { FileInfo } from '../../types/api.types';
+import FileCrossManager from './FileCrossManager';
 
 const CrossPage: React.FC = () => {
   const [files, setFiles] = useState<FileInfo[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [, setLoading] = useState(false);
 
   const loadFiles = async () => {
     try {

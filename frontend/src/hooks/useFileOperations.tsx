@@ -1,11 +1,10 @@
 // src/hooks/useFileOperations.ts
 import { useCallback } from 'react';
-import { useFileManager } from './useFileManager';
 import { useAlert } from '../components/alerts/AlertProvider';
-import { TransformService } from '../services/TransformService';
-import { ExportService } from '../services/ExportService';
 import { DeleteService } from '../services/DeleteService';
-import type { FileInfo, UseFileOperationsReturn, DataRequest } from '../types/api.types';
+import { ExportService } from '../services/ExportService';
+import type { FileInfo, UseFileOperationsReturn } from '../types/api.types';
+import { useFileManager } from './useFileManager';
 
 export const useFileOperations = (): UseFileOperationsReturn => {
   const { showAlert } = useAlert();
@@ -23,7 +22,7 @@ export const useFileOperations = (): UseFileOperationsReturn => {
     fileManager.setCurrentFile(newFile);
     
     await showAlert({
-      title: '✅ ¡Éxito!',
+      title: '¡Éxito!',
       message: 'Archivo cargado correctamente',
       variant: 'success'
     });
@@ -120,7 +119,7 @@ export const useFileOperations = (): UseFileOperationsReturn => {
     if (!fileManager.currentFile) {
       fileManager.setCurrentFile(newFileData);
       await showAlert({
-        title: '✅ Archivo seleccionado',
+        title: 'Archivo seleccionado',
         message: `Archivo "${fileInfo.original_name}" seleccionado automáticamente`,
         variant: 'success'
       });
@@ -134,7 +133,7 @@ export const useFileOperations = (): UseFileOperationsReturn => {
   }, [fileManager.currentFile, fileManager.setCurrentFile, showAlert]);
 
   return {
-    // ✅ Asegurar que devolvemos los tipos correctos
+    // Asegurar que devolvemos los tipos correctos
     files: fileManager.files ?? null,
     currentFile: fileManager.currentFile ?? null,
     currentData: fileManager.currentData ?? null,

@@ -27,7 +27,7 @@ export function useFileManager() {
     }
   }, []);
 
-  // ✅ AGREGAR ESTE useEffect - Esta es la clave del problema
+  // AGREGAR ESTE useEffect - Esta es la clave del problema
   useEffect(() => {
     console.log('🎯 useFileManager montado - cargando archivos iniciales...');
     loadFiles();
@@ -87,7 +87,7 @@ export function useFileManager() {
     currentData,
     loading,
     error,
-    loadFiles, // ✅ Esta función ya estaba exportada correctamente
+    loadFiles, // Esta función ya estaba exportada correctamente
     uploadFile,
     loadFileData,
     deleteFile,

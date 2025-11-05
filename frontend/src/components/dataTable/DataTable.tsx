@@ -121,7 +121,7 @@ export const DataTable: React.FC<DataTableProps> = ({
           />
         ),
         
-        filterIcon: (filtered: boolean) => (
+        filterIcon: () => (
           <FilterOutlined style={{ color: isFiltered ? '#1890ff' : undefined }} />
         )
       };

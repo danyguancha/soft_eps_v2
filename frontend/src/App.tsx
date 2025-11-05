@@ -10,7 +10,7 @@ import { NavigationMenu } from './components/navigation/NavigationMenu';
 import FileCrossManager from './components/cross/FileCrossManager';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { DynamicTabRouter } from './components/routing/DynamicTabRouter';
-import { ChatBot } from './components/chatbot/ChatBot'; // ✅ IMPORTAR CHATBOT
+import { ChatBot } from './components/chatbot/ChatBot';
 
 import { useFileOperations } from './hooks/useFileOperations';
 import { CrossDataProvider, useCrossDataContext } from './contexts/CrossDataContext';

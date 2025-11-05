@@ -1,12 +1,12 @@
-// hooks/useReportData.ts - ✅ ACTUALIZADO PARA NUMERADOR/DENOMINADOR
+// hooks/useReportData.ts
 import { useMemo } from 'react';
 import { getKeywordConfig, getKeywordLabel } from '../config/reportKeywords.config';
-import type { KeywordAgeReport, TotalsByKeyword, GlobalStatistics } from '../services/TechnicalNoteService';
+import type { GlobalStatistics, TotalsByKeyword } from '../services/TechnicalNoteService';
 
 interface KeywordReport {
   totals_by_keyword: Record<string, TotalsByKeyword>;
   items: Array<{ keyword: string; [key: string]: any }>;
-  global_statistics?: GlobalStatistics;  // ✅ NUEVO
+  global_statistics?: GlobalStatistics;
 }
 
 export const useReportData = (keywordReport: KeywordReport | null, reportKeywords: string[]) => {
@@ -20,7 +20,7 @@ export const useReportData = (keywordReport: KeywordReport | null, reportKeyword
       itemsCount: keywordReport.items.filter((item: any) => item.keyword === keyword).length,
       config: getKeywordConfig(keyword),
       
-      // ✅ NUEVOS CAMPOS NUMERADOR/DENOMINADOR
+      // NUEVOS CAMPOS NUMERADOR/DENOMINADOR
       numerador: totals.numerador || 0,
       denominador: totals.denominador || 0,
       actividades: totals.actividades || 0,
@@ -32,7 +32,7 @@ export const useReportData = (keywordReport: KeywordReport | null, reportKeyword
     }));
   }, [keywordReport]);
 
-  // ✅ NUEVO: Estadísticas globales procesadas
+  // NUEVO: Estadísticas globales procesadas
   const globalStats = useMemo(() => {
     if (!keywordReport?.global_statistics) return null;
     
@@ -67,7 +67,7 @@ export const useReportData = (keywordReport: KeywordReport | null, reportKeyword
       }
     }
 
-    // ✅ AGREGAR INDICADOR DE NUMERADOR/DENOMINADOR
+    // AGREGAR INDICADOR DE NUMERADOR/DENOMINADOR
     if (globalStats?.tieneNumeradorDenominador) {
       baseTitle += " (N/D)";
     }
@@ -78,6 +78,6 @@ export const useReportData = (keywordReport: KeywordReport | null, reportKeyword
   return { 
     keywordStats, 
     reportTitle,
-    globalStats  // ✅ NUEVO CAMPO
+    globalStats  // NUEVO CAMPO
   };
 };

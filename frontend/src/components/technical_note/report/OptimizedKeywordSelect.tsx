@@ -1,6 +1,6 @@
 // components/report/OptimizedKeywordSelect.tsx
-import React, { memo, useCallback } from 'react';
 import { Select } from 'antd';
+import { memo, useCallback } from 'react';
 import { SELECT_OPTIONS } from '../../../config/reportKeywords.config';
 
 // Función debounce

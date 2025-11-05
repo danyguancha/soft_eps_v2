@@ -62,10 +62,6 @@ export const useDataTable = (
         }
     }, [searchTerm, onSearch]);
 
-    const clearAllFilters = useCallback(() => {
-        excelFiltersHook.clearAllFilters(onFiltersChange);
-        localFilteringHook.resetLocalFiltering();
-    }, [excelFiltersHook, localFilteringHook, onFiltersChange]);
 
     const finalPagination = useMemo(() => {
         if (!filename) {

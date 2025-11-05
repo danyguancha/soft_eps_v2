@@ -1,4 +1,4 @@
-// config/reportKeywords.config.ts - ✅ OPTIMIZADA PARA PERFORMANCE
+// config/reportKeywords.config.ts
 import { 
   MedicineBoxOutlined,
   HeartOutlined,

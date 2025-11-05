@@ -170,7 +170,7 @@ def get_columns(file_id: str, sheet_name: Optional[str] = Query(None)):
                     "selected_sheet": sheet_name,
                     "is_excel": True
                 }
-        except:
+        except e:
             pass
         
         return result

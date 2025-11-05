@@ -1,4 +1,4 @@
-// hooks/useTechnicalNote.ts - ✅ VERSIÓN COMPLETA CORREGIDA CON VALIDACIÓN ROBUSTA
+// hooks/useTechnicalNote.ts - VERSIÓN COMPLETA CORREGIDA CON VALIDACIÓN ROBUSTA
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   TechnicalNoteService,
@@ -25,7 +25,7 @@ export const useTechnicalNote = () => {
   const [loadingMetadata, setLoadingMetadata] = useState(false);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
 
-  // ✅ ESTADOS PARA REPORTE CON FILTROS GEOGRÁFICOS
+  // ESTADOS PARA REPORTE CON FILTROS GEOGRÁFICOS
   const [keywordReport, setKeywordReport] = useState<KeywordAgeReport | null>(null);
   const [loadingReport, setLoadingReport] = useState(false);
   const [showReport, setShowReport] = useState(false);
@@ -33,7 +33,7 @@ export const useTechnicalNote = () => {
   const [reportMinCount, setReportMinCount] = useState<number>(0);
   const [showTemporalData, setShowTemporalData] = useState<boolean>(true);
 
-  // ✅ ESTADOS PARA FILTROS GEOGRÁFICOS
+  // ESTADOS PARA FILTROS GEOGRÁFICOS
   const [geographicFilters, setGeographicFilters] = useState<GeographicFilters>({});
   const [departamentosOptions, setDepartamentosOptions] = useState<string[]>([]);
   const [municipiosOptions, setMunicipiosOptions] = useState<string[]>([]);
@@ -65,12 +65,12 @@ export const useTechnicalNote = () => {
   const [pageSize, setPageSize] = useState(20);
   const [serverPagination, setServerPagination] = useState<any>(null);
 
-  // ✅ FUNCIÓN AUXILIAR PARA OBTENER ESTADÍSTICAS GLOBALES TIPADAS
+  // FUNCIÓN AUXILIAR PARA OBTENER ESTADÍSTICAS GLOBALES TIPADAS
   const getGlobalStatistics = useCallback((): GlobalStatistics | null => {
     return keywordReport?.global_statistics || null;
   }, [keywordReport]);
 
-  // ✅ FUNCIÓN AUXILIAR PARA CÁLCULOS SEGUROS
+  // FUNCIÓN AUXILIAR PARA CÁLCULOS SEGUROS
   const calculateReportTotals = useCallback(() => {
     if (!keywordReport) {
       return {
@@ -97,7 +97,7 @@ export const useTechnicalNote = () => {
     };
   }, [keywordReport, getGlobalStatistics]);
 
-  // ✅ MÉTODOS PARA FILTROS GEOGRÁFICOS
+  // MÉTODOS PARA FILTROS GEOGRÁFICOS
   const loadDepartamentos = useCallback(async (filename: string) => {
     if (!filename) return;
 
@@ -107,7 +107,7 @@ export const useTechnicalNote = () => {
       const departamentos = await TechnicalNoteService.getDepartamentos(filename);
       setDepartamentosOptions(departamentos);
       
-      console.log(`✅ Departamentos cargados: ${departamentos.length}`);
+      console.log(`Departamentos cargados: ${departamentos.length}`);
     } catch (error) {
       console.error('Error cargando departamentos:', error);
       setDepartamentosOptions([]);
@@ -125,7 +125,7 @@ export const useTechnicalNote = () => {
       const municipios = await TechnicalNoteService.getMunicipios(filename, departamento);
       setMunicipiosOptions(municipios);
       
-      console.log(`✅ Municipios cargados para ${departamento}: ${municipios.length}`);
+      console.log(`Municipios cargados para ${departamento}: ${municipios.length}`);
     } catch (error) {
       console.error('Error cargando municipios:', error);
       setMunicipiosOptions([]);
@@ -143,7 +143,7 @@ export const useTechnicalNote = () => {
       const ips = await TechnicalNoteService.getIps(filename, departamento, municipio);
       setIpsOptions(ips);
       
-      console.log(`✅ IPS cargadas para ${municipio}: ${ips.length}`);
+      console.log(`IPS cargadas para ${municipio}: ${ips.length}`);
     } catch (error) {
       console.error('Error cargando IPS:', error);
       setIpsOptions([]);
@@ -152,9 +152,9 @@ export const useTechnicalNote = () => {
     }
   }, []);
 
-  // ✅ HANDLERS PARA FILTROS GEOGRÁFICOS
+  // HANDLERS PARA FILTROS GEOGRÁFICOS
   const handleDepartamentoChange = useCallback((departamento: string | null) => {
-    setGeographicFilters(prev => ({
+    setGeographicFilters(() => ({
       departamento: departamento,
       municipio: null,
       ips: null
@@ -195,7 +195,7 @@ export const useTechnicalNote = () => {
     setIpsOptions([]);
   }, []);
 
-  // ✅ Cargar archivos disponibles
+  // Cargar archivos disponibles
   const loadAvailableFiles = useCallback(async () => {
     if (loadingRef.current) return;
 
@@ -207,7 +207,7 @@ export const useTechnicalNote = () => {
       const files = await TechnicalNoteService.getAvailableFiles();
       setAvailableFiles(files);
 
-      console.log(`✅ ${files.length} archivos técnicos disponibles`);
+      console.log(`${files.length} archivos técnicos disponibles`);
 
     } catch (error: any) {
       console.error('Error loading available files:', error);
@@ -218,7 +218,7 @@ export const useTechnicalNote = () => {
     }
   }, []);
 
-  // ✅ Cargar metadatos
+  // Cargar metadatos
   const loadFileMetadata = useCallback(async (filename: string) => {
     try {
       setLoadingMetadata(true);
@@ -227,7 +227,7 @@ export const useTechnicalNote = () => {
       const metadata = await TechnicalNoteService.getFileMetadata(filename);
       setCurrentFileMetadata(metadata);
 
-      console.log(`✅ Metadatos cargados: ${metadata.total_rows.toLocaleString()} filas`);
+      console.log(`Metadatos cargados: ${metadata.total_rows.toLocaleString()} filas`);
       return metadata;
     } catch (error: any) {
       console.error('Error loading metadata:', error);
@@ -237,10 +237,10 @@ export const useTechnicalNote = () => {
     }
   }, []);
 
-  // ✅ CORREGIDO: Cargar reporte con VALIDACIÓN ROBUSTA
+  // CORREGIDO: Cargar reporte con VALIDACIÓN ROBUSTA
   const loadKeywordAgeReport = useCallback(async (
     filename: string,
-    cutoffDate: string, // ✅ SEGUNDO PARÁMETRO
+    cutoffDate: string, // SEGUNDO PARÁMETRO
     keywords?: string[],
     minCount: number = 0,
     includeTemporal: boolean = true,
@@ -258,14 +258,14 @@ export const useTechnicalNote = () => {
       geoFilters
     });
 
-    // ✅ VALIDACIÓN ROBUSTA: Verificar que cutoffDate no sea undefined, null, ni string vacío
+    // VALIDACIÓN ROBUSTA: Verificar que cutoffDate no sea undefined, null, ni string vacío
     if (!cutoffDate || typeof cutoffDate !== 'string' || cutoffDate.trim() === '') {
       const errorMsg = `❌ Fecha de corte inválida: ${JSON.stringify(cutoffDate)} (tipo: ${typeof cutoffDate})`;
       console.error(errorMsg);
       throw new Error('Fecha de corte es obligatoria para generar el reporte');
     }
 
-    // ✅ VALIDACIÓN ADICIONAL: Verificar formato básico YYYY-MM-DD
+    // VALIDACIÓN ADICIONAL: Verificar formato básico YYYY-MM-DD
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(cutoffDate.trim())) {
       const errorMsg = `❌ Formato de fecha inválido: ${cutoffDate}. Debe ser YYYY-MM-DD`;
@@ -285,11 +285,11 @@ export const useTechnicalNote = () => {
         geoFilters
       });
 
-      // ✅ CORRECCIÓN: Orden correcto de parámetros según TechnicalNoteService
+      // CORRECCIÓN: Orden correcto de parámetros según TechnicalNoteService
       // getKeywordAgeReport(filename, cutoffDate, keywords, minCount, includeTemporal, geoFilters)
       const report = await TechnicalNoteService.getKeywordAgeReport(
         filename,
-        cutoffDate.trim(),  // ✅ Limpiar espacios antes de enviar
+        cutoffDate.trim(),  // Limpiar espacios antes de enviar
         keywords,
         minCount,
         includeTemporal,
@@ -305,10 +305,10 @@ export const useTechnicalNote = () => {
       const totalNumerador = globalStats?.total_numerador_global || 0;
       const coberturaGlobal = globalStats?.cobertura_global_porcentaje || 0;
 
-      console.log(`✅ Reporte numerador/denominador cargado:`);
+      console.log(`Reporte numerador/denominador cargado:`);
       console.log(`   📊 ${totalItems} actividades`);
       console.log(`   📊 DENOMINADOR: ${totalDenominador.toLocaleString()}`);
-      console.log(`   ✅ NUMERADOR: ${totalNumerador.toLocaleString()}`);
+      console.log(`   NUMERADOR: ${totalNumerador.toLocaleString()}`);
       console.log(`   📈 COBERTURA: ${coberturaGlobal}%`);
       console.log(`   🗓️ Fecha corte: ${cutoffDate}`);
 
@@ -372,7 +372,7 @@ export const useTechnicalNote = () => {
         total: data.pagination.total_rows
       }));
 
-      console.log(`✅ Datos cargados: ${data.pagination.rows_in_page} registros de ${data.pagination.total_rows} (${data.pagination.filtered ? 'filtrados' : 'todos'})`);
+      console.log(`Datos cargados: ${data.pagination.rows_in_page} registros de ${data.pagination.total_rows} (${data.pagination.filtered ? 'filtrados' : 'todos'})`);
 
       return data;
     } catch (error: any) {
@@ -384,7 +384,7 @@ export const useTechnicalNote = () => {
     }
   }, [loading]);
 
-  // ✅ Cargar primera página
+  // Cargar primera página
   const loadFileData = useCallback(async (
     filename: string, 
     cutoffDate?: string,
@@ -507,7 +507,7 @@ export const useTechnicalNote = () => {
     console.log(`🗑️ Filas eliminadas localmente: ${indices.length}`);
   }, [filteredData, currentFileData]);
 
-  // ✅ HANDLERS PARA REPORTE
+  // HANDLERS PARA REPORTE
   const toggleReportVisibility = useCallback(() => {
     setShowReport(!showReport);
   }, [showReport]);
@@ -553,7 +553,7 @@ export const useTechnicalNote = () => {
     setReportKeywords(prev => prev.filter(k => k !== keyword));
   }, []);
 
-  // ✅ WRAPPER ACTUALIZADO CON LOGS
+  // WRAPPER ACTUALIZADO CON LOGS
   const handleLoadKeywordAgeReport = useCallback((
     filename: string,
     cutoffDate: string,

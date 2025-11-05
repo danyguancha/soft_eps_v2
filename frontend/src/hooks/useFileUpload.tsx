@@ -1,4 +1,4 @@
-// hooks/useFileUpload.ts - ✅ LÓGICA DE UPLOAD
+// hooks/useFileUpload.ts - LÓGICA DE UPLOAD
 import { useState } from 'react';
 import { message } from 'antd';
 import { FileService } from '../services/FileService';
@@ -21,7 +21,7 @@ export const useFileUpload = () => {
       const uploadResponse = await FileService.uploadFile(file);
       onProgress({ percent: 80 });
 
-      console.log('✅ Archivo subido exitosamente:', uploadResponse);
+      console.log('Archivo subido exitosamente:', uploadResponse);
 
       const customFile: CustomUploadedFile = {
         uid: file.uid,
@@ -75,7 +75,7 @@ export const useFileUpload = () => {
     setFileList(info.fileList);
 
     if (info.file.status === 'done') {
-      console.log(`✅ ${info.file.name} subido exitosamente`);
+      console.log(`${info.file.name} subido exitosamente`);
     } else if (info.file.status === 'error') {
       console.error(`❌ ${info.file.name} falló al subir`);
     }

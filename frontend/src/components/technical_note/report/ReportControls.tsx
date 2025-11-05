@@ -1,7 +1,7 @@
 // components/technical-note/report/ReportControls.tsx - ✅ ACTUALIZADO
+import { EyeInvisibleOutlined, EyeOutlined } from '@ant-design/icons';
+import { Button, Space, Statistic, Switch, Tooltip } from 'antd';
 import React, { memo } from 'react';
-import { Space, Switch, Button, Statistic, Tooltip } from 'antd';
-import { EyeOutlined, EyeInvisibleOutlined, BarChartOutlined } from '@ant-design/icons';
 
 // ✅ INTERFAZ ACTUALIZADA
 export interface ReportControlsProps {

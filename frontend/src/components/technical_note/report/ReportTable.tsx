@@ -1,4 +1,4 @@
-// components/technical-note/report/ReportTable.tsx - ✅ SIMPLIFICADO
+// components/technical-note/report/ReportTable.tsx
 import { memo, useMemo, useCallback, useState } from 'react';
 import { Table, Typography, Tag, Space, Button, Tooltip, Empty, Row, Col, message } from 'antd';
 import api from '../../../Api';

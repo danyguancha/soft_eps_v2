@@ -1,6 +1,6 @@
 # controllers/file_info_handler.py
 import os
-from typing import Dict, Any, List
+from typing import Dict, Any
 
 import pandas as pd
 from controllers.files_controllers.storage_manager import FileStorageManager
