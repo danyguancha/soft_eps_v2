@@ -131,3 +131,8 @@ class SqlConditionFilter:
             print(f"❌ Error construyendo filtro: {e}")
             print(f"   Filtro problemático: {filter_item}")
             return None
+    
+    def _escape_identifier(self, identifier: str) -> str:
+        """Escapa un identificador SQL (nombre de columna)"""
+        escaped = identifier.replace('"', '""')
+        return f'"{escaped}"'

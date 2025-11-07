@@ -523,6 +523,106 @@ class DuckDBService:
             self.file_conversion, 
             self.query
         )
+    
+    def query_data_ultra_fast(
+        self,
+        file_id: str,
+        filters: Optional[List[Dict[str, Any]]] = None,
+        search: Optional[str] = None,
+        sort_by: Optional[str] = None,
+        sort_order: str = "ASC",
+        page: int = 1,
+        page_size: int = 1000,
+        selected_columns: Optional[List[str]] = None
+    ) -> Dict[str, Any]:
+        """
+        Consulta ultra-rápida de datos con paginación, filtros y búsqueda.
+        """
+        if not self.is_available():
+            return {
+                "success": False,
+                "error": "DuckDB no disponible",
+                "data": [],
+                "total": 0,
+                "page": page,
+                "page_size": page_size,
+                "has_next": False,
+                "has_previous": False
+            }
+        
+        try:
+            # Cargar archivo bajo demanda si no está en memoria
+            if file_id not in self.loaded_tables:
+                print(f"📂 Cargando archivo bajo demanda: {file_id}")
+                loaded = self._load_file_on_demand(file_id)
+                if not loaded:
+                    return {
+                        "success": False,
+                        "error": f"No se pudo cargar archivo: {file_id}",
+                        "data": [],
+                        "total": 0,
+                        "page": page,
+                        "page_size": page_size,
+                        "has_next": False,
+                        "has_previous": False
+                    }
+            
+            # 🔧 CORRECCIÓN: Crear QueryPagination sin argumentos
+            query_pagination = QueryPagination()
+            
+            # 🔧 MONKEY PATCH: Inyectar método _escape_identifier si no existe
+            if not hasattr(query_pagination, '_escape_identifier'):
+                sql_utils = SQLUtils()
+                query_pagination._escape_identifier = lambda name: sql_utils.escape_identifier(name)
+            
+            result = query_pagination.query_data_ultra_fast(
+                conn=self.conn,
+                file_id=file_id,
+                filters=filters,
+                search=search,
+                sort_by=sort_by,
+                sort_order=sort_order,
+                page=page,
+                page_size=page_size,
+                selected_columns=selected_columns,
+                loaded_tables=self.loaded_tables
+            )
+            
+            # Normalizar respuesta: asegurar que 'total' esté en la raíz
+            if result.get("success"):
+                # Si 'total' no está, extraerlo de pagination
+                if "total" not in result and "pagination" in result:
+                    result["total"] = result["pagination"].get("total_rows", 0)
+                    result["has_next"] = result["pagination"].get("has_next", False)
+                    result["has_previous"] = result["pagination"].get("has_prev", False)
+                # Si aún no está, usar total_rows
+                elif "total" not in result and "total_rows" in result:
+                    result["total"] = result["total_rows"]
+            else:
+                # Si falló, asegurar estructura mínima
+                result.setdefault("total", 0)
+                result.setdefault("has_next", False)
+                result.setdefault("has_previous", False)
+            
+            return result
+            
+        except Exception as e:
+            import traceback
+            print(f"❌ Error en query_data_ultra_fast: {e}")
+            print(traceback.format_exc())
+            return {
+                "success": False,
+                "error": f"Error ejecutando consulta: {str(e)}",
+                "data": [],
+                "total": 0,
+                "page": page,
+                "page_size": page_size,
+                "has_next": False,
+                "has_previous": False
+            }
+
+
+    
 
 
 def get_duckdb_service():
