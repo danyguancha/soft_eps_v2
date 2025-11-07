@@ -21,10 +21,10 @@ class AnalysisVaccination:
                 )
                 states_result = duckdb_service.conn.execute(states_sql).fetchall()
                 states_data = self._process_vaccination_states_results(states_result)
-                print(f"💉 Estados de vacunación: {len(states_data)} entradas")
+                print(f"Estados de vacunación: {len(states_data)} entradas")
                 
         except Exception as e:
-            print(f"❌ Error análisis estados: {e}")
+            print(f"Error análisis estados: {e}")
         
         return states_data
     

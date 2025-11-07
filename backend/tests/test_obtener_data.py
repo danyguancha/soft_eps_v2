@@ -38,7 +38,7 @@ class TestObtenerData(unittest.TestCase):
         
         if upload_response.status_code == 200:
             cls.file_id = upload_response.json()["file_id"]
-            print(f"✅ Archivo de prueba cargado: {cls.file_id}")
+            print(f"Archivo de prueba cargado: {cls.file_id}")
             print("="*60 + "\n")
         else:
             print(f"❌ Error al cargar archivo: {upload_response.text}")
@@ -93,7 +93,7 @@ class TestObtenerData(unittest.TestCase):
                 self.assertIn("edad", record)
                 self.assertIn("nombre", record)
         
-        print(f"\n✅ OD-01 PASSED: {data['total']} registros encontrados")
+        print(f"\nOD-01 PASSED: {data['total']} registros encontrados")
         print("-"*60)
     
     def test_OD_02(self):
@@ -134,7 +134,7 @@ class TestObtenerData(unittest.TestCase):
                 self.assertIn("departamento", record)
                 self.assertIn("nombre", record)
         
-        print(f"\n✅ OD-02 PASSED: {data['total']} registros retornados")
+        print(f"\nOD-02 PASSED: {data['total']} registros retornados")
         print("-"*60)
     
     def test_OD_03(self):
@@ -173,7 +173,7 @@ class TestObtenerData(unittest.TestCase):
             for record in data["data"]:
                 self.assertIn("email", record)
         
-        print(f"\n✅ OD-03 PASSED: {data['total']} registros retornados")
+        print(f"\nOD-03 PASSED: {data['total']} registros retornados")
         print("-"*60)
     
     @classmethod
@@ -184,7 +184,7 @@ class TestObtenerData(unittest.TestCase):
         try:
             delete_response = client.delete(f"/api/v1/file/{cls.file_id}")
             if delete_response.status_code == 200:
-                print(f"✅ Archivo de prueba eliminado: {cls.file_id}")
+                print(f"Archivo de prueba eliminado: {cls.file_id}")
             else:
                 print(f"⚠️ No se pudo eliminar archivo: {delete_response.status_code}")
         except Exception as e:

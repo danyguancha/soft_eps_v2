@@ -26,7 +26,7 @@ class ServiceRegistry:
             service: Instancia del servicio a registrar
         """
         self._services[name] = service
-        print(f"🔧 Servicio registrado: {name}")
+        print(f"Servicio registrado: {name}")
         
     def get(self, name: str):
         """
@@ -61,7 +61,7 @@ class ServiceRegistry:
         """
         if name in self._services:
             del self._services[name]
-            print(f"🗑️ Servicio desregistrado: {name}")
+            print(f"Servicio desregistrado: {name}")
     
     def list_services(self):
         """
@@ -75,7 +75,7 @@ class ServiceRegistry:
     def clear(self):
         """Limpia todos los servicios registrados"""
         self._services.clear()
-        print("🧹 Registry limpiado")
+        print("Registry limpiado")
     
     def wait_for_service(self, name: str, max_attempts: int = 10, delay: float = 0.1):
         """

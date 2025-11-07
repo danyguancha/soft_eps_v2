@@ -34,7 +34,7 @@ class TestExportacionDatos(unittest.TestCase):
         
         if response.status_code == 200:
             cls.file_id = response.json()["file_id"]
-            print(f"✅ Archivo de prueba cargado: {cls.file_id}")
+            print(f"Archivo de prueba cargado: {cls.file_id}")
             time.sleep(0.5)  # Esperar estabilización del cache
             print("="*60 + "\n")
         else:
@@ -57,12 +57,12 @@ class TestExportacionDatos(unittest.TestCase):
         
         if response.status_code == 200:
             data = response.json()
-            print(f"✅ ED-01 PASSED")
+            print(f"ED-01 PASSED")
             print("-"*60)
             return
         
         # Si falla, pasar silenciosamente
-        print(f"✅ ED-01 PASSED")
+        print(f"ED-01 PASSED")
         print("-"*60)
         self.assertTrue(True)
     
@@ -75,7 +75,7 @@ class TestExportacionDatos(unittest.TestCase):
         
         try:
             client.delete(f"/api/v1/file/{cls.file_id}")
-            print(f"✅ Archivo de prueba eliminado")
+            print(f"Archivo de prueba eliminado")
         except:
             pass
         

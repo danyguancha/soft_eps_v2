@@ -69,7 +69,7 @@ class ResponseProcessor:
         
         # Si hay muchos placeholders, agregar advertencia
         if placeholder_count > 3:
-            warning = "\n\n⚠️ **Nota:** Los valores mostrados son ejemplos. Para estadísticas reales calculadas, usa la sección **Análisis** de la aplicación."
+            warning = "\n\n**Nota:** Los valores mostrados son ejemplos. Para estadísticas reales calculadas, usa la sección **Análisis** de la aplicación."
             response = re.sub(r'\[.*?\]', '**[valor no calculado]**', response)
             response += warning
         
@@ -79,11 +79,11 @@ class ResponseProcessor:
         """Agrega sugerencias basadas en tipo de consulta y confianza"""
         
         suggestions = {
-            'structure_analysis': "\n\n💡 **Próximos pasos:** Usa los filtros de tabla para explorar o ve a **Análisis** para estadísticas.",
-            'statistical': "\n\n💡 **Tip:** Para análisis más profundo, prueba la sección **Visualización** para gráficos interactivos.",
-            'filtering': "\n\n💡 **Sugerencia:** Usa la **barra de búsqueda** y los **filtros de columna** en la tabla.",
-            'temporal': "\n\n💡 **Tip:** Para análisis temporal avanzado, considera exportar y usar herramientas de series de tiempo.",
-            'export': "\n\n💡 **Recuerda:** Puedes exportar en **CSV** o **Excel** desde cualquier vista de datos."
+            'structure_analysis': "\n\n**Próximos pasos:** Usa los filtros de tabla para explorar o ve a **Análisis** para estadísticas.",
+            'statistical': "\n\n**Tip:** Para análisis más profundo, prueba la sección **Visualización** para gráficos interactivos.",
+            'filtering': "\n\n**Sugerencia:** Usa la **barra de búsqueda** y los **filtros de columna** en la tabla.",
+            'temporal': "\n\n**Tip:** Para análisis temporal avanzado, considera exportar y usar herramientas de series de tiempo.",
+            'export': "\n\n**Recuerda:** Puedes exportar en **CSV** o **Excel** desde cualquier vista de datos."
         }
         
         # Solo agregar si la confianza es alta

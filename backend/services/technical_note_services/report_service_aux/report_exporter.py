@@ -68,7 +68,7 @@ class ReportExporter:
             
             print(f"\n🚀 ========== EXPORTACIÓN EN MEMORIA ==========")
             print(f"📋 Archivo: {base_filename}")
-            print(f"📊 CSV: {export_csv}, PDF: {export_pdf}")
+            print(f"CSV: {export_csv}, PDF: {export_pdf}")
             print(f"⏰ Temporal: {include_temporal}")
             
             files = {}
@@ -90,7 +90,7 @@ class ReportExporter:
             
             elapsed = (datetime.now() - start_time).total_seconds()
             
-            print(f"✅ Exportación completada en {elapsed:.2f}s (EN MEMORIA)")
+            print(f"Exportación completada en {elapsed:.2f}s (EN MEMORIA)")
             print(f"📄 Archivos: {list(files.keys())}")
             print(f"==============================================\n")
             
@@ -103,7 +103,7 @@ class ReportExporter:
             }
             
         except Exception as e:
-            print(f"❌ Error en exportación: {e}")
+            print(f"Error en exportación: {e}")
             import traceback
             traceback.print_exc()
             return {
@@ -130,14 +130,14 @@ class ReportExporter:
                 'created_at': datetime.now()
             }
             
-            print(f"✅ CSV generado en memoria: ID={file_id}")
+            print(f"CSV generado en memoria: ID={file_id}")
             
             return {
                 'files': {'csv_temporal': file_id},
                 'links': {'csv_temporal': f"/technical-note/reports/download/{file_id}"}
             }
         
-        print(f"⚠️ CSV Temporal no generado")
+        print(f"CSV Temporal no generado")
         return None
     
     def _export_pdf(
@@ -158,14 +158,14 @@ class ReportExporter:
                 'created_at': datetime.now()
             }
             
-            print(f"✅ PDF generado en memoria: ID={file_id}")
+            print(f"PDF generado en memoria: ID={file_id}")
             
             return {
                 'files': {'pdf': file_id},
                 'links': {'pdf': f"/technical-note/reports/download/{file_id}"}
             }
         
-        print(f"⚠️ PDF no generado")
+        print(f"PDF no generado")
         return None
     
     def get_temp_file(self, file_id: str) -> Optional[Dict[str, Any]]:
@@ -203,4 +203,4 @@ class ReportExporter:
                 print(f"🗑️ Limpieza: {len(to_delete)} archivos en memoria eliminados")
                 
         except Exception as e:
-            print(f"❌ Error en limpieza: {e}")
+            print(f"Error en limpieza: {e}")

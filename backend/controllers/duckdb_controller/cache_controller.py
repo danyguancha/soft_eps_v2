@@ -66,7 +66,7 @@ class CacheController:
             self.file_cache[file_id] = cache_info
             
         except Exception as e:
-            print(f"❌ Error guardando metadata: {e}")
+            print(f"Error guardando metadata: {e}")
 
     def _load_cache_metadata(self):
         """Carga metadata de archivos cacheados al iniciar"""
@@ -91,10 +91,10 @@ class CacheController:
                     cached_count += 1
                     
             except Exception as e:
-                print(f"⚠️ Error cargando metadata {metadata_file}: {e}")
+                print(f"Error cargando metadata {metadata_file}: {e}")
         
         if cached_count > 0:
-            print(f"📚 Cargados {cached_count} archivos en cache")
+            print(f"Cargados {cached_count} archivos en cache")
 
     def update_cache_access(self, file_id: str):
         """Actualiza estadísticas de acceso al cache"""
@@ -108,7 +108,7 @@ class CacheController:
                 with open(metadata_path, 'w', encoding='utf-8') as f:
                     json.dump(self.file_cache[file_id], f, indent=2)
             except Exception as e:
-                print(f"⚠️ Error actualizando estadísticas de acceso: {e}")
+                print(f"Error actualizando estadísticas de acceso: {e}")
 
     def is_file_cached(self, file_path: str) -> tuple[bool, Optional[str], Optional[Dict[str, Any]]]:
         """Verifica si el archivo ya está en cache con validación"""
@@ -144,7 +144,7 @@ class CacheController:
                     os.remove(path)
                     
         except Exception as e:
-            print(f"❌ Error limpiando cache inconsistente: {e}")
+            print(f"Error limpiando cache inconsistente: {e}")
 
     def get_cache_stats(self) -> Dict[str, Any]:
         """Obtiene estadísticas del cache"""
@@ -239,7 +239,7 @@ class CacheController:
                     cleaned_files += 1
                 
             except Exception as e:
-                print(f"❌ Error removiendo {file_id}: {e}")
+                print(f"Error removiendo {file_id}: {e}")
                 
         return {
             "cleaned_files": cleaned_files,

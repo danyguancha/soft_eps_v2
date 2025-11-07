@@ -26,7 +26,7 @@ class DataRetriever:
             return "No hay datos disponibles"
             
         except Exception as e:
-            print(f"⚠️ Error obteniendo muestra: {e}")
+            print(f"Error obteniendo muestra: {e}")
             return "Muestra no disponible"
 
 

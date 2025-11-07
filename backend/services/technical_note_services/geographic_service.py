@@ -23,15 +23,15 @@ class GeographicService:
     ) -> Dict[str, Any]:
         """Obtiene valores únicos de columnas geográficas"""
         try:
-            print(f"🗺️ Obteniendo {geo_type}")
-            print(f"🔍 Filtros: departamento='{departamento}', municipio='{municipio}'")
+            print(f"Obteniendo {geo_type}")
+            print(f"Filtros: departamento='{departamento}', municipio='{municipio}'")
             
             # Construir filtros padre
             parent_filter = self._build_parent_filters(geo_type, departamento, municipio)
             
             # Mapear tipo geográfico
             geo_type_for_service = self.geo_type_mapping.get(geo_type, geo_type)
-            print(f"🔄 Mapeo: {geo_type} -> {geo_type_for_service}")
+            print(f"Mapeo: {geo_type} -> {geo_type_for_service}")
             
             # Generar y ejecutar consulta
             geo_sql = self.column_service.get_unique_geographic_values_sql(
@@ -44,7 +44,7 @@ class GeographicService:
             return self._execute_geographic_query(geo_sql, geo_type, parent_filter)
             
         except Exception as e:
-            print(f"❌ Error en get_geographic_values: {e}")
+            print(f"Error en get_geographic_values: {e}")
             raise Exception(f"Error obteniendo valores geográficos: {e}")
     
     def _build_parent_filters(
@@ -58,15 +58,15 @@ class GeographicService:
         
         if geo_type == 'municipios' and departamento and departamento.strip():
             parent_filter['departamento'] = departamento.strip()
-            print(f"✅ Filtro para municipios: departamento = '{departamento}'")
+            print(f"Filtro para municipios: departamento = '{departamento}'")
         
         elif geo_type == 'ips':
             if municipio and municipio.strip():
                 parent_filter['municipio'] = municipio.strip()
-                print(f"✅ Filtro para IPS: municipio = '{municipio}'")
+                print(f"Filtro para IPS: municipio = '{municipio}'")
             if departamento and departamento.strip():
                 parent_filter['departamento'] = departamento.strip()
-                print(f"✅ Filtro adicional para IPS: departamento = '{departamento}'")
+                print(f"Filtro adicional para IPS: departamento = '{departamento}'")
         
         return parent_filter
     
@@ -78,7 +78,7 @@ class GeographicService:
     ) -> Dict[str, Any]:
         """Ejecuta consulta geográfica y procesa resultados"""
         try:
-            print(f"🔧 Ejecutando SQL: {geo_sql}")
+            print(f"Ejecutando SQL: {geo_sql}")
             result = duckdb_service.conn.execute(geo_sql).fetchall()
             
             values = []
@@ -91,9 +91,9 @@ class GeographicService:
             # Eliminar duplicados y ordenar
             values = sorted(list(set(values)))
             
-            print(f"✅ {geo_type} obtenidos: {len(values)} valores únicos")
+            print(f"{geo_type} obtenidos: {len(values)} valores únicos")
             if values:
-                print(f"📋 Primeros 10 valores: {values[:10]}")
+                print(f"Primeros 10 valores: {values[:10]}")
             
             return {
                 "success": True,
@@ -105,7 +105,7 @@ class GeographicService:
             }
             
         except Exception as sql_error:
-            print(f"❌ Error SQL geográfico: {sql_error}")
+            print(f"Error SQL geográfico: {sql_error}")
             return {
                 "success": False,
                 "error": f"Error ejecutando consulta geográfica: {sql_error}",

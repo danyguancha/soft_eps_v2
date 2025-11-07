@@ -104,7 +104,7 @@ class TestCruceArchivos(unittest.TestCase):
             self.assertIn("edad", first_record, "Falta columna edad")
             print(f"   Columnas en resultado: {data['columns']}")
         
-        print(f"\n✅ CA-01 PASSED: Cruce realizado exitosamente")
+        print(f"\nCA-01 PASSED: Cruce realizado exitosamente")
         print("-"*60)
     
     def test_CA_02(self):
@@ -168,7 +168,7 @@ class TestCruceArchivos(unittest.TestCase):
                     self.assertIn("total_rows", data)
                     
                     print(f"   Total rows: {data.get('total_rows', 0)}")
-                    print(f"\n✅ CA-02 PASSED: Cruce de Excel exitoso")
+                    print(f"\nCA-02 PASSED: Cruce de Excel exitoso")
                 else:
                     print(f"   Error: {response.json().get('detail', 'N/A')}")
                     self.skipTest(f"Cruce falló: {response.json().get('detail')}")
@@ -193,7 +193,7 @@ class TestCruceArchivos(unittest.TestCase):
         try:
             client.delete(f"/api/v1/file/{cls.file1_id}")
             client.delete(f"/api/v1/file/{cls.file2_id}")
-            print(f"✅ Archivos de prueba eliminados")
+            print(f"Archivos de prueba eliminados")
         except Exception as e:
             print(f"⚠️ Error al eliminar archivos: {e}")
         

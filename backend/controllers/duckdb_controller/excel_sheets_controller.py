@@ -71,7 +71,7 @@ class ExcelSheetsController:
             }
             
         except Exception as e:
-            print(f"❌ Método ZIP falló: {e}")
+            print(f"Método ZIP falló: {e}")
             # Fallback automático
             return self._get_sheets_openpyxl_readonly(file_path, start_time)
 

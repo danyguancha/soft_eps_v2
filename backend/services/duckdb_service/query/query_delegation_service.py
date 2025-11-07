@@ -27,7 +27,7 @@ class QueryDelegationService:
         # Verificar y cargar archivos bajo demanda
         for file_id in [file1_id, file2_id]:
             if loaded_tables and file_id not in loaded_tables:
-                print(f"🔄 Archivo {file_id} no cargado, intentando carga bajo demanda...")
+                print(f"Archivo {file_id} no cargado, intentando carga bajo demanda...")
                 
                 if file_loader_service:
                     success = file_loader_service.load_file_on_demand(
@@ -36,9 +36,9 @@ class QueryDelegationService:
                         self.controllers.get('query')
                     )
                     if success:
-                        print(f"✅ Archivo {file_id} cargado bajo demanda")
+                        print(f"Archivo {file_id} cargado bajo demanda")
                     else:
-                        print(f"❌ No se pudo cargar archivo {file_id} bajo demanda")
+                        print(f"No se pudo cargar archivo {file_id} bajo demanda")
                         return {
                             "success": False,
                             "error": f"Archivo {file_id} no se puede cargar en DuckDB",

@@ -19,7 +19,7 @@ model = genai.GenerativeModel('gemini-2.0-flash-exp')
 
 class AIController:
     """
-    🤖 Orquestador principal del asistente AI con NLP automático
+    Orquestador principal del asistente AI con NLP automático
     
     Características:
     - Detección automática de intenciones con spaCy
@@ -30,7 +30,7 @@ class AIController:
     """
     
     def __init__(self):
-        print("🚀 Inicializando AIController con NLP automático...")
+        print("Inicializando AIController con NLP automático...")
         self.context_builder = context_builder
         self.query_analyzer = query_analyzer
         self.prompt_builder = prompt_builder
@@ -38,7 +38,7 @@ class AIController:
         self.conversation_manager = conversation_manager
         self.sql_executor = sql_executor
         self.intent_classifier = intent_classifier
-        print("✅ AIController listo")
+        print("AIController listo")
     
     async def ask_ai(self, request) -> Dict[str, Any]:
         """
@@ -54,27 +54,22 @@ class AIController:
         """
         try:
             session_id = getattr(request, 'session_id', 'default_session')
-            
-            print(f"\n{'='*60}")
-            print(f"🤖 NUEVA CONSULTA")
-            print(f"{'='*60}")
-            print(f"📝 Pregunta: {request.question}")
-            print(f"🔑 Session: {session_id}")
+            print(f"Session: {session_id}")
             
             # PASO 1: Guardar pregunta del usuario en el historial
             self.conversation_manager.add_message(session_id, 'user', request.question)
             
             # PASO 2: Obtener archivos disponibles
             available_files = await self.context_builder.get_available_files()
-            print(f"📁 Archivos disponibles: {len(available_files)}")
+            print(f"Archivos disponibles: {len(available_files)}")
             for f in available_files:
                 print(f"   • {f['original_name']} ({f['total_rows']:,} filas)")
             
-            # PASO 3: 🧠 ANÁLISIS NLP AUTOMÁTICO
-            print(f"\n🧠 Analizando consulta con NLP...")
+            # PASO 3: ANÁLISIS NLP AUTOMÁTICO
+            print(f"\nAnalizando consulta con NLP...")
             query_analysis = self.query_analyzer.analyze(request.question, available_files)
             
-            print(f"✅ Intención detectada: {query_analysis['type']} (confianza: {query_analysis.get('confidence', 0)*100:.1f}%)")
+            print(f"Intención detectada: {query_analysis['type']} (confianza: {query_analysis.get('confidence', 0)*100:.1f}%)")
             print(f"   Acción: {query_analysis['intent']}")
             print(f"   Requiere archivo: {query_analysis['requires_file']}")
             
@@ -84,8 +79,8 @@ class AIController:
             if query_analysis.get('numerical_operations'):
                 print(f"   Operaciones: {', '.join(query_analysis['numerical_operations'])}")
             
-            # PASO 4: 🎯 DETERMINACIÓN INTELIGENTE DE ARCHIVO OBJETIVO
-            print(f"\n🎯 Determinando archivo objetivo...")
+            # PASO 4: DETERMINACIÓN INTELIGENTE DE ARCHIVO OBJETIVO
+            print(f"\nDeterminando archivo objetivo...")
             
             # Prioridad 1: Archivo detectado automáticamente por NLP
             target_file = query_analysis.get('target_file')
@@ -106,19 +101,19 @@ class AIController:
             # Prioridad 4: Si solo hay un archivo, usarlo
             if not target_file and len(available_files) == 1:
                 target_file = available_files[0]['file_id']
-                print(f"   ℹ️ Auto-seleccionando único archivo disponible")
+                print(f"   Auto-seleccionando único archivo disponible")
             
             if target_file:
                 file_name = next((f['original_name'] for f in available_files if f['file_id'] == target_file), target_file)
-                print(f"✅ Archivo objetivo: {file_name}")
+                print(f"Archivo objetivo: {file_name}")
             else:
-                print(f"ℹ️ No se requiere archivo específico")
+                print(f"No se requiere archivo específico")
             
-            # PASO 5: 📊 CÁLCULO AUTOMÁTICO DE ESTADÍSTICAS
+            # PASO 5: CÁLCULO AUTOMÁTICO DE ESTADÍSTICAS
             calculated_stats = None
             
             if query_analysis['type'] == 'statistical' and target_file:
-                print(f"\n📊 Calculando estadísticas en tiempo real...")
+                print(f"\nCalculando estadísticas en tiempo real...")
                 
                 # Buscar información del archivo
                 file_info = next((f for f in available_files if f['file_id'] == target_file or target_file in f['original_name']), None)
@@ -127,8 +122,8 @@ class AIController:
                     parquet_path = file_info.get('parquet_path')
                     
                     if parquet_path:
-                        print(f"   📂 Usando: {parquet_path}")
-                        print(f"   🔢 Columnas a analizar: {len(file_info['columns'])}")
+                        print(f"   Usando: {parquet_path}")
+                        print(f"   Columnas a analizar: {len(file_info['columns'])}")
                         
                         calculated_stats = await self.sql_executor.calculate_statistics(
                             file_info['file_id'],
@@ -139,38 +134,38 @@ class AIController:
                         if calculated_stats:
                             num_numeric = len(calculated_stats.get('numeric', {}))
                             num_categorical = len(calculated_stats.get('categorical', {}))
-                            print(f"   ✅ Estadísticas calculadas:")
+                            print(f"   Estadísticas calculadas:")
                             print(f"      • {num_numeric} columnas numéricas analizadas")
                             print(f"      • {num_categorical} columnas categóricas analizadas")
                         else:
-                            print(f"   ⚠️ No se pudieron calcular estadísticas")
+                            print(f"   No se pudieron calcular estadísticas")
                     else:
-                        print(f"   ⚠️ Parquet no disponible para {target_file}")
+                        print(f"   Parquet no disponible para {target_file}")
                 else:
-                    print(f"   ⚠️ Información del archivo no disponible")
+                    print(f"   Información del archivo no disponible")
             
-            # PASO 6: 📝 CONSTRUCCIÓN DE CONTEXTO ENRIQUECIDO
-            print(f"\n📝 Construyendo contexto...")
+            # PASO 6: CONSTRUCCIÓN DE CONTEXTO ENRIQUECIDO
+            print(f"\nConstruyendo contexto...")
             context = await self.context_builder.build_context(target_file)
             
             # Agregar estadísticas calculadas al contexto
             if calculated_stats:
                 context += "\n\n" + "="*60
-                context += "\n🔢 ESTADÍSTICAS CALCULADAS EN TIEMPO REAL\n"
+                context += "\nESTADÍSTICAS CALCULADAS EN TIEMPO REAL\n"
                 context += "="*60 + "\n"
                 context += self._format_statistics(calculated_stats)
-                print(f"   ✅ Contexto enriquecido con estadísticas reales")
+                print(f"   Contexto enriquecido con estadísticas reales")
             
-            # PASO 7: 💬 CONTEXTO CONVERSACIONAL
+            # PASO 7: CONTEXTO CONVERSACIONAL
             conversation_context = self.conversation_manager.build_conversation_context(session_id)
             
             if conversation_context:
                 intent_pattern = self.conversation_manager.get_intent_pattern(session_id)
-                print(f"   💬 Contexto conversacional disponible")
-                print(f"   📊 Patrón de intenciones: {' → '.join(intent_pattern[-3:])}")
+                print(f"   Contexto conversacional disponible")
+                print(f"   Patrón de intenciones: {' → '.join(intent_pattern[-3:])}")
             
-            # PASO 8: 🎨 CONSTRUCCIÓN DE PROMPT DINÁMICO
-            print(f"\n🎨 Generando prompt optimizado...")
+            # PASO 8: CONSTRUCCIÓN DE PROMPT DINÁMICO
+            print(f"\nGenerando prompt optimizado...")
             prompt = self.prompt_builder.build(
                 context, 
                 request.question, 
@@ -181,22 +176,22 @@ class AIController:
             prompt_preview = prompt[:200].replace('\n', ' ')
             print(f"   Preview: {prompt_preview}...")
             
-            # PASO 9: 🤖 GENERACIÓN DE RESPUESTA CON GEMINI
-            print(f"\n🤖 Consultando a Gemini...")
+            # PASO 9: GENERACIÓN DE RESPUESTA CON GEMINI
+            print(f"\nConsultando a Gemini...")
             ai_response = await self._generate_response(prompt)
             
             response_preview = ai_response[:150].replace('\n', ' ')
-            print(f"   ✅ Respuesta recibida: {response_preview}...")
+            print(f"   Respuesta recibida: {response_preview}...")
             
-            # PASO 10: 🔧 POST-PROCESAMIENTO DE RESPUESTA
-            print(f"\n🔧 Post-procesando respuesta...")
+            # PASO 10: POST-PROCESAMIENTO DE RESPUESTA
+            print(f"\nPost-procesando respuesta...")
             final_response = self.response_processor.process(
                 ai_response,
                 query_analysis,
                 target_file
             )
             
-            # PASO 11: 💾 GUARDAR EN HISTORIAL
+            # PASO 11: GUARDAR EN HISTORIAL
             self.conversation_manager.add_message(
                 session_id, 
                 'assistant', 
@@ -210,7 +205,7 @@ class AIController:
             )
             
             print(f"\n{'='*60}")
-            print(f"✅ CONSULTA COMPLETADA EXITOSAMENTE")
+            print(f"CONSULTA COMPLETADA EXITOSAMENTE")
             print(f"{'='*60}\n")
             
             return {
@@ -231,7 +226,7 @@ class AIController:
             error_trace = traceback.format_exc()
             
             print(f"\n{'='*60}")
-            print(f"❌ ERROR EN CONSULTA")
+            print(f"ERROR EN CONSULTA")
             print(f"{'='*60}")
             print(f"Error: {str(e)}")
             print(f"Traceback:\n{error_trace}")
@@ -254,7 +249,7 @@ class AIController:
         
         # Estadísticas numéricas
         if 'numeric' in stats and stats['numeric']:
-            formatted.append("\n📊 COLUMNAS NUMÉRICAS:\n")
+            formatted.append("\nCOLUMNAS NUMÉRICAS:\n")
             
             for col, values in stats['numeric'].items():
                 formatted.append(f"**{col}**")
@@ -268,7 +263,7 @@ class AIController:
         
         # Estadísticas categóricas
         if 'categorical' in stats and stats['categorical']:
-            formatted.append("\n📋 COLUMNAS CATEGÓRICAS:\n")
+            formatted.append("\nCOLUMNAS CATEGÓRICAS:\n")
             
             for col, values in stats['categorical'].items():
                 formatted.append(f"**{col}** ({values['valores_unicos']} valores únicos)")
@@ -283,7 +278,7 @@ class AIController:
         total_numeric = len(stats.get('numeric', {}))
         total_categorical = len(stats.get('categorical', {}))
         
-        formatted.append(f"\n📈 RESUMEN:")
+        formatted.append(f"\nRESUMEN:")
         formatted.append(f"  • {total_numeric} columnas numéricas analizadas")
         formatted.append(f"  • {total_categorical} columnas categóricas analizadas")
         formatted.append(f"  • Estadísticas calculadas en tiempo real con SQL")
@@ -318,7 +313,7 @@ class AIController:
             return response.text
             
         except Exception as e:
-            print(f"❌ Error en generación con Gemini: {e}")
+            print(f"Error en generación con Gemini: {e}")
             return f"Error generando respuesta con el modelo AI: {str(e)}"
     
     def get_conversation_summary(self, session_id: str) -> Dict[str, Any]:

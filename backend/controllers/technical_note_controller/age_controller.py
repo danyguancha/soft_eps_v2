@@ -14,9 +14,7 @@ class AgeController:
     ) -> Dict[str, Any]:
         """Obtiene rangos de edades únicas en años y meses - CON FORMATO DD/MM/YYYY"""
         try:
-            print(f"📅 Obteniendo rangos de edades para: {filename}")
-            print(f"🗓️ Fecha de corte: {corte_fecha}")
-            
+            print(f"Obteniendo rangos de edades para: {filename}")            
             file_key = f"technical_{filename.replace('.', '_').replace(' ', '_').replace('-', '_')}"
             
             # ASEGURAR FUENTE DE DATOS
@@ -36,7 +34,7 @@ class AgeController:
             years_result = duckdb_service.conn.execute(years_sql).fetchall()
             unique_years = [int(row[0]) for row in years_result if row[0] is not None]
             
-            print(f"📊 Edades en años encontradas: {len(unique_years)} valores únicos")
+            print(f"Edades en años encontradas: {len(unique_years)} valores únicos")
             
             # CORREGIR: Calcular edades en meses usando strptime para formato DD/MM/YYYY
             months_sql = f"""
@@ -58,7 +56,7 @@ class AgeController:
             months_result = duckdb_service.conn.execute(months_sql).fetchall()
             unique_months = [int(row[0]) for row in months_result if row[0] is not None]
             
-            print(f"📊 Edades en meses encontradas: {len(unique_months)} valores únicos")
+            print(f"Edades en meses encontradas: {len(unique_months)} valores únicos")
             
             # CORREGIR: Estadísticas con formato DD/MM/YYYY correcto
             stats_sql = f"""
@@ -119,7 +117,7 @@ class AgeController:
             }
             
         except Exception as e:
-            print(f"❌ Error obteniendo rangos de edades: {e}")
+            print(f"Error obteniendo rangos de edades: {e}")
             import traceback
             traceback.print_exc()
             return {

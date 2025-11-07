@@ -43,7 +43,7 @@ class ContextBuilder:
             return full_context
             
         except Exception as e:
-            print(f"❌ Error construyendo contexto: {e}")
+            print(f"Error construyendo contexto: {e}")
             return "Contexto no disponible."
     
     async def get_available_files(self) -> List[Dict[str, Any]]:
@@ -52,7 +52,7 @@ class ContextBuilder:
             available_files = []
             
             if not os.path.exists(self.metadata_cache_path):
-                print(f"⚠️ Carpeta {self.metadata_cache_path} no encontrada")
+                print(f"Carpeta {self.metadata_cache_path} no encontrada")
                 return []
             
             metadata_files = glob.glob(os.path.join(self.metadata_cache_path, "*.json"))
@@ -77,14 +77,14 @@ class ContextBuilder:
                     available_files.append(file_info)
                     
                 except Exception as file_error:
-                    print(f"⚠️ Error leyendo {metadata_file}: {file_error}")
+                    print(f"Error leyendo {metadata_file}: {file_error}")
                     continue
             
             print(f"📁 Encontrados {len(available_files)} archivos en metadata_cache")
             return available_files
             
         except Exception as e:
-            print(f"❌ Error obteniendo archivos: {e}")
+            print(f"Error obteniendo archivos: {e}")
             return []
     
     async def build_file_context(self, file_id: str, available_files: List[Dict]) -> str:
@@ -98,7 +98,7 @@ class ContextBuilder:
                     break
             
             if not file_info:
-                return f"❌ Archivo '{file_id}' no encontrado."
+                return f"Archivo '{file_id}' no encontrado."
             
             context_parts = []
             
@@ -127,12 +127,12 @@ class ContextBuilder:
                             context_parts.append(f"  - {key}: {value}")
             
             context_parts.append(f"\n✅ **Estado:** Archivo cargado y listo para análisis")
-            context_parts.append(f"\n⚠️ **Nota:** Para estadísticas calculadas (promedios, medianas, etc.), usa la sección Análisis de la aplicación")
+            context_parts.append(f"\n**Nota:** Para estadísticas calculadas (promedios, medianas, etc.), usa la sección Análisis de la aplicación")
             
             return "\n".join(context_parts)
             
         except Exception as e:
-            print(f"❌ Error en contexto específico: {e}")
+            print(f"Error en contexto específico: {e}")
             return f"Error obteniendo información del archivo"
     
     def build_general_context(self, available_files: List[Dict]) -> str:
@@ -157,7 +157,7 @@ class ContextBuilder:
     def _get_no_files_message(self) -> str:
         """Mensaje cuando no hay archivos"""
         return """
-❌ **No hay archivos cargados actualmente.**
+**No hay archivos cargados actualmente.**
 
 📁 **Para comenzar:**
 1. Ve a la sección "Transformar"

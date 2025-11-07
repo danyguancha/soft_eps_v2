@@ -12,7 +12,7 @@ class IntentClassifier:
     def __init__(self):
         try:
             self.nlp = spacy.load("es_core_news_lg")
-            print("✅ Modelo spaCy large cargado")
+            print("Modelo spaCy large cargado")
         except OSError:
             import subprocess
             subprocess.run(["python", "-m", "spacy", "download", "es_core_news_lg"])
@@ -28,7 +28,7 @@ class IntentClassifier:
                 "columnas disponibles", "listar columnas"
             ],
             'statistical': [
-                # ✅ MÁS VARIACIONES ESPECÍFICAS
+                # MÁS VARIACIONES ESPECÍFICAS
                 "realiza estadísticas", "genera estadísticas", "generame estadísticas",
                 "calcula estadísticas", "dame estadísticas", "estadísticas del archivo",
                 "hacer estadísticas", "obtener estadísticas", "mostrar estadísticas",
@@ -78,7 +78,7 @@ class IntentClassifier:
         """Configura patrones mejorados"""
         self.matcher = Matcher(self.nlp.vocab)
         
-        # ✅ PATRÓN 1: [VERBO] + estadísticas
+        # PATRÓN 1: [VERBO] + estadísticas
         pattern_stats_verb = [
             {"LEMMA": {"IN": [
                 "realizar", "generar", "calcular", "obtener", 
@@ -89,7 +89,7 @@ class IntentClassifier:
         ]
         self.matcher.add("STATS_VERB", [pattern_stats_verb])
         
-        # ✅ PATRÓN 2: estadísticas + de/del + [archivo/datos]
+        # PATRÓN 2: estadísticas + de/del + [archivo/datos]
         pattern_stats_of = [
             {"LOWER": {"IN": ["estadísticas", "estadística"]}},
             {"LOWER": {"IN": ["de", "del", "para"]}},
@@ -97,7 +97,7 @@ class IntentClassifier:
         ]
         self.matcher.add("STATS_OF", [pattern_stats_of])
         
-        # ✅ PATRÓN 3: Solo "estadísticas" en consulta corta
+        # PATRÓN 3: Solo "estadísticas" en consulta corta
         pattern_stats_simple = [
             {"LOWER": {"IN": ["estadísticas", "estadística", "estadisticos"]}}
         ]
@@ -116,7 +116,7 @@ class IntentClassifier:
         doc = self.nlp(text.lower())
         text_lower = text.lower()
         
-        # ✅ PASO 1: DETECCIÓN DIRECTA CON REGEX (MÁS RÁPIDO Y PRECISO)
+        # PASO 1: DETECCIÓN DIRECTA CON REGEX (MÁS RÁPIDO Y PRECISO)
         stats_patterns = [
             r'\b(genera|realiza|calcula|dame|obtener|hacer|muestra|crea)\s+(?:las?\s+)?estad[ií]sticas?\b',
             r'\bestad[ií]sticas?\s+(?:de|del|para)\b',
@@ -127,25 +127,25 @@ class IntentClassifier:
         
         for pattern in stats_patterns:
             if re.search(pattern, text_lower, re.IGNORECASE):
-                print("🎯 ESTADÍSTICAS detectadas por regex")
+                print("ESTADÍSTICAS detectadas por regex")
                 return ('statistical', 0.98)
         
-        # ✅ PASO 2: VERIFICAR PATRONES SINTÁCTICOS
+        # PASO 2: VERIFICAR PATRONES SINTÁCTICOS
         matches = self.matcher(doc)
         if matches:
             match_names = [self.nlp.vocab.strings[match_id] for match_id, start, end in matches]
             
             # Prioridad máxima: patrones de estadísticas
             if any(name in match_names for name in ["STATS_VERB", "STATS_OF", "STATS_SIMPLE"]):
-                print("🎯 ESTADÍSTICAS detectadas por patrón sintáctico")
+                print("ESTADÍSTICAS detectadas por patrón sintáctico")
                 return ('statistical', 0.97)
             
             # Solo estructura si menciona columnas Y NO estadísticas
             if "STRUCTURE_PATTERN" in match_names and "estad" not in text_lower:
-                print("🎯 ESTRUCTURA detectada")
+                print("ESTRUCTURA detectada")
                 return ('structure_analysis', 0.95)
         
-        # ✅ PASO 3: PALABRAS CLAVE DIRECTAS
+        # PASO 3: PALABRAS CLAVE DIRECTAS
         stats_keywords = [
             'estadísticas', 'estadística', 'estadistico', 'estadísticos',
             'promedio', 'media', 'mediana', 'moda',
@@ -164,7 +164,7 @@ class IntentClassifier:
             structure_count = sum(1 for keyword in structure_keywords if keyword in text_lower)
             
             if structure_count == 0 or stats_count > structure_count:
-                print(f"🎯 ESTADÍSTICAS detectadas ({stats_count} palabras clave)")
+                print(f"ESTADÍSTICAS detectadas ({stats_count} palabras clave)")
                 return ('statistical', 0.90)
         
         # PASO 4: Similaridad vectorial
@@ -187,7 +187,7 @@ class IntentClassifier:
         if confidence < 0.6:
             return ('general', confidence)
         
-        print(f"🎯 Intención: {best_intent} (confianza: {confidence:.2f})")
+        print(f"Intención: {best_intent} (confianza: {confidence:.2f})")
         return (best_intent, confidence)
     
     def _cosine_similarity(self, vec1: np.ndarray, vec2: np.ndarray) -> float:
@@ -210,7 +210,7 @@ class IntentClassifier:
             if any(token.text in greeting_words for token in doc):
                 return ('greeting', 0.95)
         
-        # ✅ FORZAR ESTADÍSTICAS SI MENCIONA PALABRAS CLAVE
+        # FORZAR ESTADÍSTICAS SI MENCIONA PALABRAS CLAVE
         stats_words = [
             'estadísticas', 'estadística', 'promedio', 'media', 'mediana',
             'suma', 'total', 'máximo', 'mínimo', 'desviación', 'frecuencia'
@@ -219,7 +219,7 @@ class IntentClassifier:
         if any(word in text_lower for word in stats_words):
             # Solo si NO es claramente estructura
             if 'columnas' not in text_lower or 'estadísticas' in text_lower:
-                print("🔄 Ajuste: Forzando STATISTICAL")
+                print("Ajuste: Forzando STATISTICAL")
                 return ('statistical', 0.95)
         
         # Solo estructura si menciona columnas sin estadísticas

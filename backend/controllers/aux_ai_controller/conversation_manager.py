@@ -63,7 +63,7 @@ class ConversationManager:
     def set_active_file(self, session_id: str, file_id: str):
         """Establece archivo activo"""
         self.active_files[session_id] = file_id
-        print(f"📌 Archivo activo: {file_id}")
+        print(f"Archivo activo: {file_id}")
     
     def build_conversation_context(self, session_id: str) -> str:
         """Construye contexto enriquecido con intenciones"""
@@ -90,7 +90,7 @@ class ConversationManager:
         
         active_file = self.get_active_file(session_id)
         if active_file:
-            context_parts.append(f"\n📌 **ARCHIVO ACTIVO:** {active_file}")
+            context_parts.append(f"\n**ARCHIVO ACTIVO:** {active_file}")
         
         return "\n".join(context_parts)
     
@@ -112,7 +112,7 @@ class ConversationManager:
         if query_analysis.get('requires_file'):
             active = self.get_active_file(session_id)
             if active:
-                print(f"💡 Usando archivo activo: {active}")
+                print(f"Usando archivo activo: {active}")
                 return active
         
         return None

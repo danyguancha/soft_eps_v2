@@ -1,10 +1,10 @@
-# services/technical_note_services/report_service_aux/corrected_months.py - ✅ VERSIÓN EXACTA EXCEL
+# services/technical_note_services/report_service_aux/corrected_months.py
 from services.duckdb_service.duckdb_service import duckdb_service
 
 class CorrectedMonths:
     def get_age_months_field_corrected(self, data_source: str, corte_fecha: str) -> str:
         """
-        ✅ CÁLCULO DE MESES EXACTAMENTE IGUAL QUE EXCEL SIFECHA()
+        CÁLCULO DE MESES EXACTAMENTE IGUAL QUE EXCEL SIFECHA()
         
         SIFECHA en Excel calcula meses completos considerando:
         - Si el día de nacimiento <= día de corte → mes completo
@@ -15,8 +15,8 @@ class CorrectedMonths:
         CASE WHEN DAY(nac) <= DAY(corte) THEN 0 ELSE -1 END
         """
         try:
-            print(f"\n🔍 ===== DEBUG get_age_months_field_corrected =====")
-            print(f"   📅 corte_fecha RECIBIDA: {corte_fecha}")
+            print(f"\n===== DEBUG get_age_months_field_corrected =====")
+            print(f"   corte_fecha RECIBIDA: {corte_fecha}")
             
             describe_sql = f"DESCRIBE SELECT * FROM {data_source}"
             columns_result = duckdb_service.conn.execute(describe_sql).fetchall()
@@ -27,7 +27,7 @@ class CorrectedMonths:
             
             for candidate in edad_candidates:
                 if candidate in column_names:
-                    print(f"   ✅ Campo edad meses detectado: {candidate}")
+                    print(f"   Campo edad meses detectado: {candidate}")
                     return f'"{candidate}"'
             
             # Buscar fecha de nacimiento
@@ -40,7 +40,7 @@ class CorrectedMonths:
                     break
             
             if fecha_field:
-                # ✅ FÓRMULA EXACTA DE SIFECHA DE EXCEL
+                # FÓRMULA EXACTA DE SIFECHA DE EXCEL
                 calc_field = f"""(
                     (date_part('year', DATE '{corte_fecha}') - date_part('year', strptime("{fecha_field}", '%d/%m/%Y'))) * 12
                     + (date_part('month', DATE '{corte_fecha}') - date_part('month', strptime("{fecha_field}", '%d/%m/%Y')))
@@ -50,12 +50,7 @@ class CorrectedMonths:
                         ELSE -1
                       END
                 )"""
-                
-                print(f"   ✅ Calculando edad meses desde: {fecha_field}")
-                print(f"   📅 Con fecha de corte DINÁMICA: {corte_fecha}")
-                print(f"   🔧 Fórmula SQL (EXACTA EXCEL): Años*12 + Meses + Ajuste días")
-                print(f"   💡 Nota: Replica EXACTAMENTE SIFECHA() de Excel")
-                
+                                
                 # Validación con casos de prueba
                 try:
                     test_sql = f"""
@@ -73,7 +68,7 @@ class CorrectedMonths:
                     """
                     test_result = duckdb_service.conn.execute(test_sql).fetchall()
                     
-                    print(f"   ✅ Validación - Ejemplos (comparando con date_diff):")
+                    print(f"   Validación - Ejemplos (comparando con date_diff):")
                     for row in test_result:
                         fecha_nac = row[0]
                         dia_nac = row[1]
@@ -88,7 +83,7 @@ class CorrectedMonths:
                         print(f"      {simbolo} Nac: {fecha_nac} (día {dia_nac}) → Excel: {edad_excel} meses | date_diff: {edad_date_diff} | Dif: {diferencia}")
                         
                 except Exception as test_error:
-                    print(f"   ❌ Error en validación: {test_error}")
+                    print(f"   Error en validación: {test_error}")
                     raise
                 
                 print(f"===== FIN DEBUG =====\n")
@@ -97,5 +92,5 @@ class CorrectedMonths:
             raise Exception("No se encontró campo de edad en meses ni fecha de nacimiento")
             
         except Exception as e:
-            print(f"   ❌ Error: {e}")
+            print(f"   Error: {e}")
             raise

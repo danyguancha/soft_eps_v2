@@ -83,7 +83,7 @@ EJEMPLO DE FORMATO CORRECTO:
     
     def _build_greeting_prompt(self, context, question, analysis, conv_context, nlp_insights, format_instructions) -> str:
         return f"""
-Eres EvalNoteBot 🤖, un asistente de análisis de datos profesional.
+Eres EvalNoteBot, un asistente de análisis de datos profesional.
 
 {format_instructions}
 

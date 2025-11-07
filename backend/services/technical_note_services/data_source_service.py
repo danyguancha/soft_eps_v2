@@ -25,7 +25,7 @@ class DataSourceService:
             ):
                 table_info = duckdb_service.loaded_tables[file_key]
                 parquet_path = table_info.get('parquet_path')
-                print(f"✅ Usando Parquet existente: {parquet_path}")
+                print(f"Usando Parquet existente: {parquet_path}")
                 return f"read_parquet('{parquet_path}')"
             
             # Usar método existente: _load_file_on_demand_with_regeneration
@@ -34,7 +34,7 @@ class DataSourceService:
             ):
                 table_info = duckdb_service.loaded_tables[file_key]
                 parquet_path = table_info.get('parquet_path')
-                print(f"✅ Cargado bajo demanda: {parquet_path}")
+                print(f"Cargado bajo demanda: {parquet_path}")
                 return f"read_parquet('{parquet_path}')"
             
             # Convertir desde CSV como última opción
@@ -65,7 +65,7 @@ class DataSourceService:
             parquet_path = conversion_result.get("parquet_path")
             # Usar método existente: load_parquet_lazy
             duckdb_service.load_parquet_lazy(file_key, parquet_path)
-            print(f"✅ Conversión exitosa: {parquet_path}")
+            print(f"Conversión exitosa: {parquet_path}")
             return f"read_parquet('{parquet_path}')"
         
         # Fallback a CSV directo
@@ -82,7 +82,7 @@ class DataSourceService:
         try:
             test_query = f"SELECT COUNT(*) FROM {data_source}"
             result = duckdb_service.conn.execute(test_query).fetchone()
-            print(f"✅ Archivo legible: {result[0]} filas totales")
+            print(f"Archivo legible: {result[0]} filas totales")
             return True
         except Exception as test_error:
             print(f"❌ Error leyendo archivo: {test_error}")

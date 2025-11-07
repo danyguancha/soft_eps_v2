@@ -6,7 +6,7 @@ from typing import Any, Dict, List
 
 class CSVExporter:
     """
-    📄 EXPORTADOR CSV
+    EXPORTADOR CSV
     - Exporta reportes temporales con jerarquía (ACTIVIDAD → AÑO → MES)
     - Devuelve contenido en memoria
     """
@@ -39,10 +39,10 @@ class CSVExporter:
             temporal_data = report_data.get('temporal_data', {})
             items = report_data.get('items', [])
             
-            print(f"📊 Exportando CSV temporal: {len(items)} actividades, {len(temporal_data)} claves")
+            print(f"Exportando CSV temporal: {len(items)} actividades, {len(temporal_data)} claves")
             
             if not temporal_data:
-                print("⚠️ Sin datos temporales para exportar")
+                print("Sin datos temporales para exportar")
                 return None
             
             # Construir datos
@@ -52,11 +52,11 @@ class CSVExporter:
             # Escribir en memoria
             csv_content = self._write_csv_to_memory(headers, rows)
             
-            print(f"✅ CSV Temporal generado en memoria: {len(rows)} filas")
+            print(f"CSV Temporal generado en memoria: {len(rows)} filas")
             return csv_content
             
         except Exception as e:
-            print(f"❌ Error exportando CSV temporal: {e}")
+            print(f"Error exportando CSV temporal: {e}")
             import traceback
             traceback.print_exc()
             return None

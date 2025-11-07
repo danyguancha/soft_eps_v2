@@ -12,9 +12,9 @@ class AnalysisTemporal:
             )
             temporal_result = duckdb_service.conn.execute(temporal_sql).fetchall()
             temporal_data = self._process_temporal_results(temporal_result)
-            print(f"📊 Análisis temporal: {len(temporal_data)} columnas")
+            print(f"Análisis temporal: {len(temporal_data)} columnas")
         except Exception as e:
-            print(f"⚠️ Error temporal (continuando): {e}")
+            print(f"Error temporal (continuando): {e}")
         return temporal_data
     
     def _process_temporal_results(self, temporal_result) -> Dict[str, Any]:

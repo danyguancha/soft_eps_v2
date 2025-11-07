@@ -3,7 +3,7 @@ from typing import Dict, Any, List, Optional
 from utils.sql_utils import SQLUtils
 
 class CrossFilesController:
-    """Controlador para cruces de archivos (VLOOKUP/BUSCARX)"""
+    """Controlador para cruces de archivos (BUSCARX)"""
     
     def __init__(self, conn, loaded_tables: Dict):
         self.conn = conn
@@ -120,9 +120,9 @@ class CrossFilesController:
 
             # VALIDAR RESULTADO VLOOKUP
             if total_rows != expected_rows:
-                print(f"⚠️ ADVERTENCIA VLOOKUP: {total_rows} ≠ {expected_rows} esperados")
+                print(f"ADVERTENCIA VLOOKUP: {total_rows} ≠ {expected_rows} esperados")
             else:
-                print(f"✅ VLOOKUP PERFECTO: {total_rows} registros = {expected_rows} base")
+                print(f"VLOOKUP PERFECTO: {total_rows} registros = {expected_rows} base")
 
             # Contar matches y no-matches
             matches, no_matches = self._count_matches(result_df, mapped_file2_cols if 'mapped_file2_cols' in locals() else [])
@@ -153,10 +153,10 @@ class CrossFilesController:
             }
 
         except Exception as e:
-            print(f"   ❌ Error: {str(e)}")
+            print(f"   Error: {str(e)}")
             
             if 'vlookup_sql' in locals():
-                print(f"🔍 VLOOKUP SQL generado:")
+                print(f"VLOOKUP SQL generado:")
                 print("="*60)
                 print(vlookup_sql)
                 print("="*60)
@@ -192,7 +192,7 @@ class CrossFilesController:
             for real_col in real_cols:
                 if user_clean == real_col.strip():
                     mapped_cols.append(real_col)
-                    print(f"   🔄 Mapeado: '{user_col}' → '{real_col}'")
+                    print(f"    Mapeado: '{user_col}' → '{real_col}'")
                     break
             else:
                 raise ValueError(f"Columna '{user_col}' no existe en el archivo")

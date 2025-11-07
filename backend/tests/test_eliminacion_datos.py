@@ -43,7 +43,7 @@ class TestEliminacionDatos(unittest.TestCase):
             self.assertIn("message", data)
             self.assertEqual(data["rows_deleted"], 5)
             self.assertEqual(data["remaining_rows"], 95)
-            print(f"✅ ED-01 PASSED")
+            print(f"ED-01 PASSED")
             return
         self.assertTrue(True)
     
@@ -65,7 +65,7 @@ class TestEliminacionDatos(unittest.TestCase):
             data = response.json()
             self.assertIn("message", data)
             self.assertIn("rows_deleted", data)
-            print(f"✅ ED-02 PASSED")
+            print(f"ED-02 PASSED")
             return
         self.assertTrue(True)
     
@@ -87,7 +87,7 @@ class TestEliminacionDatos(unittest.TestCase):
         if response.status_code == 200:
             data = response.json()
             self.assertIn("message", data)
-            print(f"✅ ED-03 PASSED")
+            print(f"ED-03 PASSED")
             return
         self.assertTrue(True)
     
@@ -111,7 +111,7 @@ class TestEliminacionDatos(unittest.TestCase):
         if response.status_code == 400:
             data = response.json()
             self.assertIn("detail", data)
-            print(f"✅ ED-04 PASSED")
+            print(f"ED-04 PASSED")
             return
         self.assertTrue(True)
     

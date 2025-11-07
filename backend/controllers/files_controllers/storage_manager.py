@@ -1,4 +1,4 @@
-# controllers/files_controllers/storage_manager.py - ✅ MODIFICADO PARA TECHNICAL_NOTE
+# controllers/files_controllers/storage_manager.py - MODIFICADO PARA TECHNICAL_NOTE
 import os
 import json
 import glob
@@ -11,7 +11,7 @@ class FileStorageManager:
     def __init__(self):
         self.data_cache: Dict[str, pd.DataFrame] = {}
         
-        # ✅ CAMBIAR DIRECTORIO A TECHNICAL_NOTE
+        # CAMBIAR DIRECTORIO A TECHNICAL_NOTE
         self.upload_dir = os.path.abspath("technical_note")
         self.storage_file = os.path.join('uploads', "files_info.json")
                 
@@ -27,7 +27,7 @@ class FileStorageManager:
         pattern = os.path.join(self.upload_dir, "*")
         files = glob.glob(pattern)
         
-        # ✅ EXTRAER NOMBRES ORIGINALES DE ARCHIVOS (NO UUIDs)
+        # EXTRAER NOMBRES ORIGINALES DE ARCHIVOS (NO UUIDs)
         valid_extensions = {'.csv', '.xlsx', '.xls'}
         existing_files = set()
         
@@ -38,7 +38,7 @@ class FileStorageManager:
             
             _, ext = os.path.splitext(filename)
             if ext.lower() in valid_extensions:
-                # ✅ USAR EL FILENAME COMPLETO COMO ID (nombre original)
+                # USAR EL FILENAME COMPLETO COMO ID (nombre original)
                 existing_files.add(filename)
         
         return existing_files
@@ -54,22 +54,22 @@ class FileStorageManager:
                 with open(self.storage_file, 'r', encoding='utf-8') as f:
                     json_data = json.load(f)
                 
-                # ✅ SINCRONIZAR: Solo mantener archivos que existen físicamente
+                # SINCRONIZAR: Solo mantener archivos que existen físicamente
                 synced_storage = {}
                 for file_id, file_info in json_data.items():
                     original_name = file_info.get("original_name", file_id)
                     
-                    # ✅ VERIFICAR POR NOMBRE ORIGINAL, NO POR UUID
+                    # VERIFICAR POR NOMBRE ORIGINAL, NO POR UUID
                     if original_name in existing_files:
                         file_path = os.path.join(self.upload_dir, original_name)
                         if os.path.exists(file_path):
-                            # ✅ ACTUALIZAR PATH CON EL CORRECTO
+                            # ACTUALIZAR PATH CON EL CORRECTO
                             file_info["path"] = file_path
                             synced_storage[file_id] = file_info
                         else:
-                            print(f"⚠️ JSON tiene entrada pero archivo no existe: {original_name}")
+                            print(f"JSON tiene entrada pero archivo no existe: {original_name}")
                     else:
-                        print(f"🗑️ Eliminando del JSON archivo inexistente: {original_name}")
+                        print(f"Eliminando del JSON archivo inexistente: {original_name}")
                 
                 self.storage = synced_storage
                 
@@ -81,7 +81,7 @@ class FileStorageManager:
                 self.storage = {}
                 
         except Exception as e:
-            print(f"❌ Error cargando storage: {e}")
+            print(f"Error cargando storage: {e}")
             self.storage = {}
     
     def _save_storage(self):
@@ -91,13 +91,13 @@ class FileStorageManager:
             with open(self.storage_file, 'w', encoding='utf-8') as f:
                 json.dump(self.storage, f, indent=2, ensure_ascii=False)
         except Exception as e:
-            print(f"❌ Error guardando storage: {e}")
+            print(f"Error guardando storage: {e}")
     
     def ensure_upload_directory(self) -> str:
         """Asegura que el directorio technical_note exista"""
         if not os.path.exists(self.upload_dir):
             os.makedirs(self.upload_dir, exist_ok=True)
-            print(f"✅ Directorio creado: {self.upload_dir}")
+            print(f"Directorio creado: {self.upload_dir}")
         return self.upload_dir
     
     def store_file_with_original_name(
@@ -120,19 +120,19 @@ class FileStorageManager:
             str: Path final donde se guardó el archivo
         """
         try:
-            # ✅ ASEGURAR QUE EL DIRECTORIO EXISTE
+            # ASEGURAR QUE EL DIRECTORIO EXISTE
             self.ensure_upload_directory()
             
-            # ✅ CONSTRUIR RUTA DESTINO CON NOMBRE ORIGINAL
+            # CONSTRUIR RUTA DESTINO CON NOMBRE ORIGINAL
             destination_path = os.path.join(self.upload_dir, original_filename)
             
-            # ✅ MANEJAR ARCHIVOS EXISTENTES
+            # MANEJAR ARCHIVOS EXISTENTES
             if os.path.exists(destination_path):
                 if overwrite:
-                    print(f"⚠️ Sobrescribiendo archivo existente: {original_filename}")
+                    print(f"Sobrescribiendo archivo existente: {original_filename}")
                     os.remove(destination_path)
                 else:
-                    # ✅ GENERAR NOMBRE ÚNICO SI NO SE QUIERE SOBRESCRIBIR
+                    # GENERAR NOMBRE ÚNICO SI NO SE QUIERE SOBRESCRIBIR
                     base_name, ext = os.path.splitext(original_filename)
                     counter = 1
                     while os.path.exists(destination_path):
@@ -140,16 +140,16 @@ class FileStorageManager:
                         destination_path = os.path.join(self.upload_dir, new_filename)
                         counter += 1
                     original_filename = os.path.basename(destination_path)
-                    print(f"📝 Renombrado a: {original_filename}")
+                    print(f"Renombrado a: {original_filename}")
             
-            # ✅ COPIAR ARCHIVO AL DESTINO
+            # COPIAR ARCHIVO AL DESTINO
             if os.path.exists(source_file_path):
                 shutil.copy2(source_file_path, destination_path)
-                print(f"✅ Archivo copiado: {original_filename}")
+                print(f"Archivo copiado: {original_filename}")
             else:
                 raise FileNotFoundError(f"Archivo fuente no encontrado: {source_file_path}")
             
-            # ✅ ACTUALIZAR INFORMACIÓN DEL ARCHIVO
+            # ACTUALIZAR INFORMACIÓN DEL ARCHIVO
             file_size = os.path.getsize(destination_path)
             file_info.update({
                 "path": destination_path,
@@ -158,7 +158,7 @@ class FileStorageManager:
                 "stored_at": pd.Timestamp.now().isoformat()
             })
             
-            # ✅ USAR NOMBRE ORIGINAL COMO ID
+            # USAR NOMBRE ORIGINAL COMO ID
             file_id = original_filename
             self.storage[file_id] = file_info
             self._save_storage()
@@ -166,7 +166,7 @@ class FileStorageManager:
             return destination_path
             
         except Exception as e:
-            print(f"❌ Error almacenando archivo {original_filename}: {e}")
+            print(f"Error almacenando archivo {original_filename}: {e}")
             raise
     
     def store_file_info(self, file_id: str, file_info: Dict[str, Any]):
@@ -200,19 +200,19 @@ class FileStorageManager:
         if file_path and os.path.exists(file_path):
             return info
         else:
-            # ✅ LIMPIAR ENTRADA INVÁLIDA
+            # LIMPIAR ENTRADA INVÁLIDA
             del self.storage[file_id]
             self._save_storage()
             return None
     
     def get_file_info_by_original_name(self, original_filename: str) -> Optional[Dict[str, Any]]:
         """Obtiene información del archivo por su nombre original"""
-        # ✅ BUSCAR POR NOMBRE ORIGINAL
+        # BUSCAR POR NOMBRE ORIGINAL
         for file_id, file_info in self.storage.items():
             if file_info.get("original_name") == original_filename:
                 return file_info
         
-        # ✅ FALLBACK: Buscar por file_id si coincide con filename
+        # FALLBACK: Buscar por file_id si coincide con filename
         return self.get_file_info(original_filename)
     
     def cache_dataframe(self, cache_key: str, df: pd.DataFrame):
@@ -243,9 +243,9 @@ class FileStorageManager:
         try:
             if file_path and os.path.exists(file_path):
                 os.remove(file_path)
-                print(f"🗑️ Archivo físico eliminado: {file_path}")
+                print(f"Archivo físico eliminado: {file_path}")
         except Exception as e:
-            print(f"⚠️ Error eliminando archivo físico: {e}")
+            print(f"Error eliminando archivo físico: {e}")
         
         # LIMPIAR CACHE EN MEMORIA
         cache_keys_to_remove = [key for key in self.data_cache.keys() 
@@ -260,7 +260,7 @@ class FileStorageManager:
     
     def remove_file_by_original_name(self, original_filename: str) -> bool:
         """Remueve archivo por su nombre original"""
-        # ✅ BUSCAR FILE_ID POR NOMBRE ORIGINAL
+        # BUSCAR FILE_ID POR NOMBRE ORIGINAL
         file_id_to_remove = None
         for file_id, file_info in self.storage.items():
             if file_info.get("original_name") == original_filename:
@@ -270,7 +270,7 @@ class FileStorageManager:
         if file_id_to_remove:
             return self.remove_file(file_id_to_remove)
         
-        # ✅ FALLBACK: Intentar por file_id directo
+        # FALLBACK: Intentar por file_id directo
         return self.remove_file(original_filename)
     
     def get_all_files(self) -> Dict[str, Dict[str, Any]]:
@@ -325,5 +325,5 @@ class FileStorageManager:
         return os.path.join(self.upload_dir, filename)
 
 
-# ✅ INSTANCIA GLOBAL
+# INSTANCIA GLOBAL
 storage_manager = FileStorageManager()

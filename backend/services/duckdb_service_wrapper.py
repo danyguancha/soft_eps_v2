@@ -16,7 +16,7 @@ class SafeDuckDBService:
             self._service = DuckDBService()
             print("DuckDB Service inicializado de forma segura")
         except Exception as e:
-            print(f"❌ Error inicializando DuckDB Service: {e}")
+            print(f"Error inicializando DuckDB Service: {e}")
             self._service = None
     
     def get_file_columns_for_cross(self, file_id: str, sheet_name: str = None) -> Dict[str, Any]:
@@ -37,7 +37,7 @@ class SafeDuckDBService:
             )
             
         except Exception as e:
-            print(f"❌ Error en get_file_columns_for_cross: {e}")
+            print(f"Error en get_file_columns_for_cross: {e}")
             traceback.print_exc()
             
             # Intentar reiniciar servicio
@@ -99,7 +99,7 @@ class SafeDuckDBService:
             self._initialize_service()
             
         except Exception as e:
-            print(f"❌ Error reiniciando servicio: {e}")
+            print(f"Error reiniciando servicio: {e}")
             self._service = None
     
     def __getattr__(self, name):
@@ -117,7 +117,7 @@ class SafeDuckDBService:
                 try:
                     return self._execute_with_timeout(attr, args, kwargs)
                 except Exception as e:
-                    print(f"❌ Error en método {name}: {e}")
+                    print(f"Error en método {name}: {e}")
                     self._safe_restart()
                     raise e
             return safe_method

@@ -20,7 +20,6 @@ class RecoverCacheFiles:
         SOLUCIÓN: Programa la auto-recuperación para ejecutarse cuando sea seguro
         En lugar de ejecutar inmediatamente durante import
         """
-        print("📅 Programando auto-recuperación para cuando file_controller esté disponible...")
         
         self._recovery_pending = True
         self._metadata_dir = metadata_dir
@@ -29,17 +28,17 @@ class RecoverCacheFiles:
         
         # Intentar ejecutar inmediatamente si file_controller ya está disponible
         if registry.is_registered('file_controller'):
-            print("✅ file_controller ya está disponible, ejecutando recuperación...")
+            print("file_controller ya está disponible, ejecutando recuperación...")
             self._execute_pending_recovery()
         else:
-            print("⏳ file_controller no disponible aún, esperando registro...")
+            print("file_controller no disponible aún, esperando registro...")
     
     def _execute_pending_recovery(self):
         """Ejecuta la recuperación pendiente si hay una programada"""
         if not self._recovery_pending:
             return
             
-        print("🚀 Ejecutando auto-recuperación programada...")
+        print("Ejecutando auto-recuperación programada...")
         self._recovery_pending = False
         
         # Ejecutar la recuperación real
@@ -65,12 +64,12 @@ class RecoverCacheFiles:
     def auto_recover_cached_files(self, metadata_dir, cache, loaded_tables):
         """Auto-recupera archivos desde cache - SOLUCIÓN DEFINITIVA"""
         try:
-            print("🔄 Iniciando auto-recuperación de archivos desde cache...")
+            print("Iniciando auto-recuperación de archivos desde cache...")
             
             recovered_count = 0
             
             if not os.path.exists(metadata_dir):
-                print("📁 No hay metadata cache para recuperar")
+                print("No hay metadata cache para recuperar")
                 return
             
             for metadata_file in os.listdir(metadata_dir):
@@ -88,7 +87,7 @@ class RecoverCacheFiles:
                     original_name = metadata.get('original_name', 'archivo_desconocido')
                     
                     if not file_id:
-                        print(f"⚠️ No hay file_id en metadata: {original_name}")
+                        print(f"No hay file_id en metadata: {original_name}")
                         continue
                     
                     # Usar el file_id para construir la ruta del parquet
@@ -96,25 +95,25 @@ class RecoverCacheFiles:
                     
                     # Verificar que el Parquet existe
                     if not os.path.exists(parquet_path):
-                        print(f"⚠️ Parquet no encontrado: {parquet_path}")
+                        print(f"Parquet no encontrado: {parquet_path}")
                         continue
                     
                     # Recuperar directamente usando el file_id
                     self._recover_single_file(file_id, parquet_path, metadata, loaded_tables)
                     recovered_count += 1
-                    print(f"✅ Recuperado: {original_name} ({file_id})")
+                    print(f"Recuperado: {original_name} ({file_id})")
                             
                 except Exception as e:
-                    print(f"❌ Error recuperando {metadata_file}: {e}")
+                    print(f"Error recuperando {metadata_file}: {e}")
                     continue
             
             if recovered_count > 0:
-                print(f"🎯 Auto-recuperación completada: {recovered_count} archivos restaurados")
+                print(f"Auto-recuperación completada: {recovered_count} archivos restaurados")
             else:
-                print("📋 No hay archivos para auto-recuperar")
+                print("No hay archivos para auto-recuperar")
                 
         except Exception as e:
-            print(f"❌ Error en auto-recuperación: {e}")
+            print(f"Error en auto-recuperación: {e}")
 
 
     def _recover_single_file(self, file_id: str, parquet_path: str, metadata: Dict[str, Any], loaded_tables: Dict[str, Any] = {}) -> None:
@@ -132,10 +131,10 @@ class RecoverCacheFiles:
                 "original_metadata": metadata
             }
             
-            print(f"📋 Archivo recuperado en loaded_tables: {file_id} → {table_name}")
+            print(f"Archivo recuperado en loaded_tables: {file_id} → {table_name}")
             
         except Exception as e:
-            print(f"❌ Error recuperando archivo individual {file_id}: {e}")
+            print(f"Error recuperando archivo individual {file_id}: {e}")
 
     def _sanitize_table_name(self, table_name: str) -> str:
         """Convierte nombres de tabla a formato seguro para DuckDB"""
@@ -177,7 +176,7 @@ class RecoverCacheFiles:
             file_controller_instance = registry.get('file_controller')
             
             if not file_controller_instance:
-                print("⚠️ No se puede limpiar sin file_controller")
+                print("No se puede limpiar sin file_controller")
                 return
             
             all_files = file_controller_instance.list_all_files()
@@ -202,15 +201,15 @@ class RecoverCacheFiles:
                         print(f"🗑️ Eliminado metadata obsoleto: {original_name}")
                         
                 except Exception as e:
-                    print(f"❌ Error limpiando {metadata_file}: {e}")
+                    print(f"Error limpiando {metadata_file}: {e}")
             
             if cleaned_count > 0:
-                print(f"🧹 Limpieza completada: {cleaned_count} metadatos obsoletos eliminados")
+                print(f"Limpieza completada: {cleaned_count} metadatos obsoletos eliminados")
             else:
-                print("✨ No hay metadatos obsoletos para limpiar")
+                print("No hay metadatos obsoletos para limpiar")
                 
         except Exception as e:
-            print(f"❌ Error en limpieza forzada: {e}")
+            print(f"Error en limpieza forzada: {e}")
 
 # INSTANCIA GLOBAL - SINGLETON
 recover_cache_files = RecoverCacheFiles()

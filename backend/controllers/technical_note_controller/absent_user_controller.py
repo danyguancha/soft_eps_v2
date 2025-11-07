@@ -36,80 +36,77 @@ class AbsentUserController:
             else:
                 clean_path = data_source
             
-            print(f"🔍 Intentando descubrir columnas en: {clean_path}")
+            print(f"Intentando descubrir columnas en: {clean_path}")
             
             # VERIFICAR QUE EL ARCHIVO EXISTE
             import os
             if not os.path.exists(clean_path):
-                print(f"❌ ARCHIVO NO EXISTE: {clean_path}")
+                print(f"ARCHIVO NO EXISTE: {clean_path}")
                 return self._get_fallback_mapping(keywords)
             
             file_size = os.path.getsize(clean_path)
-            print(f"📁 Archivo encontrado: {file_size:,} bytes")
+            print(f"Archivo encontrado: {file_size:,} bytes")
             
             available_columns = []
             
             # ENFOQUE 1: Usar parquet_schema con la columna correcta 'name'
             try:
-                print("🔄 Intentando con parquet_schema...")
+                print("Intentando con parquet_schema...")
                 # CORRECCIÓN: usar 'name' en lugar de 'column_name'
                 schema_sql = f"SELECT name FROM parquet_schema('{clean_path}')"
                 schema_result = duckdb_service.conn.execute(schema_sql).fetchall()
                 available_columns = [row[0] for row in schema_result if row[0]]  # Filtrar nulls
-                print(f"✅ parquet_schema exitoso: {len(available_columns)} columnas")
+                print(f"parquet_schema exitoso: {len(available_columns)} columnas")
             except Exception as e:
-                print(f"⚠️ parquet_schema falló: {e}")
+                print(f"parquet_schema falló: {e}")
             
             # ENFOQUE 2: Si parquet_schema falla, usar LIMIT 0 con sintaxis directa
             if not available_columns:
                 try:
-                    print("🔄 Intentando lectura directa con LIMIT 0...")
+                    print("Intentando lectura directa con LIMIT 0...")
                     # Usar sintaxis directa del archivo, no read_parquet
                     limit_sql = f"SELECT * FROM '{clean_path}' LIMIT 0"
                     result = duckdb_service.conn.execute(limit_sql)
                     if result.description:
                         available_columns = [desc[0] for desc in result.description]
-                        print(f"✅ LIMIT 0 directo exitoso: {len(available_columns)} columnas")
+                        print(f"LIMIT 0 directo exitoso: {len(available_columns)} columnas")
                 except Exception as e:
-                    print(f"⚠️ LIMIT 0 directo falló: {e}")
+                    print(f"LIMIT 0 directo falló: {e}")
             
             # ENFOQUE 3: Si falla, probar con DESCRIBE usando sintaxis directa
             if not available_columns:
                 try:
-                    print("🔄 Intentando con DESCRIBE sintaxis directa...")
+                    print("Intentando con DESCRIBE sintaxis directa...")
                     # Usar sintaxis directa, no read_parquet dentro de DESCRIBE
                     describe_sql = f"DESCRIBE SELECT * FROM '{clean_path}'"
                     describe_result = duckdb_service.conn.execute(describe_sql).fetchall()
                     available_columns = [row[0] for row in describe_result]
-                    print(f"✅ DESCRIBE directo exitoso: {len(available_columns)} columnas")
+                    print(f"DESCRIBE directo exitoso: {len(available_columns)} columnas")
                 except Exception as e:
-                    print(f"⚠️ DESCRIBE directo falló: {e}")
+                    print(f"DESCRIBE directo falló: {e}")
             
             # ENFOQUE 4: Como último recurso, usar pandas
             if not available_columns:
                 try:
-                    print("🔄 Último recurso: usando pandas...")
+                    print("Último recurso: usando pandas...")
                     import pandas as pd
                     df_sample = pd.read_parquet(clean_path, nrows=1)
                     available_columns = df_sample.columns.tolist()
-                    print(f"✅ Pandas exitoso: {len(available_columns)} columnas")
+                    print(f"Pandas exitoso: {len(available_columns)} columnas")
                 except Exception as e:
-                    print(f"⚠️ Pandas falló: {e}")
+                    print(f"Pandas falló: {e}")
             
             # VALIDACIÓN FINAL - NUNCA RETORNAR VACÍO
             if not available_columns:
-                print(f"❌ TODOS LOS MÉTODOS FALLARON - USANDO FALLBACK COMPLETO")
+                print(f"TODOS LOS MÉTODOS FALLARON - USANDO FALLBACK COMPLETO")
                 return self._get_fallback_mapping(keywords)
-            
-            print(f"🔍 DESCUBRIMIENTO EXITOSO: {len(available_columns)} columnas")
-            print(f"📋 Primeras 15 columnas encontradas: {available_columns[:15]}")
             
             # BUSCAR COLUMNAS MATCHING CON KEYWORDS
             discovered_mapping = {}
             
             for keyword in keywords:
                 normalized_keyword = self._normalize_keyword(keyword)
-                print(f"🔎 Buscando columnas para: '{keyword}' (normalizado: '{normalized_keyword}')")
+                print(f"Buscando columnas para: '{keyword}' (normalizado: '{normalized_keyword}')")
                 
                 matching_columns = []
                 activity_columns = []
@@ -125,48 +122,48 @@ class AbsentUserController:
                         try:
                             if ActivityColumn().is_activity_column(col):
                                 activity_columns.append(f'"{col}"')
-                                print(f"  ✅ Encontrada y válida: {col}")
+                                print(f"  Encontrada y válida: {col}")
                             else:
-                                print(f"  ❓ Encontrada pero filtrada por ActivityColumn: {col}")
+                                print(f"  Encontrada pero filtrada por ActivityColumn: {col}")
                         except Exception as e:
                             # Si ActivityColumn falla, incluir la columna de todos modos
                             activity_columns.append(f'"{col}"')
-                            print(f"  ⚠️ Incluida (ActivityColumn falló): {col}")
+                            print(f"  Incluida (ActivityColumn falló): {col}")
                 
                 # LOGGING DETALLADO PARA DEBUGGING
                 if matching_columns:
-                    print(f"  📊 Total columnas que contienen '{normalized_keyword}': {len(matching_columns)}")
+                    print(f"  Total columnas que contienen '{normalized_keyword}': {len(matching_columns)}")
                     if not activity_columns:
-                        print(f"  📝 Columnas encontradas pero filtradas:")
+                        print(f"  Columnas encontradas pero filtradas:")
                         for i, col in enumerate(matching_columns[:5]):
                             print(f"    {i+1}. {col}")
                 
                 if activity_columns:
                     discovered_mapping[normalized_keyword] = activity_columns
-                    print(f"📋 {keyword}: {len(activity_columns)} columnas de actividad asignadas")
+                    print(f"{keyword}: {len(activity_columns)} columnas de actividad asignadas")
                 else:
-                    print(f"⚠️ No se encontraron columnas válidas para: {keyword}")
+                    print(f"No se encontraron columnas válidas para: {keyword}")
             
             # SI NO SE ENCUENTRA NADA ÚTIL, USAR FALLBACK
             if not discovered_mapping:
-                print(f"⚠️ Sin matches útiles - aplicando fallback robusto")
+                print(f"Sin matches útiles - aplicando fallback robusto")
                 return self._get_fallback_mapping(keywords)
             
-            print(f"✅ Descubrimiento completado exitosamente")
+            print(f"Descubrimiento completado exitosamente")
             return discovered_mapping
             
         except Exception as e:
-            print(f"❌ ERROR CRÍTICO en descubrimiento: {e}")
+            print(f"ERROR CRÍTICO en descubrimiento: {e}")
             import traceback
             traceback.print_exc()
             
             # FALLBACK GARANTIZADO - NUNCA FALLA
-            print(f"🆘 Aplicando fallback de emergencia")
+            print(f"Aplicando fallback de emergencia")
             return self._get_fallback_mapping(keywords)
 
     def _get_fallback_mapping(self, keywords: List[str]) -> Dict[str, List[str]]:
         """Mapeo de fallback robusto - NUNCA RETORNA VACÍO"""
-        print(f"🔄 Aplicando mapeo de fallback para: {keywords}")
+        print(f"Aplicando mapeo de fallback para: {keywords}")
         
         # Mapeos completos y actualizados
         fallback_mappings = {
@@ -233,16 +230,16 @@ class AbsentUserController:
                 
                 if any(conditions):
                     result_mapping[normalized_keyword] = known_columns
-                    print(f"📋 Fallback para '{keyword}': {len(known_columns)} columnas ({known_key})")
+                    print(f"Fallback para '{keyword}': {len(known_columns)} columnas ({known_key})")
                     found = True
                     break
             
             # Si no se encuentra match, usar vacunación como default más completo
             if not found:
                 result_mapping[normalized_keyword] = fallback_mappings['vacunacion']
-                print(f"📋 Fallback genérico para '{keyword}': vacunacion ({len(fallback_mappings['vacunacion'])} columnas)")
+                print(f"Fallback genérico para '{keyword}': vacunacion ({len(fallback_mappings['vacunacion'])} columnas)")
         
-        print(f"✅ Fallback completado - {len(result_mapping)} keywords con mapeos")
+        print(f"Fallback completado - {len(result_mapping)} keywords con mapeos")
         return result_mapping
 
     def _test_parquet_file_health(self, clean_path: str) -> Dict[str, Any]:
@@ -304,7 +301,7 @@ class AbsentUserController:
     ) -> Dict[str, Any]:
         """Genera reporte de inasistentes dinámico con descubrimiento automático de actividades - VERSIÓN ROBUSTA"""
         try:
-            print(f"🏥 Iniciando reporte de inasistentes para: {filename}")
+            print(f"Iniciando reporte de inasistentes para: {filename}")
             
             file_key = f"technical_{filename.replace('.', '_').replace(' ', '_').replace('-', '_')}"
             data_source = DataSourceService(path_technical_note).ensure_data_source_available(filename, file_key)
@@ -312,15 +309,15 @@ class AbsentUserController:
             # DESCUBRIMIENTO DINÁMICO DE COLUMNAS CON FALLBACK ROBUSTO
             if not selected_keywords:
                 selected_keywords = ['medicina']
-                print(f"🔄 Usando keywords por defecto: {selected_keywords}")
+                print(f"Usando keywords por defecto: {selected_keywords}")
             
-            print(f"🔍 Iniciando descubrimiento para keywords: {selected_keywords}")
+            print(f"Iniciando descubrimiento para keywords: {selected_keywords}")
             discovered_columns = self._discover_activity_columns(data_source, selected_keywords)
             
             # VERIFICAR RESULTADOS DEL DESCUBRIMIENTO
             if not discovered_columns:
                 error_msg = f"No se pudieron descubrir actividades para: {selected_keywords}"
-                print(f"❌ {error_msg}")
+                print(f"{error_msg}")
                 return {
                     "success": False,
                     "error": error_msg,
@@ -340,7 +337,7 @@ class AbsentUserController:
             
             if not all_activity_columns:
                 error_msg = f"No se encontraron columnas de actividad para: {selected_keywords}"
-                print(f"❌ {error_msg}")
+                print(f"{error_msg}")
                 return {
                     "success": False,
                     "error": error_msg,
@@ -352,7 +349,7 @@ class AbsentUserController:
                     }
                 }
             
-            print(f"🎯 TOTAL ACTIVIDADES ENCONTRADAS: {len(all_activity_columns)}")
+            print(f"TOTAL ACTIVIDADES ENCONTRADAS: {len(all_activity_columns)}")
             
             # CONSTRUIR FILTROS DE EDAD
             age_conditions = []
@@ -393,7 +390,7 @@ class AbsentUserController:
             geo_filter = " AND ".join(geo_conditions) if geo_conditions else "1=1"
             
             # GENERAR REPORTES POR CADA ACTIVIDAD
-            print(f"🔧 Generando reportes individuales por actividad...")
+            print(f"Generando reportes individuales por actividad...")
             activity_reports = ReportActivity().generate_activity_reports(
                 data_source, all_activity_columns, age_filter, geo_filter, corte_fecha
             )
@@ -425,7 +422,7 @@ class AbsentUserController:
                 "actividades_sin_inasistentes": len([r for r in activity_reports if r["statistics"]["total_inasistentes"] == 0])
             }
             
-            print(f"✅ Reporte completado exitosamente: {total_inasistentes} inasistentes encontrados")
+            print(f"Reporte completado exitosamente: {total_inasistentes} inasistentes encontrados")
             
             return {
                 "success": True,
@@ -450,7 +447,7 @@ class AbsentUserController:
             }
             
         except Exception as e:
-            print(f"❌ ERROR CRÍTICO generando reporte dinámico: {e}")
+            print(f"ERROR CRÍTICO generando reporte dinámico: {e}")
             import traceback
             traceback.print_exc()
             return {
@@ -529,15 +526,10 @@ class AbsentUserController:
 
         # Escribir a buffer binario con separador ";"
         buf = io.BytesIO()
-
-        # 1) Escribir opcionalmente la línea "sep=;" para Excel
         if use_excel_sep_hint:
             # Escribir “sep=;” con la misma codificación
             prefix = ("sep=" + sep + "\n").encode(enc)
             buf.write(prefix)
-
-        # 2) Escribir el CSV con pandas y separador ";"
-        #    quoting opcional: csv.QUOTE_MINIMAL (por defecto) o csv.QUOTE_ALL si necesitas comillas siempre
         df.to_csv(
             buf,
             index=False,

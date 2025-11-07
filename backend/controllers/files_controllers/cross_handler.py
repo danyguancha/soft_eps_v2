@@ -1,4 +1,4 @@
-# controllers/files_controllers/cross_handler.py (REEMPLAZADO CORE)
+# controllers/files_controllers/cross_handler.py
 from typing import Dict, Any
 from controllers.files_controllers.storage_manager import FileStorageManager
 from services.duckdb_service.duckdb_service import duckdb_service

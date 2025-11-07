@@ -230,14 +230,14 @@ class ColumnAnalyzer:
     def _generate_recommendation(self, pattern_score: float, overlap_score: float, combined_score: float) -> str:
         """Genera recomendación para el usuario"""
         if combined_score >= 0.7:
-            return "✅ Altamente recomendado para cruce"
+            return "Altamente recomendado para cruce"
         elif combined_score >= 0.4:
             if pattern_score > overlap_score:
-                return "⚠️ Tipos compatibles, pocos valores coincidentes. Verificar manualmente"
+                return "Tipos compatibles, pocos valores coincidentes. Verificar manualmente"
             else:
-                return "⚠️ Buenos valores coincidentes, verificar tipos"
+                return "Buenos valores coincidentes, verificar tipos"
         else:
-            return "❌ No recomendado para cruce"
+            return "No recomendado para cruce"
 
 
 # Instancia global

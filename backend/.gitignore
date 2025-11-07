@@ -53,3 +53,6 @@ duckdb_storage
 
 /metadata_cache
 metadata_cache
+
+/generate_report.txt
+generate_report.txt

@@ -31,13 +31,13 @@ def detect_encoding(file_path: str, sample_size: int = 100000) -> str:
                 return 'utf-8'
         
         if confidence < 0.7:
-            print("⚠️ Confianza baja, probando encodings comunes...")
+            print("Confianza baja, probando encodings comunes...")
             return try_common_encodings(file_path)
         
         return encoding
         
     except Exception as e:
-        print(f"❌ Error detectando encoding: {e}")
+        print(f"Error detectando encoding: {e}")
         return try_common_encodings(file_path)
 
 
@@ -97,7 +97,7 @@ def sniff_delimiter(path: str, encoding: str) -> str:
             return best_sep
             
     except Exception as e:
-        print(f"❌ Error detectando separador: {e}")
+        print(f"Error detectando separador: {e}")
     
     return ';'
 
@@ -192,7 +192,7 @@ class CSVFile(AbstractFile):
             self._total_rows = count
             return count
         except Exception as e:
-            print(f"❌ Error contando filas: {e}")
+            print(f"Error contando filas: {e}")
             return 0
 
     def get_columns(self, sheet_name: str | None = None) -> List[str]:
@@ -217,7 +217,7 @@ class CSVFile(AbstractFile):
             print(f"Columnas detectadas: {len(self._columns_cache)} (engine: {engine_params['engine']})")
             return self._columns_cache
         except Exception as e:
-            print(f"❌ Error obteniendo columnas: {e}")
+            print(f"Error obteniendo columnas: {e}")
             return []
 
     def _detect_date_columns(self, columns: List[str]) -> List[str]:
@@ -243,7 +243,7 @@ class CSVFile(AbstractFile):
                     df[col] = convert_excel_dates_to_readable(df[col])
                     print(f"Columna '{col}' convertida a fecha")
                 except Exception as e:
-                    print(f"⚠️ No se pudo convertir '{col}' a fecha: {e}")
+                    print(f"No se pudo convertir '{col}' a fecha: {e}")
         
         return df
 

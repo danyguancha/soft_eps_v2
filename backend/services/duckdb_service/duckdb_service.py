@@ -57,7 +57,7 @@ class DuckDBService:
             self._initialize_services()
             self._initialized = True
         else:
-            print("❌ DuckDB no se pudo inicializar - Funcionando en modo fallback")
+            print("DuckDB no se pudo inicializar - Funcionando en modo fallback")
     
     def _setup_directories(self):
         """Configura los directorios necesarios"""
@@ -87,7 +87,7 @@ class DuckDBService:
                 self.controllers
             )
             
-            print("✅ Controladores y servicios DuckDB inicializados")
+            print("Controladores y servicios DuckDB inicializados")
             
             # CORREGIDO: Usar schedule_auto_recovery en lugar de auto_recover_cached_files
             from services.aux_duckdb_services.recover_cache_files import recover_cache_files
@@ -98,7 +98,7 @@ class DuckDBService:
             )
             
         except Exception as e:
-            print(f"❌ Error inicializando servicios: {e}")
+            print(f"Error inicializando servicios: {e}")
     
     def _initialize_controllers(self) -> Dict[str, Any]:
         """Inicializa los controladores existentes"""
@@ -241,7 +241,7 @@ class DuckDBService:
     ) -> str:
         """Delega carga lazy de Parquet"""
         if not self.is_available():
-            print("⚠️ DuckDB no disponible, simulando carga lazy")
+            print("DuckDB no disponible, simulando carga lazy")
             return f"fallback_table_{file_id}"
         return self.query.load_parquet_lazy(file_id, parquet_path, table_name, self.loaded_tables)
     
@@ -468,7 +468,7 @@ class DuckDBService:
     
     def manual_reload_files(self):
         """Recarga manual de archivos (útil para debugging)"""
-        print("🔄 Recarga manual de archivos solicitada...")
+        print("Recarga manual de archivos solicitada...")
         try:
             self.loaded_tables.clear()
             
@@ -553,7 +553,6 @@ class DuckDBService:
         try:
             # Cargar archivo bajo demanda si no está en memoria
             if file_id not in self.loaded_tables:
-                print(f"📂 Cargando archivo bajo demanda: {file_id}")
                 loaded = self._load_file_on_demand(file_id)
                 if not loaded:
                     return {
@@ -567,10 +566,10 @@ class DuckDBService:
                         "has_previous": False
                     }
             
-            # 🔧 CORRECCIÓN: Crear QueryPagination sin argumentos
+            # CORRECCIÓN: Crear QueryPagination sin argumentos
             query_pagination = QueryPagination()
             
-            # 🔧 MONKEY PATCH: Inyectar método _escape_identifier si no existe
+            # MONKEY PATCH: Inyectar método _escape_identifier si no existe
             if not hasattr(query_pagination, '_escape_identifier'):
                 sql_utils = SQLUtils()
                 query_pagination._escape_identifier = lambda name: sql_utils.escape_identifier(name)
@@ -608,7 +607,7 @@ class DuckDBService:
             
         except Exception as e:
             import traceback
-            print(f"❌ Error en query_data_ultra_fast: {e}")
+            print(f"Error en query_data_ultra_fast: {e}")
             print(traceback.format_exc())
             return {
                 "success": False,
@@ -633,9 +632,9 @@ def get_duckdb_service():
 # Crear instancia global de forma segura
 try:
     duckdb_service = get_duckdb_service()
-    print("✅ DuckDB Service global inicializado")
+    print("DuckDB Service global inicializado")
 except Exception as e:
-    print(f"❌ Error inicializando DuckDB Service global: {e}")
+    print(f"Error inicializando DuckDB Service global: {e}")
     duckdb_service = None
 
 

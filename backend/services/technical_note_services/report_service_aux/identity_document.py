@@ -29,5 +29,5 @@ class IdentityDocument:
                 return f'"{field}"'
 
         # 3️⃣ último recurso: primer campo de la tabla
-        print(f'⚠️ Usando primer campo como ID: {cols[0]}')
+        print(f'Usando primer campo como ID: {cols[0]}')
         return f'"{cols[0]}"'

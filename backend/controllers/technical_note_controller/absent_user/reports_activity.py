@@ -16,7 +16,7 @@ class ReportActivity:
         """Genera reportes individuales por cada actividad"""
         activity_reports = []
         
-        # ✅ EXTRAER RUTA LIMPIA PARA LAS QUERIES
+        # EXTRAER RUTA LIMPIA PARA LAS QUERIES
         if data_source.startswith("read_parquet('") and data_source.endswith("')"):
             clean_path = data_source[14:-2]
             table_reference = f"'{clean_path}'"
@@ -112,10 +112,10 @@ class ReportActivity:
                     }
                 })
                 
-                print(f"✅ Actividad procesada: {column.replace('\"', '')} - {len(inasistentes_data)} inasistentes")
+                print(f"Actividad procesada: {column.replace('\"', '')} - {len(inasistentes_data)} inasistentes")
                 
             except Exception as e:
-                print(f"❌ Error procesando actividad {column}: {e}")
+                print(f"Error procesando actividad {column}: {e}")
                 continue
         
         return activity_reports

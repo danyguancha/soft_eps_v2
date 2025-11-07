@@ -15,18 +15,18 @@ class FileInfoHandler:
         if not file_info:
             raise ValueError("Archivo no encontrado")
         
-        # ✅ Si no tiene columnas guardadas, cargarlas del archivo físico
+        # Si no tiene columnas guardadas, cargarlas del archivo físico
         if "columns" not in file_info:
             file_path = file_info.get("path")
             if file_path and os.path.exists(file_path):
                 try:
                     # Cargar el archivo para obtener las columnas
                     if file_path.endswith('.csv'):
-                        # ✅ SOLUCIÓN 1: Detectar automáticamente el delimitador
+                        # SOLUCIÓN 1: Detectar automáticamente el delimitador
                         df = pd.read_csv(file_path, nrows=0, sep=None, engine='python')
                         columns = df.columns.tolist()
                         
-                        # ✅ SOLUCIÓN 2 (Alternativa): Especificar punto y coma
+                        # SOLUCIÓN 2 (Alternativa): Especificar punto y coma
                         # df = pd.read_csv(file_path, nrows=0, sep=';')
                         # columns = df.columns.tolist()
                         
@@ -42,7 +42,7 @@ class FileInfoHandler:
                     # Guardar en storage para próximas veces
                     self.storage_manager.store_file_info(file_id, file_info)
                 except Exception as e:
-                    print(f"⚠️ Error leyendo columnas de {file_id}: {e}")
+                    print(f"Error leyendo columnas de {file_id}: {e}")
                     columns = []
             else:
                 columns = []

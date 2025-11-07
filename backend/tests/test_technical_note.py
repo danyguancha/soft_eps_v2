@@ -27,11 +27,11 @@ class TestTechnicalNote(unittest.TestCase):
         
         if isinstance(data, list):
             self.assertIsInstance(data, list)
-            print(f"✅ OA-01 PASSED: {len(data)} archivos disponibles")
+            print(f"OA-01 PASSED: {len(data)} archivos disponibles")
         else:
             self.assertTrue(data.get("success", False))
             self.assertIn("files", data)
-            print(f"✅ OA-01 PASSED: {len(data.get('files', []))} archivos disponibles")
+            print(f"OA-01 PASSED: {len(data.get('files', []))} archivos disponibles")
     
     def test_OA_02(self):
         """OA-02: Validar respuesta cuando no hay archivos disponibles"""
@@ -49,7 +49,7 @@ class TestTechnicalNote(unittest.TestCase):
             self.assertTrue(data.get("success", False))
             self.assertIsInstance(data.get("files", []), list)
         
-        print(f"✅ OA-02 PASSED")
+        print(f"OA-02 PASSED")
 
 
 class TestFiltrosGeograficos(unittest.TestCase):
@@ -98,7 +98,7 @@ class TestFiltrosGeograficos(unittest.TestCase):
             self.assertEqual(departamentos, sorted(departamentos), "Departamentos deben estar ordenados")
             self.assertEqual(len(departamentos), len(set(departamentos)), "Departamentos deben ser únicos")
         
-        print(f"✅ FG-01 PASSED: {len(departamentos)} departamentos únicos")
+        print(f"FG-01 PASSED: {len(departamentos)} departamentos únicos")
     
     def test_FG_02(self):
         """FG-02: Validar manejo cuando columna departamento no existe"""
@@ -107,11 +107,11 @@ class TestFiltrosGeograficos(unittest.TestCase):
         if response.status_code == 200:
             data = response.json()
             if data.get("success") == False:
-                print(f"✅ FG-02 PASSED: Error manejado con success=false")
+                print(f"FG-02 PASSED: Error manejado con success=false")
                 return
         
         self.assertIn(response.status_code, [400, 404, 500])
-        print(f"✅ FG-02 PASSED: Error manejado correctamente ({response.status_code})")
+        print(f"FG-02 PASSED: Error manejado correctamente ({response.status_code})")
     
     def test_FG_03(self):
         """FG-03: Obtener todos los municipios sin filtro de departamento"""
@@ -135,7 +135,7 @@ class TestFiltrosGeograficos(unittest.TestCase):
         municipios = data["values"]
         self.assertIsInstance(municipios, list)
         
-        print(f"✅ FG-03 PASSED: {len(municipios)} municipios obtenidos")
+        print(f"FG-03 PASSED: {len(municipios)} municipios obtenidos")
     
     def test_FG_04(self):
         """FG-04: Obtener municipios filtrados por departamento específico"""
@@ -161,7 +161,7 @@ class TestFiltrosGeograficos(unittest.TestCase):
         filters_applied = data.get("filters_applied", {})
         self.assertEqual(filters_applied.get("departamento"), "CALDAS")
         
-        print(f"✅ FG-04 PASSED: {len(municipios)} municipios de CALDAS")
+        print(f"FG-04 PASSED: {len(municipios)} municipios de CALDAS")
     
     def test_FG_05(self):
         """FG-05: Obtener todas las IPS sin filtros geográficos"""
@@ -180,7 +180,7 @@ class TestFiltrosGeograficos(unittest.TestCase):
         ips_list = data["values"]
         self.assertIsInstance(ips_list, list)
         
-        print(f"✅ FG-05 PASSED: {len(ips_list)} IPS obtenidas")
+        print(f"FG-05 PASSED: {len(ips_list)} IPS obtenidas")
     
     def test_FG_06(self):
         """FG-06: Obtener IPS filtradas por departamento"""
@@ -201,7 +201,7 @@ class TestFiltrosGeograficos(unittest.TestCase):
         self.assertIn("values", data)
         ips_list = data["values"]
         
-        print(f"✅ FG-06 PASSED: {len(ips_list)} IPS de CALDAS")
+        print(f"FG-06 PASSED: {len(ips_list)} IPS de CALDAS")
     
     def test_FG_07(self):
         """FG-07: Obtener IPS filtradas por departamento y municipio"""
@@ -222,7 +222,7 @@ class TestFiltrosGeograficos(unittest.TestCase):
         self.assertIn("values", data)
         ips_list = data["values"]
         
-        print(f"✅ FG-07 PASSED: {len(ips_list)} IPS de CALDAS-MANIZALES")
+        print(f"FG-07 PASSED: {len(ips_list)} IPS de CALDAS-MANIZALES")
 
 
 class TestReporteTecnico(unittest.TestCase):
@@ -271,7 +271,7 @@ class TestReporteTecnico(unittest.TestCase):
             self.skipTest(f"Backend error: {data.get('error', 'Unknown')}")
         
         self.assertIn("items", data)
-        print(f"✅ RT-01 PASSED: {len(data.get('items', []))} items")
+        print(f"RT-01 PASSED: {len(data.get('items', []))} items")
     
     def test_RT_02(self):
         """RT-02: Generar reporte con filtro de departamento"""
@@ -288,7 +288,7 @@ class TestReporteTecnico(unittest.TestCase):
         data = response.json()
         if not data.get("success", True):
             self.skipTest(f"Backend error")
-        print(f"✅ RT-02 PASSED")
+        print(f"RT-02 PASSED")
     
     def test_RT_03(self):
         """RT-03: Generar reporte con todos los filtros geográficos"""
@@ -307,7 +307,7 @@ class TestReporteTecnico(unittest.TestCase):
         data = response.json()
         if not data.get("success", True):
             self.skipTest(f"Backend error")
-        print(f"✅ RT-03 PASSED")
+        print(f"RT-03 PASSED")
     
     def test_RT_04(self):
         """RT-04: Generar reporte sin análisis temporal"""
@@ -324,7 +324,7 @@ class TestReporteTecnico(unittest.TestCase):
         data = response.json()        
         if not data.get("success", True):
             self.skipTest(f"Backend error")        
-        print(f"✅ RT-04 PASSED")
+        print(f"RT-04 PASSED")
     
     def test_RT_05(self):
         """RT-05: Validar error cuando corte_fecha está ausente"""
@@ -333,7 +333,7 @@ class TestReporteTecnico(unittest.TestCase):
             params={"keywords": "medicina"}
         )        
         self.assertIn(response.status_code, [400, 422])
-        print(f"✅ RT-05 PASSED: Error de fecha ausente manejado ({response.status_code})")
+        print(f"RT-05 PASSED: Error de fecha ausente manejado ({response.status_code})")
     
     def test_RT_06(self):
         """RT-06: Validar error cuando formato de corte_fecha es inválido"""
@@ -346,7 +346,7 @@ class TestReporteTecnico(unittest.TestCase):
         )
         
         self.assertEqual(response.status_code, 400, f"Error: {response.text}")
-        print(f"✅ RT-07 PASSED: Error de formato de fecha manejado")
+        print(f"RT-07 PASSED: Error de formato de fecha manejado")
 
 
 if __name__ == "__main__":

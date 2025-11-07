@@ -21,9 +21,9 @@ class ExportAbsent:
     ) -> StreamingResponse:
         """Exporta reporte de inasistentes a CSV con encoding UTF-8 correcto"""
         try:
-            print(f"📥 Exportando reporte a CSV: {filename}")
+            print(f"Exportando reporte a CSV: {filename}")
             
-            # ✅ GENERAR REPORTE COMPLETO
+            # GENERAR REPORTE COMPLETO
             report_data = self.get_inasistentes_report(
                 filename, selected_months, selected_years, selected_keywords,
                 corte_fecha, departamento, municipio, ips, path_technical_note
@@ -32,7 +32,7 @@ class ExportAbsent:
             if not report_data.get("success"):
                 raise Exception(report_data.get("error", "Error generando reporte"))
             
-            # ✅ PROCESAR DATOS PARA CSV
+            # PROCESAR DATOS PARA CSV
             all_records = []
             
             for activity_report in report_data["inasistentes_por_actividad"]:
@@ -62,7 +62,7 @@ class ExportAbsent:
                     }
                     all_records.append(record)
             
-            # ✅ CREAR DATAFRAME
+            # CREAR DATAFRAME
             if not all_records:
                 df = pd.DataFrame(columns=[
                     "Departamento", "Municipio", "Nombre IPS", "Número Identificación",
@@ -73,12 +73,12 @@ class ExportAbsent:
             else:
                 df = pd.DataFrame(all_records)
             
-            # ✅ GENERAR CSV CON UTF-8-SIG EN BUFFER BINARIO
+            # GENERAR CSV CON UTF-8-SIG EN BUFFER BINARIO
             buffer = io.BytesIO()
             df.to_csv(buffer, index=False, encoding='utf-8-sig')
             buffer.seek(0)
             
-            # ✅ NOMBRE DEL ARCHIVO (sin caracteres problemáticos para el filename)
+            # NOMBRE DEL ARCHIVO (sin caracteres problemáticos para el filename)
             filters_info = []
             if selected_keywords:
                 # Limpiar caracteres especiales solo para el nombre del archivo
@@ -95,10 +95,10 @@ class ExportAbsent:
             filter_suffix = "_" + "_".join(filters_info) if filters_info else ""
             csv_filename = f"inasistentes_{filename.replace('.csv', '')}{filter_suffix}_{corte_fecha}.csv"
             
-            print(f"✅ CSV generado correctamente: {len(all_records)} registros")
-            print(f"🔤 Headers con tildes preservados en contenido del archivo")
+            print(f"CSV generado correctamente: {len(all_records)} registros")
+            print(f"Headers con tildes preservados en contenido del archivo")
             
-            # ✅ FUNCIÓN GENERADORA PARA STREAMING CORRECTO
+            # FUNCIÓN GENERADORA PARA STREAMING CORRECTO
             def iter_csv():
                 buffer.seek(0)
                 while True:
@@ -107,7 +107,7 @@ class ExportAbsent:
                         break
                     yield chunk
             
-            # ✅ RETORNAR STREAMING RESPONSE CORRECTO
+            # RETORNAR STREAMING RESPONSE CORRECTO
             return StreamingResponse(
                 iter_csv(),
                 media_type="application/octet-stream",  # Forzar descarga binaria
@@ -118,7 +118,7 @@ class ExportAbsent:
             )
             
         except Exception as e:
-            print(f"❌ Error exportando CSV: {e}")
+            print(f"Error exportando CSV: {e}")
             import traceback
             traceback.print_exc()
             raise Exception(f"Error exportando reporte: {str(e)}")

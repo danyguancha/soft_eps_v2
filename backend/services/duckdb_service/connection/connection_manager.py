@@ -25,7 +25,7 @@ class ConnectionManager:
             )
             return self.conn is not None
         except Exception as e:
-            print(f"❌ Error inicializando conexión DuckDB: {e}")
+            print(f"Error inicializando conexión DuckDB: {e}")
             return False
     
     def is_available(self) -> bool:
@@ -41,7 +41,7 @@ class ConnectionManager:
     def restart_connection(self) -> bool:
         """Reinicia la conexión DuckDB de forma segura"""
         try:
-            print("🔄 Reiniciando conexión DuckDB...")
+            print("Reiniciando conexión DuckDB...")
             
             if self.conn:
                 try:
@@ -52,14 +52,14 @@ class ConnectionManager:
             success = self._initialize_connection()
             
             if success:
-                print("✅ Conexión DuckDB reiniciada exitosamente")
+                print("Conexión DuckDB reiniciada exitosamente")
             else:
-                print("❌ No se pudo reiniciar la conexión DuckDB")
+                print("No se pudo reiniciar la conexión DuckDB")
             
             return success
                 
         except Exception as e:
-            print(f"❌ Error reiniciando conexión: {e}")
+            print(f"Error reiniciando conexión: {e}")
             return False
     
     def close(self):
@@ -67,9 +67,9 @@ class ConnectionManager:
         try:
             if self.conn:
                 self.conn.close()
-                print("✅ Conexión DuckDB cerrada")
+                print("Conexión DuckDB cerrada")
         except Exception as e:
-            print(f"⚠️ Error cerrando DuckDB: {e}")
+            print(f"Error cerrando DuckDB: {e}")
     
     def get_connection(self):
         """Obtiene la conexión actual"""

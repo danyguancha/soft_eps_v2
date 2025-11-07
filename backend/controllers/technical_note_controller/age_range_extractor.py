@@ -35,78 +35,78 @@ class AgeRangeExtractor:
     """Extrae rangos de edad desde nombres de columnas de actividades médicas"""
     
     def __init__(self):
-        # ✅ PATRONES CORREGIDOS - RANGOS PRIMERO, MÁS ESPECÍFICOS
+        # PATRONES CORREGIDOS - RANGOS PRIMERO, MÁS ESPECÍFICOS
         self.patterns = [
-            # ✅ RANGOS DE MESES (más específicos primero)
+            # RANGOS DE MESES (más específicos primero)
             (r'(\d+)\s*a\s*(\d+)\s*mes(?:es)?\b', 'months', 'range'),      # "4 a 5 meses"
             (r'de\s+(\d+)\s*a\s*(\d+)\s*mes(?:es)?\b', 'months', 'range'), # "de 12 a 17 meses"
             (r'(\d+)\s*-\s*(\d+)\s*mes(?:es)?\b', 'months', 'range'),      # "4-5 meses" 
             (r'(\d+)\s*y\s*(\d+)\s*mes(?:es)?\b', 'months', 'range'),      # "4 y 5 meses"
             
-            # ✅ RANGOS DE AÑOS (más específicos primero)
+            # RANGOS DE AÑOS (más específicos primero)
             (r'(\d+)\s*a\s*(\d+)\s*año(?:s)?\b', 'years', 'range'),        # "1 a 2 años"
             (r'de\s+(\d+)\s*a\s*(\d+)\s*año(?:s)?\b', 'years', 'range'),   # "de 3 a 5 años"
             (r'(\d+)\s*-\s*(\d+)\s*año(?:s)?\b', 'years', 'range'),        # "1-2 años"
             (r'(\d+)\s*y\s*(\d+)\s*año(?:s)?\b', 'years', 'range'),        # "1 y 2 años"
             
-            # ✅ EDADES ESPECÍFICAS (menos específicos)
+            # EDADES ESPECÍFICAS (menos específicos)
             (r'(\d+)\s*mes(?:es)?\b', 'months', 'specific'),               # "1 mes", "2 meses"
             (r'(\d+)\s*año(?:s)?\b', 'years', 'specific'),                 # "1 año", "2 años"
             
-            # ✅ CASOS ESPECIALES
+            # CASOS ESPECIALES
             (r'recién\s*nacid[oa]|neonat[oa]', 'months', 'special'),       # "recién nacido", "neonato"
             (r'lactante', 'months', 'special'),                            # "lactante"
         ]
     
     def extract_age_range(self, column_name: str) -> Optional[AgeRange]:
-        """✅ CORREGIDO: Extrae rango de edad desde nombre de columna"""
+        """CORREGIDO: Extrae rango de edad desde nombre de columna"""
         try:
             normalized = column_name.lower().strip().replace('"', '')
             
-            print(f"🔍 Analizando columna: '{column_name}'")
+            print(f"Analizando columna: '{column_name}'")
             print(f"   Normalizado: '{normalized}'")
             
-            # ✅ Casos especiales primero
+            # Casos especiales primero
             if any(word in normalized for word in ['recién nacido', 'recien nacido', 'neonato']):
-                print(f"   ✅ Detectado: Recién nacido = 0 months")
+                print(f"   Detectado: Recién nacido = 0 months")
                 return AgeRange(0, 0, 'months', column_name)
             
             if 'lactante' in normalized:
-                print(f"   ✅ Detectado: Lactante = 1 a 12 months")
+                print(f"   Detectado: Lactante = 1 a 12 months")
                 return AgeRange(1, 12, 'months', column_name)
             
-            # ✅ Probar cada patrón en orden
+            # Probar cada patrón en orden
             for i, (pattern, unit, match_type) in enumerate(self.patterns):
                 match = re.search(pattern, normalized, re.IGNORECASE)
                 if match:
-                    print(f"   🎯 Patrón {i+1} ({match_type}) coincide: {pattern}")
+                    print(f"   Patrón {i+1} ({match_type}) coincide: {pattern}")
                     result = self._parse_match(match, normalized, column_name, (pattern, unit, match_type))
                     if result:
-                        print(f"   ✅ Extraído: {result.get_description()}")
+                        print(f"   Extraído: {result.get_description()}")
                         return result
             
-            print(f"   ⚠️ No se pudo extraer rango de edad")
+            print(f"   No se pudo extraer rango de edad")
             return None
             
         except Exception as e:
-            print(f"   ❌ Error extrayendo rango: {e}")
+            print(f"   Error extrayendo rango: {e}")
             return None
     
     def _parse_match(self, match: re.Match, normalized: str, original_column: str, pattern_info: tuple) -> Optional[AgeRange]:
-        """✅ COMPLETAMENTE CORREGIDO: Parsea resultado usando información del patrón"""
+        """COMPLETAMENTE CORREGIDO: Parsea resultado usando información del patrón"""
         groups = match.groups()
         pattern_str, unit, match_type = pattern_info
         
-        print(f"      🔧 Parsing groups: {groups}, type: {match_type}, unit: {unit}")
+        print(f"      Parsing groups: {groups}, type: {match_type}, unit: {unit}")
         
-        # ✅ Casos especiales
+        # Casos especiales
         if match_type == 'special':
             if any(word in normalized for word in ['recién nacido', 'recien nacido', 'neonato']):
                 return AgeRange(0, 0, 'months', original_column)
             if 'lactante' in normalized:
                 return AgeRange(1, 12, 'months', original_column)
         
-        # ✅ RANGOS (2 números)
+        # RANGOS (2 números)
         if match_type == 'range' and len(groups) >= 2 and groups[0] and groups[1]:
             try:
                 min_age = int(groups[0])
@@ -114,21 +114,21 @@ class AgeRangeExtractor:
                 # Asegurar orden correcto
                 if min_age > max_age:
                     min_age, max_age = max_age, min_age
-                print(f"      ✅ Rango detectado: {min_age} a {max_age} {unit}")
+                print(f"      Rango detectado: {min_age} a {max_age} {unit}")
                 return AgeRange(min_age, max_age, unit, original_column)
             except ValueError as e:
-                print(f"      ❌ Error convirtiendo números de rango: {e}")
+                print(f"      Error convirtiendo números de rango: {e}")
                 return None
         
-        # ✅ EDADES ESPECÍFICAS (1 número)
+        # EDADES ESPECÍFICAS (1 número)
         if match_type == 'specific' and len(groups) >= 1 and groups[0]:
             try:
                 age = int(groups[0])
-                print(f"      ✅ Edad específica detectada: {age} {unit}")
+                print(f"      Edad específica detectada: {age} {unit}")
                 return AgeRange(age, age, unit, original_column)
             except ValueError as e:
-                print(f"      ❌ Error convirtiendo número específico: {e}")
+                print(f"      Error convirtiendo número específico: {e}")
                 return None
         
-        print(f"      ⚠️ No se pudo parsear: groups={groups}, type={match_type}")
+        print(f"      No se pudo parsear: groups={groups}, type={match_type}")
         return None

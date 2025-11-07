@@ -44,7 +44,7 @@ class FileUtils:
                         "success": True
                     }
                     
-                    print(f"✅ Detectado automáticamente: encoding='{encoding}', separador='{best_separator}'")
+                    print(f"Detectado automáticamente: encoding='{encoding}', separador='{best_separator}'")
                     return detected_config
                     
             except UnicodeDecodeError:
@@ -93,7 +93,7 @@ class FileUtils:
             
             df = df.fillna('')
             
-            print(f"✅ Limpieza completada: todos los tipos son string")
+            print(f"Limpieza completada: todos los tipos son string")
             return df
             
         except Exception as e:

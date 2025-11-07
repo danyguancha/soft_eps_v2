@@ -39,10 +39,10 @@ class ConditionSearch:
                         columns = []
             
             if not columns:
-                print("⚠️ No se pudieron obtener columnas para búsqueda")
+                print("No se pudieron obtener columnas para búsqueda")
                 return None
             
-            # ✅ CONSTRUIR BÚSQUEDA EN TODAS LAS COLUMNAS (STRING)
+            # CONSTRUIR BÚSQUEDA EN TODAS LAS COLUMNAS (STRING)
             search_conditions = []
             for column in columns:
                 escaped_column = self._escape_identifier(column)
@@ -57,5 +57,5 @@ class ConditionSearch:
                 return None
                 
         except Exception as e:
-            print(f"❌ Error construyendo búsqueda: {e}")
+            print(f"Error construyendo búsqueda: {e}")
             return None

@@ -57,7 +57,7 @@ class CrossController:
                     raise Exception("El cruce no fue exitoso")
                     
             except Exception as join_error:
-                print(f"❌ Error específico en cruce: {join_error}")                
+                print(f"Error específico en cruce: {join_error}")                
                 # Verificar que las columnas clave existen
                 try:
                     # Obtener columnas de archivo 1
@@ -120,7 +120,7 @@ class CrossController:
                     raise ValueError(f"No se encontró ruta de Parquet para {file_id}")
                 
                 columns_sql = f"DESCRIBE SELECT * FROM read_parquet('{parquet_path}')"
-                print(f"📋 Consultando Parquet: {parquet_path}")
+                print(f"Consultando Parquet: {parquet_path}")
                 
             else:
                 table_name = table_info.get("table_name")
@@ -128,7 +128,7 @@ class CrossController:
                     raise ValueError(f"No se encontró nombre de tabla para {file_id}")
                 
                 columns_sql = f"DESCRIBE {table_name}"
-                print(f"📋 Consultando tabla: {table_name}")
+                print(f"Consultando tabla: {table_name}")
             
             # EJECUTAR consulta con manejo robusto
             try:

@@ -61,7 +61,7 @@ class TechnicalNoteController:
             return result
             
         except Exception as e:
-            print(f"❌ Error en get_geographic_values: {e}")
+            print(f"Error en get_geographic_values: {e}")
             import traceback
             traceback.print_exc()
             raise HTTPException(status_code=500, detail=f"Error obteniendo valores geográficos: {str(e)}")
@@ -109,7 +109,7 @@ class TechnicalNoteController:
         except HTTPException:
             raise
         except Exception as e:
-            print(f"❌ Error en read_technical_file_data_paginated: {e}")
+            print(f"Error en read_technical_file_data_paginated: {e}")
             import traceback
             traceback.print_exc()
             raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
@@ -123,23 +123,16 @@ class TechnicalNoteController:
         departamento: Optional[str] = None,
         municipio: Optional[str] = None,
         ips: Optional[str] = None,
-        corte_fecha: str = None  # ✅ SIN VALOR POR DEFECTO - DEBE VENIR DEL FRONTEND
+        corte_fecha: str = None  # SIN VALOR POR DEFECTO - DEBE VENIR DEL FRONTEND
     ) -> Dict[str, Any]:
         """Genera reporte CON NUMERADOR/DENOMINADOR usando FECHA DINÁMICA"""
         try:
-            # ✅ VALIDAR QUE VENGA LA FECHA
+            # VALIDAR QUE VENGA LA FECHA
             if not corte_fecha:
                 raise HTTPException(
                     status_code=400,
                     detail="El parámetro 'corte_fecha' es obligatorio y debe venir desde el frontend"
-                )
-            
-            print(f"\n📊 ========== REPORTE CON FECHA DINÁMICA ==========")
-            print(f"📋 Archivo: {filename}")
-            print(f"🗓️ Fecha corte RECIBIDA: {corte_fecha}")
-            print(f"🔍 Keywords: {keywords}")
-            print(f"🗺️ Filtros: Dept={departamento}, Mun={municipio}, IPS={ips}")
-            
+                )            
             file_key = generate_file_key(filename)
             
             try:
@@ -156,7 +149,7 @@ class TechnicalNoteController:
                 'ips': ips
             }
             
-            # ✅ PASAR FECHA DINÁMICA AL SERVICIO
+            # PASAR FECHA DINÁMICA AL SERVICIO
             return self.report_service.generate_keyword_age_report(
                 data_source=data_source,
                 filename=filename,
@@ -164,13 +157,13 @@ class TechnicalNoteController:
                 min_count=min_count,
                 include_temporal=include_temporal,
                 geographic_filters=geographic_filters,
-                corte_fecha=corte_fecha  # ✅ FECHA DINÁMICA
+                corte_fecha=corte_fecha  # FECHA DINÁMICA
             )
             
         except HTTPException:
             raise
         except Exception as e:
-            print(f"❌ Error completo en reporte: {e}")
+            print(f"Error completo en reporte: {e}")
             import traceback
             traceback.print_exc()
             raise HTTPException(status_code=500, detail=f"Error generando reporte: {str(e)}")
@@ -178,7 +171,7 @@ class TechnicalNoteController:
     def get_technical_file_metadata(self, filename: str) -> Dict[str, Any]:
         """Obtiene metadatos usando servicios especializados"""
         try:
-            print(f"📋 Obteniendo metadatos para: {filename}")
+            print(f"Obteniendo metadatos para: {filename}")
             
             file_key = generate_file_key(filename)
             data_source = self.data_source_service.ensure_data_source_available(filename, file_key)
@@ -198,7 +191,7 @@ class TechnicalNoteController:
                 for row in columns_result
             ]
             
-            print(f"✅ Metadatos obtenidos: {len(columns)} columnas, {total_rows:,} filas")
+            print(f"Metadatos obtenidos: {len(columns)} columnas, {total_rows:,} filas")
             
             return {
                 "success": True,
@@ -218,7 +211,7 @@ class TechnicalNoteController:
             }
             
         except Exception as e:
-            print(f"❌ Error obteniendo metadatos: {e}")
+            print(f"Error obteniendo metadatos: {e}")
             return {
                 "success": False,
                 "error": str(e),
@@ -259,7 +252,7 @@ class TechnicalNoteController:
             }
             
         except Exception as e:
-            print(f"❌ Error en get_column_unique_values: {e}")
+            print(f"Error en get_column_unique_values: {e}")
             raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
     
     def get_available_static_files(self) -> List[Dict[str, Any]]:
@@ -282,14 +275,14 @@ class TechnicalNoteController:
             return available_files
             
         except Exception as e:
-            print(f"❌ Error listando archivos técnicos: {e}")
+            print(f"Error listando archivos técnicos: {e}")
             return []
     
     # Métodos auxiliares privados
     def _ensure_file_loaded(self, filename: str, file_path: str, file_key: str):
         """Asegura que el archivo esté cargado en el sistema"""
         if file_key not in duckdb_service.loaded_tables:
-            print(f"🔄 Cargando archivo técnico: {filename}")
+            print(f"Cargando archivo técnico: {filename}")
             
             _, ext = os.path.splitext(filename)
             
@@ -313,7 +306,7 @@ class TechnicalNoteController:
                     "parquet_path": parquet_result["parquet_path"]
                 }
                 
-                print(f"✅ Archivo técnico cargado: {filename} -> {table_name}")
+                print(f"Archivo técnico cargado: {filename} -> {table_name}")
             else:
                 raise HTTPException(status_code=500, detail="Error convirtiendo archivo técnico")
         else:
@@ -393,17 +386,17 @@ class TechnicalNoteController:
         }
     
     def get_age_ranges(self, filename: str, corte_fecha: str):
-        """✅ MODIFICADO: Pasar fecha dinámica al controlador de edad"""
+        """MODIFICADO: Pasar fecha dinámica al controlador de edad"""
         return AgeController().get_age_ranges(filename, corte_fecha, self.static_files_dir)
     
     def get_inasistentes_report(
         self, filename: str, selected_months: List[int],
         selected_years: List[int] = None, selected_keywords: List[str] = None,
-        corte_fecha: str = None,  # ✅ SIN VALOR POR DEFECTO
+        corte_fecha: str = None,  # SIN VALOR POR DEFECTO
         departamento: Optional[str] = None, municipio: Optional[str] = None,
         ips: Optional[str] = None
     ):
-        """✅ MODIFICADO: Pasar fecha dinámica al controlador de ausentes"""
+        """MODIFICADO: Pasar fecha dinámica al controlador de ausentes"""
         return AbsentUserController().get_inasistentes_report(
             filename, selected_months, selected_years, selected_keywords, corte_fecha,
             departamento, municipio, ips, self.static_files_dir
@@ -412,11 +405,11 @@ class TechnicalNoteController:
     def export_inasistentes_csv(
         self, filename: str, selected_months: List[int],
         selected_years: List[int] = None, selected_keywords: List[str] = None,
-        corte_fecha: str = None,  # ✅ SIN VALOR POR DEFECTO
+        corte_fecha: str = None,  # SIN VALOR POR DEFECTO
         departamento: Optional[str] = None,
         municipio: Optional[str] = None, ips: Optional[str] = None
     ):
-        """✅ MODIFICADO: Pasar fecha dinámica al exportador"""
+        """MODIFICADO: Pasar fecha dinámica al exportador"""
         return AbsentUserController().export_inasistentes_to_csv(
             filename, selected_months, selected_years, selected_keywords, 
             corte_fecha, departamento, municipio, ips, self.static_files_dir

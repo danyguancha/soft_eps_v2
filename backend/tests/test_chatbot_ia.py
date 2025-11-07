@@ -59,7 +59,7 @@ class TestChatbotIA(unittest.TestCase):
         self.assertIn("context_type", data, "Falta campo 'context_type'")
         self.assertIn("query_type", data, "Falta campo 'query_type'")
         
-        print(f"✅ IA-01 PASSED")
+        print(f"IA-01 PASSED")
     
     def test_IA_02(self):
         """IA-02: Consulta al asistente IA con contexto de archivo específico"""
@@ -94,7 +94,7 @@ class TestChatbotIA(unittest.TestCase):
             f"file_context incorrecto: esperado {self.file_id}, recibido {data.get('file_context')}"
         )
         
-        print(f"✅ IA-02 PASSED")
+        print(f"IA-02 PASSED")
     
     @classmethod
     def tearDownClass(cls):

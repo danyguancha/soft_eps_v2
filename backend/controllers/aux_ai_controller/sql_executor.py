@@ -10,12 +10,7 @@ class SQLExecutor:
     
     async def calculate_statistics(self, file_id: str, columns: List[str], parquet_path: str = None) -> Dict[str, Any]:
         """Calcula estadísticas con logging detallado"""
-        try:
-            print(f"\n📊 Iniciando cálculo de estadísticas...")
-            print(f"   File ID: {file_id}")
-            print(f"   Parquet: {parquet_path}")
-            print(f"   Columnas: {len(columns)}")
-            
+        try:            
             loop = asyncio.get_event_loop()
             
             def execute_stats():
@@ -79,9 +74,9 @@ class SQLExecutor:
                                 'mediana': round(float(stats[4]), 2) if stats[4] else 0,
                                 'desviacion_std': round(float(stats[5]), 2) if stats[5] else 0
                             }
-                            print(f"   ✅ {col}: avg={stats[1]:.2f}")
+                            print(f"   {col}: avg={stats[1]:.2f}")
                         except Exception as e:
-                            print(f"   ⚠️ Error en {col}: {e}")
+                            print(f"   Error en {col}: {e}")
                             continue
                 
                 # Estadísticas categóricas
@@ -115,12 +110,12 @@ class SQLExecutor:
                                 'valores_unicos': int(unique_count),
                                 'top_5': freq_df.to_dict('records')
                             }
-                            print(f"   ✅ {col}: {unique_count} valores únicos")
+                            print(f"   {col}: {unique_count} valores únicos")
                         except Exception as e:
-                            print(f"   ⚠️ Error en {col}: {e}")
+                            print(f"   Error en {col}: {e}")
                             continue
                 
-                print(f"   ✅ Estadísticas calculadas exitosamente")
+                print(f"   Estadísticas calculadas exitosamente")
                 return results
             
             result = await loop.run_in_executor(None, execute_stats)

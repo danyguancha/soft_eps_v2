@@ -69,7 +69,7 @@ class TestGestionArchivos(unittest.TestCase):
         self.assertGreaterEqual(data["file_size_mb"], 0)
         self.assertIsInstance(data["from_cache"], bool)
         
-        print(f"✅ GA-01 PASSED: {data['file_id']} cargado exitosamente")
+        print(f"GA-01 PASSED: {data['file_id']} cargado exitosamente")
     
     def test_GA_02(self):
         """GA-02: Subir archivo Excel con múltiples hojas y verificar detección correcta de todas las hojas"""
@@ -110,7 +110,7 @@ class TestGestionArchivos(unittest.TestCase):
             self.assertEqual(data["default_sheet"], "Hoja1")
             self.assertIsNotNone(data["sheet_detection_time"])
             
-            print(f"✅ GA-02 PASSED: Excel con {data['sheet_count']} hojas detectado")            
+            print(f"GA-02 PASSED: Excel con {data['sheet_count']} hojas detectado")            
         except ImportError:
             self.skipTest("openpyxl no está instalado")
     
@@ -136,7 +136,7 @@ class TestGestionArchivos(unittest.TestCase):
             f"Mensaje de error inesperado: {data['detail']}"
         )
         
-        print(f"✅ GA-03 PASSED: Archivo .txt correctamente rechazado")
+        print(f"GA-03 PASSED: Archivo .txt correctamente rechazado")
         print(f"   Mensaje: {data['detail']}")
     
     @classmethod

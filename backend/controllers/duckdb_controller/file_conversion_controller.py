@@ -41,7 +41,7 @@ class FileConversionController:
         if isinstance(columns, list):
             columns = [str(col) if col is not None else f'col_{i}' 
                       for i, col in enumerate(columns)]
-            print(f"🧹 Columns del cache limpiadas: {len(columns)} elementos")
+            print(f"Columns del cache limpiadas: {len(columns)} elementos")
         
         cache_time = time.time() - start_time
 
@@ -154,7 +154,7 @@ class FileConversionController:
                 return {"success": True, "method": "duckdb_native_all_varchar"}
                 
         except Exception as e:
-            print(f"⚠️ Estrategia 1 falló: {e}")
+            print(f"Estrategia 1 falló: {e}")
         
         # ESTRATEGIA 2: Pandas ultra-robusto con tipos forzados
         try:            
@@ -180,7 +180,7 @@ class FileConversionController:
             return {"success": True, "method": "pandas_ultra_robust_all_string"}
             
         except Exception as e:
-            print(f"⚠️ Estrategia 2 falló: {e}")
+            print(f"Estrategia 2 falló: {e}")
         
         return {"success": False, "error": "Todas las estrategias de conversión CSV fallaron"}
 
@@ -222,7 +222,7 @@ class FileConversionController:
             return {"success": True, "method": "duckdb_direct"}
                 
         except Exception as e1:
-            print(f"⚠️ Estrategia Ultra 1 falló: {e1}")
+            print(f"Estrategia Ultra 1 falló: {e1}")
             
             # Limpiar archivo parcial si existe
             if os.path.exists(parquet_path):
@@ -261,7 +261,7 @@ class FileConversionController:
                 return {"success": True, "method": "calamine"}
                 
             except Exception as e2:
-                print(f"⚠️ Estrategia Ultra 2 falló: {e2}")
+                print(f"Estrategia Ultra 2 falló: {e2}")
         
         # Si todas las estrategias fallan
         error_msg = f"Todas las estrategias ultra-optimizadas fallaron para archivo de {file_size_mb}MB"
@@ -309,7 +309,7 @@ class FileConversionController:
                 subprocess.check_call([sys.executable, "-m", "pip", "install", "python-calamine"])
                 return True
             except Exception as e:
-                print(f"⚠️ No se pudo instalar calamine: {e}")
+                print(f"No se pudo instalar calamine: {e}")
                 return False
 
     def _finalize_conversion(self, parquet_path: str, file_hash: str, original_name: str, ext: str, result: Dict[str, Any], start_time: float, original_file_path: str) -> Dict[str, Any]:

@@ -20,15 +20,15 @@ class ReportService:
         min_count: int = 0,
         include_temporal: bool = True,
         geographic_filters: Optional[Dict[str, Optional[str]]] = None,
-        corte_fecha: str = None  # ✅ SIN VALOR POR DEFECTO - OBLIGATORIO
+        corte_fecha: str = None  # SIN VALOR POR DEFECTO - OBLIGATORIO
     ) -> Dict[str, Any]:
-        """✅ MODIFICADO: Pasar fecha dinámica al generador de reportes"""
+        """MODIFICADO: Pasar fecha dinámica al generador de reportes"""
         
-        # ✅ VALIDAR QUE VENGA LA FECHA
+        # VALIDAR QUE VENGA LA FECHA
         if not corte_fecha:
             raise ValueError("El parámetro 'corte_fecha' es obligatorio y debe venir desde el frontend")
         
-        print(f"🗓️ ReportService usando fecha dinámica: {corte_fecha}")
+        print(f"ReportService usando fecha dinámica: {corte_fecha}")
         
         return GenerateReport().generate_keyword_age_report(
             self.age_extractor,
@@ -38,7 +38,7 @@ class ReportService:
             min_count,
             include_temporal,
             geographic_filters,
-            corte_fecha  # ✅ FECHA DINÁMICA
+            corte_fecha  # FECHA DINÁMICA
         )
     
     def _debug_age_range_coverage(
@@ -75,4 +75,4 @@ class ReportService:
                 print(f"      TOTAL VERIFICACIÓN: {total_verification:,}")
                 
         except Exception as e:
-            print(f"      ❌ Error en debug: {e}")
+            print(f"      Error en debug: {e}")

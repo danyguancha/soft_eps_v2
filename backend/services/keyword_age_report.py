@@ -1,4 +1,4 @@
-# services/reports/keyword_age_report.py - ✅ CÓDIGO COMPLETO CORREGIDO
+# services/reports/keyword_age_report.py - CÓDIGO COMPLETO CORREGIDO
 import re
 from dataclasses import dataclass
 from typing import List, Dict, Optional
@@ -64,34 +64,34 @@ class ColumnKeywordReportService:
         if not matches:
             return "SELECT 'Sin datos' AS column_name, 'ninguna' AS keyword, 'N/A' AS age_range, 0 AS count LIMIT 0"
         
-        # ✅ APLICAR TODOS LOS FILTROS DISPONIBLES EN CONJUNTO
+        # APLICAR TODOS LOS FILTROS DISPONIBLES EN CONJUNTO
         geo_filters = []
         
-        # ✅ Filtro por departamento (si existe)
+        # Filtro por departamento (si existe)
         if departamento and departamento.strip():
             departamento_col = self._find_geographic_column(data_source, 'departamento', escape_identifier_func)
             if departamento_col:
                 dept_escaped = departamento.replace("'", "''")
                 geo_filters.append(f"{departamento_col} = '{dept_escaped}'")
-                print(f"✅ Filtro por departamento: {departamento}")
+                print(f"Filtro por departamento: {departamento}")
         
-        # ✅ Filtro por municipio (si existe)
+        # Filtro por municipio (si existe)
         if municipio and municipio.strip():
             municipio_col = self._find_geographic_column(data_source, 'municipio', escape_identifier_func)
             if municipio_col:
                 mun_escaped = municipio.replace("'", "''")
                 geo_filters.append(f"{municipio_col} = '{mun_escaped}'")
-                print(f"✅ Filtro por municipio: {municipio}")
+                print(f"Filtro por municipio: {municipio}")
         
-        # ✅ Filtro por IPS (si existe)
+        # Filtro por IPS (si existe)
         if ips and ips.strip():
             ips_col = self._find_geographic_column(data_source, 'ips', escape_identifier_func)
             if ips_col:
                 ips_escaped = ips.replace("'", "''")
                 geo_filters.append(f"{ips_col} = '{ips_escaped}'")
-                print(f"✅ Filtro por IPS: {ips}")
+                print(f"Filtro por IPS: {ips}")
         
-        # ✅ MOSTRAR COMBINACIÓN DE FILTROS APLICADA
+        # MOSTRAR COMBINACIÓN DE FILTROS APLICADA
         if geo_filters:
             print(f"🔍 Aplicando filtros COMBINADOS: {' AND '.join(geo_filters)}")
         else:
@@ -106,14 +106,14 @@ class ColumnKeywordReportService:
             keyword_safe = match["keyword"].replace("'", "''")
             age_range_safe = match["age_range"].replace("'", "''")
             
-            # ✅ CONSTRUIR WHERE CON TODOS LOS FILTROS
+            # CONSTRUIR WHERE CON TODOS LOS FILTROS
             where_conditions = [
                 f"{col_escaped} IS NOT NULL",
                 f"TRIM(CAST({col_escaped} AS VARCHAR)) <> ''",
                 f"TRIM(CAST({col_escaped} AS VARCHAR)) NOT IN ('NULL', 'null', 'None', 'none', 'NaN', 'nan')"
             ]
             
-            # ✅ AGREGAR TODOS LOS FILTROS GEOGRÁFICOS
+            # AGREGAR TODOS LOS FILTROS GEOGRÁFICOS
             where_conditions.extend(geo_filters)
             
             where_clause = f"WHERE {' AND '.join(where_conditions)}" if where_conditions else ""
@@ -145,34 +145,34 @@ class ColumnKeywordReportService:
         if not matches:
             return "SELECT 'Sin datos' AS column_name, 'ninguna' AS keyword, 'N/A' AS age_range, 0 AS year, 0 AS month, 0 AS count LIMIT 0"
         
-        # ✅ APLICAR TODOS LOS FILTROS DISPONIBLES EN CONJUNTO
+        # APLICAR TODOS LOS FILTROS DISPONIBLES EN CONJUNTO
         geo_filters = []
         
-        # ✅ Filtro por departamento (si existe)
+        # Filtro por departamento (si existe)
         if departamento and departamento.strip():
             departamento_col = self._find_geographic_column(data_source, 'departamento', escape_identifier_func)
             if departamento_col:
                 dept_escaped = departamento.replace("'", "''")
                 geo_filters.append(f"{departamento_col} = '{dept_escaped}'")
-                print(f"✅ Filtro temporal por departamento: {departamento}")
+                print(f"Filtro temporal por departamento: {departamento}")
         
-        # ✅ Filtro por municipio (si existe)
+        # Filtro por municipio (si existe)
         if municipio and municipio.strip():
             municipio_col = self._find_geographic_column(data_source, 'municipio', escape_identifier_func)
             if municipio_col:
                 mun_escaped = municipio.replace("'", "''")
                 geo_filters.append(f"{municipio_col} = '{mun_escaped}'")
-                print(f"✅ Filtro temporal por municipio: {municipio}")
+                print(f"Filtro temporal por municipio: {municipio}")
         
-        # ✅ Filtro por IPS (si existe)
+        # Filtro por IPS (si existe)
         if ips and ips.strip():
             ips_col = self._find_geographic_column(data_source, 'ips', escape_identifier_func)
             if ips_col:
                 ips_escaped = ips.replace("'", "''")
                 geo_filters.append(f"{ips_col} = '{ips_escaped}'")
-                print(f"✅ Filtro temporal por IPS: {ips}")
+                print(f"Filtro temporal por IPS: {ips}")
         
-        # ✅ MOSTRAR COMBINACIÓN DE FILTROS TEMPORALES
+        # MOSTRAR COMBINACIÓN DE FILTROS TEMPORALES
         if geo_filters:
             print(f"🔍 Filtros temporales COMBINADOS: {' AND '.join(geo_filters)}")
 
@@ -185,7 +185,7 @@ class ColumnKeywordReportService:
             keyword_safe = match["keyword"].replace("'", "''")
             age_range_safe = match["age_range"].replace("'", "''")
             
-            # ✅ CONSTRUIR WHERE COMPLETA CON TODOS LOS FILTROS
+            # CONSTRUIR WHERE COMPLETA CON TODOS LOS FILTROS
             where_conditions = [
                 f"{col_escaped} IS NOT NULL",
                 f"TRIM(CAST({col_escaped} AS VARCHAR)) <> ''",
@@ -200,7 +200,7 @@ class ColumnKeywordReportService:
                 )"""
             ]
             
-            # ✅ AGREGAR TODOS LOS FILTROS GEOGRÁFICOS
+            # AGREGAR TODOS LOS FILTROS GEOGRÁFICOS
             where_conditions.extend(geo_filters)
             
             where_clause = f"WHERE {' AND '.join(where_conditions)}"
@@ -269,7 +269,7 @@ class ColumnKeywordReportService:
         
         return " UNION ALL ".join(union_parts)
 
-    # ✅ MÉTODO FALTANTE - AGREGAR ESTE MÉTODO
+    # MÉTODO FALTANTE - AGREGAR ESTE MÉTODO
     def get_unique_geographic_values_sql(
         self, 
         data_source: str, 
@@ -281,15 +281,15 @@ class ColumnKeywordReportService:
         geo_column = self._find_geographic_column(data_source, geo_type, escape_identifier_func)
         
         if not geo_column:
-            print(f"❌ No se encontró columna para {geo_type}")
+            print(f"No se encontró columna para {geo_type}")
             return "SELECT 'Sin datos' AS value WHERE 1=0"
         
-        print(f"✅ Usando columna {geo_column} para {geo_type}")
+        print(f"Usando columna {geo_column} para {geo_type}")
         
         # Construir condiciones WHERE correctamente
         where_conditions = []
         
-        # ✅ AGREGAR FILTROS PADRE CORRECTAMENTE
+        # AGREGAR FILTROS PADRE CORRECTAMENTE
         if parent_filter:
             print(f"🔍 Aplicando filtros padre: {parent_filter}")
             for parent_type, parent_value in parent_filter.items():
@@ -298,7 +298,7 @@ class ColumnKeywordReportService:
                     parent_value_escaped = parent_value.replace("'", "''")
                     filter_condition = f"{parent_col} = '{parent_value_escaped}'"
                     where_conditions.append(filter_condition)
-                    print(f"  ✅ Filtro agregado: {filter_condition}")
+                    print(f"  Filtro agregado: {filter_condition}")
         
         # Siempre agregar condiciones básicas
         basic_conditions = [
@@ -343,7 +343,7 @@ class ColumnKeywordReportService:
         try:
             from services.duckdb_service.duckdb_service import duckdb_service
             
-            # ✅ SINTAXIS CORRECTA PARA PARQUET SEGÚN DOCS DUCKDB
+            # SINTAXIS CORRECTA PARA PARQUET SEGÚN DOCS DUCKDB
             if 'read_parquet' in data_source:
                 # Para read_parquet('path'), usar: DESCRIBE SELECT * FROM read_parquet('path')
                 describe_sql = f"DESCRIBE SELECT * FROM {data_source}"
@@ -390,15 +390,15 @@ class ColumnKeywordReportService:
                 for pattern_variant in pattern_variants:
                     if pattern_variant in actual_columns:
                         original_name = actual_columns[pattern_variant]
-                        print(f"✅ Columna geográfica encontrada: {pattern} -> {original_name}")
+                        print(f"Columna geográfica encontrada: {pattern} -> {original_name}")
                         return escape_identifier_func(original_name)
             
-            print(f"⚠️ No se encontró columna geográfica para {geo_type}")
+            print(f"No se encontró columna geográfica para {geo_type}")
             print(f"🔍 Patrones buscados: {patterns}")
             return None
             
         except Exception as e:
-            print(f"❌ Error verificando columnas geográficas: {e}")
+            print(f"Error verificando columnas geográficas: {e}")
             print(f"💡 SQL que falló: {describe_sql if 'describe_sql' in locals() else 'No se generó SQL'}")
             import traceback
             traceback.print_exc()

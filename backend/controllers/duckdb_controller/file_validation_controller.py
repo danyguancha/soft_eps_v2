@@ -61,7 +61,7 @@ class FileValidationController:
                 except Exception as e:
                     
                     if attempt < self.max_retries - 1:
-                        print(f"🔄 Esperando {self.retry_delay}s antes del siguiente intento...")
+                        print(f" Esperando {self.retry_delay}s antes del siguiente intento...")
                         time.sleep(self.retry_delay)
                         
                         # Reiniciar conexión DuckDB en caso de error

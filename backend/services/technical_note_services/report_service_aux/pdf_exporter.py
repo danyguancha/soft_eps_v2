@@ -15,7 +15,7 @@ try:
     REPORTLAB_AVAILABLE = True
 except ImportError:
     REPORTLAB_AVAILABLE = False
-    print("⚠️ ReportLab no disponible. Instalar con: pip install reportlab")
+    print("ReportLab no disponible. Instalar con: pip install reportlab")
 
 
 class NumberedCanvas(canvas.Canvas):
@@ -107,7 +107,7 @@ class NumberedCanvas(canvas.Canvas):
                 preserveAspectRatio=True
             )
         except Exception as e:
-            print(f"⚠️ Error dibujando marca de agua imagen: {e}")
+            print(f"Error dibujando marca de agua imagen: {e}")
         
         self.restoreState()
     
@@ -200,7 +200,7 @@ class PDFExporter:
         
         # Validar que la imagen exista si se proporcionó
         if self.watermark_image and not os.path.exists(self.watermark_image):
-            print(f"⚠️ Imagen de marca de agua no encontrada: {self.watermark_image}")
+            print(f"Imagen de marca de agua no encontrada: {self.watermark_image}")
             self.watermark_image = None
         
         self.color_map = {
@@ -228,7 +228,7 @@ class PDFExporter:
         """
         try:
             if not REPORTLAB_AVAILABLE:
-                print("⚠️ ReportLab no disponible")
+                print("ReportLab no disponible")
                 return None
             
             items = report_data.get('items', [])
@@ -288,11 +288,11 @@ class PDFExporter:
             # Mover puntero al inicio
             pdf_buffer.seek(0)
             
-            print(f"✅ PDF con {watermark_desc} generado en memoria")
+            print(f"PDF con {watermark_desc} generado en memoria")
             return pdf_buffer
             
         except Exception as e:
-            print(f"❌ Error generando PDF: {e}")
+            print(f"Error generando PDF: {e}")
             import traceback
             traceback.print_exc()
             return None
@@ -322,7 +322,7 @@ class PDFExporter:
         filename = report_data.get('filename', 'Reporte')
         corte_fecha = report_data.get('corte_fecha', 'No especificada')
         
-        elements.append(Paragraph("📊 Reporte de Indicadores - Primera Infancia", title_style))
+        elements.append(Paragraph("Reporte de Indicadores - Primera Infancia", title_style))
         elements.append(Paragraph(f"Archivo: {filename} | Fecha corte: {corte_fecha}", subtitle_style))
         elements.append(Spacer(1, 0.2 * inch))
     
@@ -334,7 +334,7 @@ class PDFExporter:
             return
         
         styles = getSampleStyleSheet()
-        elements.append(Paragraph("📈 Estadísticas Globales", styles['Heading2']))
+        elements.append(Paragraph("Estadísticas Globales", styles['Heading2']))
         elements.append(Spacer(1, 0.1 * inch))
         
         stats_data = [

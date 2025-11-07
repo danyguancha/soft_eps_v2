@@ -10,9 +10,9 @@ class QueryAnalyzer:
     def __init__(self):
         try:
             self.nlp = spacy.load("es_core_news_lg")
-            print("✅ QueryAnalyzer inicializado con spaCy")
+            print("QueryAnalyzer inicializado con spaCy")
         except OSError:
-            print("⚠️ Instalando modelo...")
+            print("Instalando modelo...")
             import subprocess
             subprocess.run(["python", "-m", "spacy", "download", "es_core_news_lg"])
             self.nlp = spacy.load("es_core_news_lg")

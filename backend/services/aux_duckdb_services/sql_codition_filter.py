@@ -22,7 +22,7 @@ class SqlConditionFilter:
             values = filter_item.get('values', filter_item.get('value'))
             
             if not column or values is None:
-                print(f"⚠️ Filtro incompleto: {filter_item}")
+                print(f"Filtro incompleto: {filter_item}")
                 return None
             
             # Asegurar que values sea una lista
@@ -32,11 +32,11 @@ class SqlConditionFilter:
             # Escapar nombre de columna
             escaped_column = self._escape_identifier(column)
             
-            # ✅ FUNCIÓN AUXILIAR PARA ESCAPAR VALORES
+            # FUNCIÓN AUXILIAR PARA ESCAPAR VALORES
             def escape_value(val):
                 return str(val).replace("'", "''")
             
-            # ✅ CONSTRUCCIÓN DE CONDICIONES SQL (COMILLAS CORREGIDAS)
+            # CONSTRUCCIÓN DE CONDICIONES SQL (COMILLAS CORREGIDAS)
             if operator in ['=', 'eq', 'equals']:
                 if len(values) == 0:
                     return None
@@ -124,11 +124,11 @@ class SqlConditionFilter:
                 return f"{escaped_column} IS NOT NULL"
                 
             else:
-                print(f"⚠️ Operador no soportado: {operator}")
+                print(f"Operador no soportado: {operator}")
                 return None
                 
         except Exception as e:
-            print(f"❌ Error construyendo filtro: {e}")
+            print(f"Error construyendo filtro: {e}")
             print(f"   Filtro problemático: {filter_item}")
             return None
     

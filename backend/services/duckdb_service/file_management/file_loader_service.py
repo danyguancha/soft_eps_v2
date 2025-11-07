@@ -14,11 +14,9 @@ class FileLoaderService:
     
     def load_file_on_demand(self, file_id: str, conversion_service, query_service) -> bool:
         """Carga un archivo bajo demanda si existe en cache"""
-        try:
-            print(f"🔍 Buscando archivo {file_id} en cache para carga bajo demanda...")
-            
+        try:            
             if not validate_file_id_format(file_id):
-                print(f"❌ File ID inválido: {file_id}")
+                print(f"File ID inválido: {file_id}")
                 return False
             
             if not os.path.exists(self.metadata_dir):
@@ -46,7 +44,7 @@ class FileLoaderService:
                 )
                 
         except Exception as e:
-            print(f"❌ Error en carga bajo demanda para {file_id}: {e}")
+            print(f"Error en carga bajo demanda para {file_id}: {e}")
             return False
     
     def _get_file_info(self, file_id: str) -> Optional[Dict[str, Any]]:
@@ -60,7 +58,7 @@ class FileLoaderService:
                 'extension': file_info.get("extension", "xlsx")
             }
         except:
-            print(f"❌ No se pudo obtener info del archivo {file_id}")
+            print(f"No se pudo obtener info del archivo {file_id}")
             return None
     
     def _find_existing_parquet(self, original_name: str) -> tuple:
@@ -96,7 +94,7 @@ class FileLoaderService:
             return False
         
         try:
-            print(f"🔄 Convirtiendo archivo {file_id} desde cero...")
+            print(f"Convirtiendo archivo {file_id} desde cero...")
             
             result = conversion_service.convert_file_to_parquet(
                 file_path=file_path,
@@ -112,5 +110,5 @@ class FileLoaderService:
             return False
             
         except Exception as e:
-            print(f"❌ Error convirtiendo archivo {file_id}: {e}")
+            print(f"Error convirtiendo archivo {file_id}: {e}")
             return False

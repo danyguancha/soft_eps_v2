@@ -188,7 +188,7 @@ class UploadHandler:
             os.makedirs(os.path.dirname(file_path), exist_ok=True)
             await file.seek(0)
             
-            print(f"📤 Guardando archivo temporal: {os.path.basename(file_path)}")
+            print(f"Guardando archivo temporal: {os.path.basename(file_path)}")
             
             with open(file_path, 'wb') as f:
                 while True:
@@ -208,7 +208,7 @@ class UploadHandler:
                     
                     # Mostrar progreso para archivos grandes
                     if total_size % (50 * 1024 * 1024) == 0:  # Cada 50MB
-                        print(f"📤 Guardando: {total_size/1024/1024:.1f}MB")
+                        print(f"Guardando: {total_size/1024/1024:.1f}MB")
             
             if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
                 raise HTTPException(
@@ -268,7 +268,7 @@ class UploadHandler:
             # Eliminar del storage
             return self.storage_manager.remove_file(file_id)
         except Exception as e:
-            print(f"❌ Error eliminando archivo {file_id}: {e}")
+            print(f"Error eliminando archivo {file_id}: {e}")
             return False
 
     def list_uploaded_files(self) -> List[Dict[str, Any]]:
@@ -374,7 +374,7 @@ class UploadHandler:
                 detected_encoding = encoding_result.get('encoding', 'utf-8')
                 confidence = encoding_result.get('confidence', 0)
             
-            print(f"🔍 Encoding detectado: {detected_encoding} (confianza: {confidence:.2f})")
+            print(f"Encoding detectado: {detected_encoding} (confianza: {confidence:.2f})")
             
             # LISTA DE ENCODINGS A PROBAR
             encodings_to_try = [
@@ -392,7 +392,7 @@ class UploadHandler:
             # PROBAR ENCODINGS HASTA ENCONTRAR UNO QUE FUNCIONE
             for encoding in encodings_to_try:
                 try:
-                    print(f"🔄 Intentando encoding: {encoding}")
+                    print(f"Intentando encoding: {encoding}")
                     # Leer solo una muestra primero para validar
                     df_sample = pd.read_csv(file_path, encoding=encoding, nrows=100)
                     
@@ -422,7 +422,7 @@ class UploadHandler:
                     continue
             
             # Si todos los encodings fallaron
-            print(f"❌ Todos los encodings fallaron para el CSV")
+            print(f"Todos los encodings fallaron para el CSV")
             return {
                 "success": False,
                 "columns": [],
@@ -453,7 +453,7 @@ class UploadHandler:
                 }
         
         except Exception as e:
-            print(f"❌ Error crítico procesando CSV: {e}")
+            print(f"Error crítico procesando CSV: {e}")
             return {
                 "success": False,
                 "columns": [],

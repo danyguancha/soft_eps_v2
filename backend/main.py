@@ -28,14 +28,14 @@ async def lifespan(app: FastAPI):
     # Inicializar DuckDB si es necesario
     try:
         from services.duckdb_service_wrapper import safe_duckdb_service
-        print("✅ DuckDB Service disponible")
+        print("DuckDB Service disponible")
     except Exception as e:
-        print(f"⚠️ DuckDB Service no disponible: {e}")
+        print(f"DuckDB Service no disponible: {e}")
     
     yield
     
     # Limpieza
-    print("🧹 Limpiando recursos...")
+    print("Limpiando recursos...")
     try:
         from services.duckdb_service_wrapper import safe_duckdb_service
         if hasattr(safe_duckdb_service, '_service'):

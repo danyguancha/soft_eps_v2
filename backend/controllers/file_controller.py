@@ -74,7 +74,7 @@ class FileController:
         
         file_info = self.storage_manager.get_file_info(request.file_id)
         if file_info and file_info.get('total_rows', 0) > 20000:
-            print(f"🚀 Exportación con hilos para archivo grande")
+            print(f"Exportación con hilos para archivo grande")
             
             # Usar hilo para exportaciones de archivos grandes
             export_future = thread_manager.submit_io_task(
@@ -132,24 +132,24 @@ file_controller = FileController()
 try:
     from services.aux_duckdb_services.registry import registry
     registry.register('file_controller', file_controller)
-    print("✅ FileController registrado en registry")
+    print("FileController registrado en registry")
     
     # CORREGIDO: Importar la instancia, no el módulo
     try:
         from services.aux_duckdb_services.recover_cache_files import recover_cache_files
         recover_cache_files.trigger_recovery_if_pending()
-        print("🔄 Verificación de recuperación pendiente completada")
+        print("Verificación de recuperación pendiente completada")
     except ImportError:
-        print("⚠️ recover_cache_files no disponible para callback")
+        print("recover_cache_files no disponible para callback")
     except AttributeError as e:
-        print(f"⚠️ Error de atributo en callback: {e}")
+        print(f"Error de atributo en callback: {e}")
     except Exception as e:
-        print(f"⚠️ Error en callback de recuperación: {e}")
+        print(f"Error en callback de recuperación: {e}")
     
 except ImportError as e:
-    print(f"⚠️ No se pudo registrar FileController en registry: {e}")
+    print(f"No se pudo registrar FileController en registry: {e}")
 except Exception as e:
-    print(f"❌ Error registrando FileController: {e}")
+    print(f"Error registrando FileController: {e}")
 
 # MANTENER FUNCIONES DE COMPATIBILIDAD
 async def upload_file(file: UploadFile):

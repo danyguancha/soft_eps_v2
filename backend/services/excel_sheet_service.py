@@ -69,7 +69,7 @@ class ExcelSheetService:
             
             if not valid_sheets:
                 # Fallback: usar método openpyxl
-                print("⚠️ ZIP method no encontró hojas, usando fallback...")
+                print("ZIP method no encontró hojas, usando fallback...")
                 return ExcelSheetService._get_sheets_openpyxl_readonly(file_path, start_time)
             
             processing_time = time.time() - start_time
@@ -87,7 +87,7 @@ class ExcelSheetService:
             }
             
         except Exception as e:
-            print(f"❌ Método ZIP falló: {e}")
+            print(f"Método ZIP falló: {e}")
             # Fallback automático
             return ExcelSheetService._get_sheets_openpyxl_readonly(file_path, start_time)
     
@@ -123,7 +123,7 @@ class ExcelSheetService:
             }
             
         except Exception as e:
-            print(f"❌ OpenPyXL read-only falló: {e}")
+            print(f"OpenPyXL read-only falló: {e}")
             # Fallback final
             return ExcelSheetService._get_sheets_standard_method(file_path, start_time)
     
@@ -153,7 +153,7 @@ class ExcelSheetService:
             }
             
         except Exception as e:
-            print(f"❌ Método estándar falló: {e}")
+            print(f"Método estándar falló: {e}")
             
             # Último recurso: devolver hoja por defecto
             return {
