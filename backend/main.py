@@ -35,6 +35,7 @@ class Config:
     MAX_RESTARTS = 50
     AUTO_RESTART = os.getenv("AUTO_RESTART", "true").lower() == "true"
 
+name_project = "Sistema de Procesamiento de Archivos"
 
 # ========== PORT MANAGER ==========
 
@@ -83,7 +84,7 @@ class PortManager:
     def start_monitoring(self):
         """Inicia monitoreo en background"""
         if not Config.AUTO_RESTART:
-            print("ℹ️  Auto-restart deshabilitado")
+            print("ℹAuto-restart deshabilitado")
             return
         
         if not self.monitoring_thread:
@@ -93,7 +94,7 @@ class PortManager:
                 name="HealthMonitor"
             )
             self.monitoring_thread.start()
-            print("👁️  Monitoreo de salud iniciado")
+            print("Monitoreo de salud iniciado")
     
     def _monitor_loop(self):
         """Loop de monitoreo de salud"""
@@ -107,7 +108,7 @@ class PortManager:
                     consecutive_failures = 0
                 else:
                     consecutive_failures += 1
-                    print(f"⚠️  Servidor no responde (fallas: {consecutive_failures}/5)")
+                    print(f"Servidor no responde (fallas: {consecutive_failures}/5)")
                 
                 if consecutive_failures >= 5:
                     print("🔄 Iniciando reinicio automático...")
@@ -115,7 +116,7 @@ class PortManager:
                     consecutive_failures = 0
                     
             except Exception as e:
-                print(f"❌ Error en monitoreo: {e}")
+                print(f"Error en monitoreo: {e}")
     
     def _trigger_restart(self):
         """Activa el reinicio en nuevo puerto"""
@@ -123,14 +124,14 @@ class PortManager:
         
         # Throttling: esperar al menos 60s entre reinicios
         if current_time - self.last_restart_time < 60:
-            print("⏳ Esperando antes del siguiente reinicio...")
+            print("Esperando antes del siguiente reinicio...")
             time.sleep(60)
         
         self.last_restart_time = current_time
         self.restart_count += 1
         
         if self.restart_count >= Config.MAX_RESTARTS:
-            print(f"❌ Máximo de reinicios alcanzado ({Config.MAX_RESTARTS})")
+            print(f"Máximo de reinicios alcanzado ({Config.MAX_RESTARTS})")
             self.should_monitor = False
             return
         
@@ -142,13 +143,13 @@ class PortManager:
             Config.FALLBACK_PORTS = [p for p in Config.FALLBACK_PORTS if p != old_port]
             new_port = self.find_available_port()
         
-        print(f"🔄 Reinicio #{self.restart_count}: puerto {old_port} → {new_port}")
+        print(f"Reinicio #{self.restart_count}: puerto {old_port} → {new_port}")
         
         # Iniciar nueva instancia
         self._start_new_instance(new_port)
         self.current_port = new_port
         
-        print(f"✅ Servidor reiniciado en puerto {new_port}")
+        print(f"Servidor reiniciado en puerto {new_port}")
     
     def _start_new_instance(self, port: int):
         """Inicia nueva instancia del servidor"""
@@ -166,7 +167,7 @@ class PortManager:
                 server = uvicorn.Server(config)
                 asyncio.run(server.serve())
             except Exception as e:
-                print(f"❌ Error en instancia (puerto {port}): {e}")
+                print(f"Error en instancia (puerto {port}): {e}")
         
         thread = threading.Thread(target=run_server, daemon=True, name=f"Server-{port}")
         thread.start()
@@ -213,7 +214,7 @@ class UnifiedMiddleware(BaseHTTPMiddleware):
             
         except Exception as e:
             elapsed = time.time() - start_time
-            print(f"❌ Error en request ({elapsed:.2f}s): {e}")
+            print(f"Error en request ({elapsed:.2f}s): {e}")
             raise
 
 
@@ -223,7 +224,7 @@ class UnifiedMiddleware(BaseHTTPMiddleware):
 async def lifespan(app: FastAPI):
     # ===== STARTUP =====
     print("=" * 60)
-    print("🚀 SISTEMA DE PROCESAMIENTO DE ARCHIVOS v2.4.0")
+    print("SISTEMA DE PROCESAMIENTO DE ARCHIVOS v2.4.0")
     print("=" * 60)
     
     # Inicializar servicios
@@ -231,7 +232,7 @@ async def lifespan(app: FastAPI):
         from services.duckdb_service_wrapper import safe_duckdb_service
         print("✓ DuckDB Service disponible")
     except Exception as e:
-        print(f"⚠️  DuckDB: {e}")
+        print(f"DuckDB: {e}")
     
     # Crear directorios
     os.makedirs(Config.UPLOAD_DIR, exist_ok=True)
@@ -244,13 +245,13 @@ async def lifespan(app: FastAPI):
     # Iniciar monitoreo
     port_manager.start_monitoring()
     
-    print("✅ Sistema listo")
+    print("Sistema listo")
     print("=" * 60)
     
     yield
     
     # ===== SHUTDOWN =====
-    print("\n🛑 Deteniendo sistema...")
+    print("\nDeteniendo sistema...")
     port_manager.stop_monitoring()
     
     # Limpiar servicios
@@ -261,7 +262,7 @@ async def lifespan(app: FastAPI):
     except Exception:
         pass
     
-    print("✅ Sistema detenido correctamente")
+    print("Sistema detenido correctamente")
 
 
 # Crear app
@@ -301,7 +302,7 @@ if os.path.exists(Config.EXPORTS_DIR):
 def read_root():
     """Endpoint raíz con información del sistema"""
     return {
-        "message": "Sistema de Procesamiento de Archivos",
+        "message": name_project,
         "version": "2.4.0",
         "status": "operational",
         "port": port_manager.current_port,
@@ -342,12 +343,12 @@ def server_status():
 def discover_service():
     """Service discovery endpoint"""
     return {
-        "service": "Sistema de Procesamiento de Archivos",
+        "service": name_project,
         "version": "2.4.0",
         "port": port_manager.current_port,
         "host": port_manager.host,
-        "base_url": f"http://{port_manager.host}:{port_manager.current_port}",
-        "api_url": f"http://{port_manager.host}:{port_manager.current_port}/api/v1",
+        "base_url": f"https://{port_manager.host}:{port_manager.current_port}",
+        "api_url": f"https://{port_manager.host}:{port_manager.current_port}/api/v1",
         "status": "active",
         "timestamp": time.time()
     }
@@ -364,7 +365,7 @@ app.include_router(technical_note_router, prefix="/api/v1/technical-note", tags=
 def cleanup_and_exit(sig=None, frame=None):
     """Limpieza al salir"""
     print(f"\n{'='*60}")
-    print("🛑 Señal de terminación recibida")
+    print("Señal de terminación recibida")
     print("="*60)
     
     port_manager.stop_monitoring()
@@ -376,7 +377,7 @@ def cleanup_and_exit(sig=None, frame=None):
     except Exception:
         pass
     
-    print("✅ Limpieza completada")
+    print("Limpieza completada")
     
     if sig:
         sys.exit(0)
@@ -394,15 +395,15 @@ if __name__ == "__main__":
     print("SISTEMA DE PROCESAMIENTO DE ARCHIVOS v2.4.0")
     print("Puerto Dinámico | Reinicio Automático")
     print("=" * 60)
-    print(f"💡 Puerto preferido: {Config.PREFERRED_PORT}")
-    print(f"💡 Auto-restart: {Config.AUTO_RESTART}")
+    print(f"Puerto preferido: {Config.PREFERRED_PORT}")
+    print(f"Auto-restart: {Config.AUTO_RESTART}")
     print("=" * 60)
     
     try:
         port = port_manager.find_available_port(Config.PREFERRED_PORT)
         port_manager.current_port = port
         
-        print(f"🚀 Iniciando en puerto {port}...")
+        print(f"Iniciando en puerto {port}...")
         
         uvicorn.run(
             "main:app",
@@ -413,11 +414,11 @@ if __name__ == "__main__":
             timeout_keep_alive=Config.REQUEST_TIMEOUT,
         )
     except KeyboardInterrupt:
-        print("\n✅ Aplicación detenida por el usuario")
+        print("\nAplicación detenida por el usuario")
     except Exception as e:
-        print(f"\n❌ Error crítico: {e}")
+        print(f"\nError crítico: {e}")
         import traceback
         traceback.print_exc()
     finally:
         cleanup_and_exit()
-        print("🏁 Fin de ejecución")
+        print("Fin de ejecución")

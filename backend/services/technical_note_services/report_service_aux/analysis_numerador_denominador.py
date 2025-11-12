@@ -199,7 +199,6 @@ class AnalysisNumeratorDenominator:
                             corte_fecha: str, age_extractor, min_count: int) -> dict:
         """Procesa un match individual completo"""
         column_name = match['column']
-        match['keyword']
         
         # Extraer rango de edad
         age_range_obj = age_extractor.extract_age_range(column_name)
