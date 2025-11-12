@@ -37,18 +37,30 @@ const AppContent: React.FC = () => {
   const navigate = useNavigate();
   
   const isMobile = !(screens.md ?? false);
-  const isTablet = !!(screens.md && !screens.lg);
+  const isTablet = screens.md && !screens.lg;
 
   const fileOperations = useFileOperations();
   const crossData = useCrossDataContext();
 
+  // SOLUCIÓN: Inicializar collapsed en false para que esté visible por defecto
   const [ui, setUI] = useState<UIState>({
-    collapsed: isMobile,
+    collapsed: false,  // Siempre visible al inicio
     mobileMenuVisible: false,
     crossModalVisible: false,
     serverPort: 8000,
     serverStatus: 'online'
   });
+
+  // SOLUCIÓN: Efecto que maneja el colapso basado en el tamaño de pantalla
+  // Solo se colapsa automáticamente en móviles
+  useEffect(() => {
+    if (isMobile) {
+      setUI(prev => ({ ...prev, collapsed: true }));
+    } else {
+      // En desktop/tablet mantener visible
+      setUI(prev => ({ ...prev, collapsed: false }));
+    }
+  }, [isMobile]);
 
   // ========== LIMPIEZA DE CACHE AL INICIAR LA APLICACIÓN ==========
   useEffect(() => {
@@ -64,22 +76,18 @@ const AppContent: React.FC = () => {
           console.log(`Tablas eliminadas: ${cleanupResult.tables_cleared}`);
           console.log(`Archivos técnicos eliminados: ${cleanupResult.technical_files_cleared}`);
           
-          // Mensaje discreto de confirmación
           message.success('Sistema inicializado correctamente', 1.5);
         } else if (cleanupResult.errors && cleanupResult.errors.length > 0) {
           console.warn('Limpieza completada con algunos errores:', cleanupResult.errors);
-          message.warning('Cache limpiado', 2);
         }
       } catch (error) {
         console.error('Error limpiando cache:', error);
-        // No bloqueamos la aplicación si falla la limpieza
         message.warning('No se pudo limpiar el cache, continuando...', 2);
       }
     };
 
-    // Ejecutar limpieza al montar el componente
     initializeCache();
-  }, []); // Solo ejecutar una vez al montar
+  }, []);
 
   // ========== HEALTH MONITOR SETUP ==========
   useEffect(() => {
@@ -95,7 +103,6 @@ const AppContent: React.FC = () => {
           serverStatus: 'online'
         }));
         
-        // Notificación discreta
         message.info(`Servidor actualizado al puerto ${newPort}`, 2);
       },
       
@@ -119,9 +126,8 @@ const AppContent: React.FC = () => {
         
         message.success(`Conectado al servidor en puerto ${port}`, 2);
       }
-    }, 10000); // Check cada 10 segundos
+    }, 10000);
     
-    // Cleanup al desmontar
     return () => {
       console.log('🛑 Deteniendo monitoreo de servidor...');
       healthMonitor.stop();
@@ -179,7 +185,6 @@ const AppContent: React.FC = () => {
 
             <Layout className="content-layout">
               <Content className="app-content">
-                {/* Alerta de estado del servidor (solo si está reconectando) */}
                 {ui.serverStatus === 'reconnecting' && (
                   <Alert
                     type="warning"
@@ -209,10 +214,7 @@ const AppContent: React.FC = () => {
                     </div>
                   ) : (
                     <Routes>
-                      {/* Ruta por defecto */}
                       <Route path="/" element={<DynamicTabRouter tabKey="welcome" />} />
-                      
-                      {/* Rutas principales */}
                       <Route path="/welcome" element={<DynamicTabRouter tabKey="welcome" />} />
                       <Route path="/upload" element={<DynamicTabRouter tabKey="upload" />} />
                       <Route 
@@ -225,8 +227,6 @@ const AppContent: React.FC = () => {
                         } 
                       />
                       <Route path="/export" element={<DynamicTabRouter tabKey="export" />} />
-                      
-                      {/* Ruta de cruce */}
                       <Route 
                         path="/cross" 
                         element={
@@ -240,12 +240,8 @@ const AppContent: React.FC = () => {
                           />
                         } 
                       />
-                      
-                      {/* Rutas de nota técnica */}
                       <Route path="/technical_note" element={<DynamicTabRouter tabKey="technical_note" />} />
                       <Route path="/technical_note/:ageGroup" element={<DynamicTabRouter tabKey="technical_note" />} />
-                      
-                      {/* Ruta 404 */}
                       <Route path="*" element={<div>Página no encontrada</div>} />
                     </Routes>
                   )}
@@ -257,7 +253,6 @@ const AppContent: React.FC = () => {
                   {isMobile ? 'Procesador ©2025' : 'Evaluación de nota técnica ©2025'}
                 </span>
                 
-                {/* Indicador discreto de puerto (opcional) */}
                 <span style={{ 
                   marginLeft: '10px', 
                   fontSize: '11px', 
@@ -270,7 +265,6 @@ const AppContent: React.FC = () => {
             </Layout>
           </Layout>
 
-          {/* Drawer móvil */}
           <Drawer
             title="Menú"
             placement="left"
@@ -288,7 +282,6 @@ const AppContent: React.FC = () => {
             />
           </Drawer>
 
-          {/* Modal para cruce de archivos */}
           <Modal
             title="🔄 Cruzar Archivos - VLOOKUP"
             open={ui.crossModalVisible}
@@ -315,7 +308,6 @@ const AppContent: React.FC = () => {
             />
           </Modal>
 
-          {/* CHATBOT FLOTANTE - DISPONIBLE EN TODAS LAS PÁGINAS */}
           <ChatBot fileContext={fileOperations.currentFile?.file_id} />
         </Layout>
       </div>

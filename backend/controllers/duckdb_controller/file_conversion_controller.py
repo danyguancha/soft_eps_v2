@@ -2,11 +2,8 @@
 import os
 import pandas as pd
 import time
-import signal
-import subprocess
-import sys
 import threading
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from utils.file_utils import FileUtils
 
 
@@ -23,7 +20,8 @@ class FileConversionController:
         self.parquet_dir = parquet_dir
         self.cache = cache_controller
         self.file_utils = FileUtils()
-        self._temp_views = []  # Track de vistas temporales para limpieza
+        self._temp_views = []
+        self.parquet_vacio = "Parquet vacio"
 
     def _cleanup_temp_views(self):
         """Limpia todas las vistas temporales creadas"""
@@ -82,89 +80,115 @@ class FileConversionController:
     def _convert_with_timeout_and_progress(self, file_path: str, file_hash: str, original_name: str, ext: str, start_time: float) -> Dict[str, Any]:
         """Conversión con timeout y validación"""
         
-        # Verificar que el archivo fuente existe
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"El archivo fuente no existe: {file_path}")
         
         parquet_path = self.cache.get_cached_parquet_path(file_hash)
         
         try:
-            # Configurar timeout basado en tamaño del archivo
             file_size_mb = os.path.getsize(file_path) / 1024 / 1024
-            timeout_minutes = min(max(file_size_mb / 50, 5), 30)
+            timeout_minutes = self._calculate_timeout(file_size_mb)
             
             print(f"📁 Archivo: {file_size_mb:.2f}MB | Timeout: {timeout_minutes:.1f}min")
             
-            # Wrapper para conversión con timeout
-            result_container = {"result": None, "error": None, "completed": False}
+            # Ejecutar conversión con timeout
+            result_container = self._execute_conversion_with_timeout(
+                file_path, parquet_path, ext, timeout_minutes
+            )
             
-            def convert_worker():
-                try:
-                    if ext.lower() == 'csv':
-                        result_container["result"] = self._convert_csv_to_parquet_robust(file_path, parquet_path)
-                    else:
-                        result_container["result"] = self._convert_excel_to_parquet(file_path, parquet_path)
-                    result_container["completed"] = True
-                except Exception as e:
-                    result_container["error"] = str(e)
-                    result_container["completed"] = True
+            # Validar resultado
+            validation_result = self._validate_conversion_result(result_container, timeout_minutes)
+            if validation_result:
+                return validation_result
             
-            # Ejecutar en thread con timeout
-            thread = threading.Thread(target=convert_worker, daemon=True)
-            thread.start()
-            thread.join(timeout=timeout_minutes * 60)
-            
-            # Verificar si completó
-            if not result_container["completed"]:
-                print(f"⏱️ TIMEOUT: Conversión excedió {timeout_minutes:.1f} minutos")
-                self._cleanup_temp_views()
-                return {
-                    "success": False,
-                    "error": f"Timeout: El archivo tomó más de {timeout_minutes:.1f} minutos. Divide el archivo en partes más pequeñas."
-                }
-            
-            # Verificar si hubo error
-            if result_container["error"]:
-                print(f"Error en worker: {result_container['error']}")
-                self._cleanup_temp_views()
-                return {
-                    "success": False,
-                    "error": f"Error en conversión: {result_container['error']}"
-                }
-            
-            result = result_container["result"]
-            
-            if not result or not result.get("success"):
-                self._cleanup_temp_views()
-                return result or {"success": False, "error": "Conversión falló sin resultado"}
-            
-            # Finalizar conversión
+            # Finalizar conversión exitosa
             return self._finalize_conversion(
                 parquet_path=parquet_path,
                 file_hash=file_hash,
                 original_name=original_name,
                 ext=ext,
-                result=result,
+                result=result_container["result"],
                 start_time=start_time,
                 original_file_path=file_path
             )
                     
         except Exception as e:
             print(f"Error general en conversión: {e}")
-            self._cleanup_temp_views()
-            
-            # Limpiar archivos parciales
-            if os.path.exists(parquet_path):
-                try:
-                    os.remove(parquet_path)
-                    print(f"🗑️ Archivo parcial eliminado: {parquet_path}")
-                except Exception:
-                    pass
-            
+            self._cleanup_conversion_error(parquet_path)
             return {
                 "success": False,
                 "error": f"Error en conversión: {str(e)}"
             }
+
+
+    def _calculate_timeout(self, file_size_mb: float) -> float:
+        """Calcula timeout basado en tamaño del archivo"""
+        return min(max(file_size_mb / 50, 5), 30)
+
+
+    def _execute_conversion_with_timeout(self, file_path: str, parquet_path: str, ext: str, timeout_minutes: float) -> dict:
+        """Ejecuta conversión en thread con timeout"""
+        result_container = {"result": None, "error": None, "completed": False}
+        
+        def convert_worker():
+            try:
+                if ext.lower() == 'csv':
+                    result_container["result"] = self._convert_csv_to_parquet_robust(file_path, parquet_path)
+                else:
+                    result_container["result"] = self._convert_excel_to_parquet(file_path, parquet_path)
+                result_container["completed"] = True
+            except Exception as e:
+                result_container["error"] = str(e)
+                result_container["completed"] = True
+        
+        thread = threading.Thread(target=convert_worker, daemon=True)
+        thread.start()
+        thread.join(timeout=timeout_minutes * 60)
+        
+        return result_container
+
+
+    def _validate_conversion_result(self, result_container: dict, timeout_minutes: float) -> dict:
+        """Valida el resultado de la conversión y retorna error si falla"""
+        
+        # Verificar timeout
+        if not result_container["completed"]:
+            print(f"⏱️ TIMEOUT: Conversión excedió {timeout_minutes:.1f} minutos")
+            self._cleanup_temp_views()
+            return {
+                "success": False,
+                "error": f"Timeout: El archivo tomó más de {timeout_minutes:.1f} minutos. Divide el archivo en partes más pequeñas."
+            }
+        
+        # Verificar error en worker
+        if result_container["error"]:
+            print(f"Error en worker: {result_container['error']}")
+            self._cleanup_temp_views()
+            return {
+                "success": False,
+                "error": f"Error en conversión: {result_container['error']}"
+            }
+        
+        # Verificar resultado válido
+        result = result_container["result"]
+        if not result or not result.get("success"):
+            self._cleanup_temp_views()
+            return result or {"success": False, "error": "Conversión falló sin resultado"}
+        
+        return {}
+
+
+    def _cleanup_conversion_error(self, parquet_path: str):
+        """Limpia recursos después de error en conversión"""
+        self._cleanup_temp_views()
+        
+        if os.path.exists(parquet_path):
+            try:
+                os.remove(parquet_path)
+                print(f"🗑️ Archivo parcial eliminado: {parquet_path}")
+            except Exception:
+                pass
+
 
     def _convert_csv_to_parquet_robust(self, file_path: str, parquet_path: str) -> Dict[str, Any]:
         """Conversión robusta con limpieza de recursos mejorada"""
@@ -173,51 +197,72 @@ class FileConversionController:
         print("🔄 INICIANDO CONVERSIÓN CSV → PARQUET")
         print("="*60)
         
-        # ESTRATEGIA 1: DuckDB nativo puro (más rápido)
+        # Intentar estrategias en orden
+        result = self._try_duckdb_native_strategy(file_path, parquet_path)
+        if result["success"]:
+            return result
+        
+        result = self._try_pandas_duckdb_strategy(file_path, parquet_path)
+        if result["success"]:
+            return result
+        
+        result = self._try_pandas_chunks_strategy(file_path, parquet_path)
+        if result["success"]:
+            return result
+        
+        print("\nTodas las estrategias fallaron")
+        return {
+            "success": False,
+            "error": "Todas las estrategias de conversión CSV fallaron. El archivo puede estar corrupto o ser demasiado grande."
+        }
+
+
+    def _try_duckdb_native_strategy(self, file_path: str, parquet_path: str) -> Dict[str, Any]:
+        """Estrategia 1: DuckDB nativo puro"""
         print("\n📌 Estrategia 1: DuckDB nativo con all_varchar=true")
+        
         try:
             config = self.file_utils.detect_csv_encoding_and_separator(file_path)
             
-            if config["success"]:
-                print(f"✓ Encoding: {config['encoding']}, Separador: '{config['separator']}'")
-                
-                conversion_sql = f"""
-                COPY (
-                    SELECT * FROM read_csv('{file_path}',
-                        delim = '{config["separator"]}',
-                        encoding = '{config["encoding"]}',
-                        header = true,
-                        all_varchar = true,
-                        ignore_errors = true,
-                        strict_mode = false,
-                        parallel = true
-                    )
-                ) TO '{parquet_path}' (FORMAT 'parquet', COMPRESSION 'snappy')
-                """
-                
-                print("Ejecutando conversión DuckDB...")
-                self.conn.execute(conversion_sql)
-                
-                # Verificar que se creó el archivo
-                if os.path.exists(parquet_path) and os.path.getsize(parquet_path) > 0:
-                    print("Estrategia 1: EXITOSA")
-                    return {"success": True, "method": "duckdb_native"}
-                else:
-                    print("Archivo Parquet vacío o no creado")
-                    raise ValueError("Parquet vacío")
+            if not config["success"]:
+                raise ValueError("No se pudo detectar configuración CSV")
+            
+            print(f"✓ Encoding: {config['encoding']}, Separador: '{config['separator']}'")
+            
+            conversion_sql = f"""
+            COPY (
+                SELECT * FROM read_csv('{file_path}',
+                    delim = '{config["separator"]}',
+                    encoding = '{config["encoding"]}',
+                    header = true,
+                    all_varchar = true,
+                    ignore_errors = true,
+                    strict_mode = false,
+                    parallel = true
+                )
+            ) TO '{parquet_path}' (FORMAT 'parquet', COMPRESSION 'snappy')
+            """
+            
+            print("Ejecutando conversión DuckDB...")
+            self.conn.execute(conversion_sql)
+            
+            if self._is_valid_parquet(parquet_path):
+                print("✓ Estrategia 1: EXITOSA")
+                return {"success": True, "method": "duckdb_native"}
+            else:
+                raise ValueError(self.parquet_vacio)
                 
         except Exception as e:
-            print(f"Estrategia 1 falló: {e}")
-            # Limpiar archivo parcial
-            if os.path.exists(parquet_path):
-                try:
-                    os.remove(parquet_path)
-                except Exception:
-                    pass
-        
-        # ESTRATEGIA 2: Pandas con registro temporal en DuckDB
+            print(f"✗ Estrategia 1 falló: {e}")
+            self._cleanup_parquet(parquet_path)
+            return {"success": False, "error": str(e)}
+
+
+    def _try_pandas_duckdb_strategy(self, file_path: str, parquet_path: str) -> Dict[str, Any]:
+        """Estrategia 2: Pandas con registro temporal en DuckDB"""
         print("\n📌 Estrategia 2: Pandas → DuckDB con limpieza de recursos")
         view_name = None
+        
         try:
             config = self.file_utils.detect_csv_encoding_and_separator(file_path)
             
@@ -230,83 +275,39 @@ class FileConversionController:
             
             print(f"✓ DataFrame creado: {len(df)} filas, {len(df.columns)} columnas")
             
-            # Nombre único para la vista temporal
-            view_name = f'temp_csv_df_{int(time.time() * 1000)}'
-            self._temp_views.append(view_name)
-            
-            print(f"Registrando vista temporal: {view_name}")
-            self.conn.register(view_name, df)
-            
-            # Liberar DataFrame de memoria
+            # Registrar vista temporal
+            view_name = self._register_temp_view(df)
             del df
             
+            # Convertir a Parquet
             print("Convirtiendo a Parquet...")
-            conversion_sql = f"""
-            COPY (
-                SELECT * FROM {view_name}
-            ) TO '{parquet_path}' (FORMAT 'parquet', COMPRESSION 'snappy')
-            """
+            self._convert_view_to_parquet(view_name, parquet_path)
             
-            self.conn.execute(conversion_sql)
-            
-            # Limpiar vista inmediatamente después de usar
+            # Limpiar vista
             print("Limpiando vista temporal...")
-            self.conn.execute(f"DROP VIEW IF EXISTS {view_name}")
-            if view_name in self._temp_views:
-                self._temp_views.remove(view_name)
+            self._cleanup_view(view_name)
             
-            # Verificar resultado
-            if os.path.exists(parquet_path) and os.path.getsize(parquet_path) > 0:
-                print("Estrategia 2: EXITOSA")
+            if self._is_valid_parquet(parquet_path):
+                print("✓ Estrategia 2: EXITOSA")
                 return {"success": True, "method": "pandas_robust"}
             else:
-                raise ValueError("Parquet vacío después de conversión")
-            
+                raise ValueError(self.parquet_vacio)
+                
         except Exception as e:
-            print(f"Estrategia 2 falló: {e}")
-            
-            # Limpieza exhaustiva
-            if view_name:
-                try:
-                    self.conn.execute(f"DROP VIEW IF EXISTS {view_name}")
-                    if view_name in self._temp_views:
-                        self._temp_views.remove(view_name)
-                    print(f"✓ Vista {view_name} limpiada")
-                except Exception as cleanup_error:
-                    print(f"Error limpiando vista: {cleanup_error}")
-            
-            # Limpiar archivo parcial
-            if os.path.exists(parquet_path):
-                try:
-                    os.remove(parquet_path)
-                except Exception:
-                    pass
-        
-        # ESTRATEGIA 3: Fallback con chunks (para archivos muy grandes)
+            print(f"✗ Estrategia 2 falló: {e}")
+            self._cleanup_view_and_parquet(view_name, parquet_path)
+            return {"success": False, "error": str(e)}
+
+
+    def _try_pandas_chunks_strategy(self, file_path: str, parquet_path: str) -> Dict[str, Any]:
+        """Estrategia 3: Pandas con chunks para archivos grandes"""
         print("\n📌 Estrategia 3: Pandas con chunks + concatenación")
+        
         try:
             config = self.file_utils.detect_csv_encoding_and_separator(file_path)
             
             print("Leyendo CSV en chunks...")
-            chunk_size = 50000  # 50k filas por chunk
-            chunks = []
-            
-            for i, chunk in enumerate(pd.read_csv(
-                file_path,
-                encoding=config["encoding"],
-                sep=config["separator"],
-                dtype=str,
-                na_filter=False,
-                chunksize=chunk_size,
-                low_memory=False,
-                on_bad_lines='skip'
-            )):
-                print(f"   Chunk {i+1}: {len(chunk)} filas")
-                chunks.append(chunk)
-                
-                # Límite de memoria: max 10 chunks
-                if len(chunks) >= 10:
-                    break
+            chunks = self._read_csv_in_chunks(file_path, config)
             
             if not chunks:
                 raise ValueError("No se pudieron leer chunks del CSV")
@@ -322,28 +323,94 @@ class FileConversionController:
                 compression='snappy',
                 index=False
             )
-            
             del df_final
             
-            if os.path.exists(parquet_path) and os.path.getsize(parquet_path) > 0:
-                print("Estrategia 3: EXITOSA")
+            if self._is_valid_parquet(parquet_path):
+                print("✓ Estrategia 3: EXITOSA")
                 return {"success": True, "method": "pandas_chunks"}
             else:
-                raise ValueError("Parquet vacío")
+                raise ValueError(self.parquet_vacio)
                 
         except Exception as e:
-            print(f"Estrategia 3 falló: {e}")
-            if os.path.exists(parquet_path):
-                try:
-                    os.remove(parquet_path)
-                except Exception:
-                    pass
+            print(f"✗ Estrategia 3 falló: {e}")
+            self._cleanup_parquet(parquet_path)
+            return {"success": False, "error": str(e)}
+
+
+    def _read_csv_in_chunks(self, file_path: str, config: dict) -> list:
+        """Lee CSV en chunks y retorna lista de DataFrames"""
+        chunk_size = 50000
+        chunks = []
         
-        print("\nTodas las estrategias fallaron")
-        return {
-            "success": False,
-            "error": "Todas las estrategias de conversión CSV fallaron. El archivo puede estar corrupto o ser demasiado grande."
-        }
+        for i, chunk in enumerate(pd.read_csv(
+            file_path,
+            encoding=config["encoding"],
+            sep=config["separator"],
+            dtype=str,
+            na_filter=False,
+            chunksize=chunk_size,
+            low_memory=False,
+            on_bad_lines='skip'
+        )):
+            print(f"   Chunk {i+1}: {len(chunk)} filas")
+            chunks.append(chunk)
+            
+            if len(chunks) >= 10:
+                break
+        
+        return chunks
+
+
+    def _is_valid_parquet(self, parquet_path: str) -> bool:
+        """Verifica si el archivo parquet es válido"""
+        return os.path.exists(parquet_path) and os.path.getsize(parquet_path) > 0
+
+
+    def _cleanup_parquet(self, parquet_path: str):
+        """Elimina archivo parquet si existe"""
+        if os.path.exists(parquet_path):
+            try:
+                os.remove(parquet_path)
+            except Exception:
+                pass
+
+
+    def _register_temp_view(self, df) -> str:
+        """Registra DataFrame como vista temporal"""
+        view_name = f'temp_csv_df_{int(time.time() * 1000)}'
+        self._temp_views.append(view_name)
+        print(f"Registrando vista temporal: {view_name}")
+        self.conn.register(view_name, df)
+        return view_name
+
+
+    def _convert_view_to_parquet(self, view_name: str, parquet_path: str):
+        """Convierte vista temporal a Parquet"""
+        conversion_sql = f"""
+        COPY (
+            SELECT * FROM {view_name}
+        ) TO '{parquet_path}' (FORMAT 'parquet', COMPRESSION 'snappy')
+        """
+        self.conn.execute(conversion_sql)
+
+
+    def _cleanup_view(self, view_name: str):
+        """Limpia vista temporal"""
+        if view_name:
+            try:
+                self.conn.execute(f"DROP VIEW IF EXISTS {view_name}")
+                if view_name in self._temp_views:
+                    self._temp_views.remove(view_name)
+                print(f"✓ Vista {view_name} limpiada")
+            except Exception as cleanup_error:
+                print(f"Error limpiando vista: {cleanup_error}")
+
+
+    def _cleanup_view_and_parquet(self, view_name: str, parquet_path: str):
+        """Limpia vista temporal y archivo parquet"""
+        self._cleanup_view(view_name)
+        self._cleanup_parquet(parquet_path)
+
 
     def _convert_excel_to_parquet(self, file_path: str, parquet_path: str) -> Dict[str, Any]:
         """Conversión de Excel con detección automática de hojas"""
@@ -367,8 +434,25 @@ class FileConversionController:
         
         print("\n🔄 Modo: EXCEL GRANDE")
         
-        # ESTRATEGIA 1: DuckDB directo
+        # Intentar estrategia 1
+        result = self._try_duckdb_excel_strategy(file_path, parquet_path)
+        if result["success"]:
+            return result
+        
+        # Intentar estrategia 2
+        result = self._try_pandas_excel_strategy(file_path, parquet_path)
+        if result["success"]:
+            return result
+        
+        # Todas las estrategias fallaron
+        error_msg = f"Todas las estrategias fallaron para Excel de {file_size_mb:.2f}MB"
+        return {"success": False, "error": error_msg}
+
+
+    def _try_duckdb_excel_strategy(self, file_path: str, parquet_path: str) -> Dict[str, Any]:
+        """Estrategia 1: DuckDB read_xlsx directo"""
         print("\nEstrategia 1: DuckDB read_xlsx")
+        
         try:
             conversion_sql = f"""
             COPY (
@@ -378,74 +462,86 @@ class FileConversionController:
             
             self.conn.execute(conversion_sql)
             
-            if os.path.exists(parquet_path) and os.path.getsize(parquet_path) > 0:
-                print("Estrategia 1: EXITOSA")
+            if self._is_valid_parquet(parquet_path):
+                print("✓ Estrategia 1: EXITOSA")
                 return {"success": True, "method": "duckdb_excel"}
             else:
-                raise ValueError("Parquet vacío")
+                raise ValueError(self.parquet_vacio)
                 
         except Exception as e1:
-            print(f"Estrategia 1 falló: {e1}")
-            if os.path.exists(parquet_path):
-                try:
-                    os.remove(parquet_path)
-                except Exception:
-                    pass
-        
-        # ESTRATEGIA 2: Pandas con engine óptimo
+            print(f"✗ Estrategia 1 falló: {e1}")
+            self._cleanup_parquet(parquet_path)
+            return {"success": False, "error": str(e1)}
+
+
+    def _try_pandas_excel_strategy(self, file_path: str, parquet_path: str) -> Dict[str, Any]:
+        """Estrategia 2: Pandas con openpyxl"""
         print("\nEstrategia 2: Pandas con openpyxl")
         view_name = None
+        
         try:
-            df_excel = pd.read_excel(
-                file_path,
-                engine='openpyxl',
-                dtype=str,
-                na_filter=False
-            )
-            
+            # Leer Excel
+            df_excel = self._read_excel_with_pandas(file_path)
             print(f"✓ Excel leído: {len(df_excel)} filas")
             
-            # Limpieza
-            for col in df_excel.columns:
-                df_excel[col] = df_excel[col].astype(str)
-            df_excel = df_excel.fillna('').replace(['nan', '<NA>', 'None'], '')
-            
-            # Vista temporal con nombre único
-            view_name = f'temp_excel_df_{int(time.time() * 1000)}'
-            self._temp_views.append(view_name)
-            
-            self.conn.register(view_name, df_excel)
+            # Preparar y registrar vista
+            df_excel = self._clean_dataframe(df_excel)
+            view_name = self._register_temp_view(df_excel)
             del df_excel
             
-            conversion_sql = f"""
-            COPY (
-                SELECT * FROM {view_name}
-            ) TO '{parquet_path}' (FORMAT 'parquet', COMPRESSION 'snappy')
-            """
-            
-            self.conn.execute(conversion_sql)
+            # Convertir a Parquet
+            self._convert_view_to_parquet(view_name, parquet_path)
             
             # Limpiar vista
+            self._cleanup_view(view_name)
+            
+            if self._is_valid_parquet(parquet_path):
+                print("✓ Estrategia 2: EXITOSA")
+                return {"success": True, "method": "pandas_excel"}
+            else:
+                return {"success": False, "error": self.parquet_vacio}
+                
+        except Exception as e2:
+            print(f"✗ Estrategia 2 falló: {e2}")
+            if view_name:
+                self._cleanup_view(view_name)
+            return {"success": False, "error": str(e2)}
+
+    def _is_valid_parquet(self, parquet_path: str) -> bool:
+        """Verifica si el archivo parquet es válido"""
+        return os.path.exists(parquet_path) and os.path.getsize(parquet_path) > 0
+
+    def _read_excel_with_pandas(self, file_path: str):
+        """Lee archivo Excel con pandas"""
+        return pd.read_excel(
+            file_path,
+            engine='openpyxl',
+            dtype=str,
+            na_filter=False
+        )
+
+    def _clean_dataframe(self, df):
+        """Limpia y normaliza el DataFrame"""
+        for col in df.columns:
+            df[col] = df[col].astype(str)
+        return df.fillna('').replace(['nan', '<NA>', 'None'], '')
+
+    def _register_temp_view(self, df) -> str:
+        """Registra DataFrame como vista temporal"""
+        view_name = f'temp_excel_df_{int(time.time() * 1000)}'
+        self._temp_views.append(view_name)
+        self.conn.register(view_name, df)
+        return view_name
+
+    def _cleanup_view(self, view_name: str):
+        """Limpia vista temporal"""
+        try:
             self.conn.execute(f"DROP VIEW IF EXISTS {view_name}")
             if view_name in self._temp_views:
                 self._temp_views.remove(view_name)
-            
-            if os.path.exists(parquet_path) and os.path.getsize(parquet_path) > 0:
-                print("Estrategia 2: EXITOSA")
-                return {"success": True, "method": "pandas_excel"}
-                
-        except Exception as e2:
-            print(f"Estrategia 2 falló: {e2}")
-            if view_name:
-                try:
-                    self.conn.execute(f"DROP VIEW IF EXISTS {view_name}")
-                    if view_name in self._temp_views:
-                        self._temp_views.remove(view_name)
-                except Exception:
-                    pass
-        
-        error_msg = f"Todas las estrategias fallaron para Excel de {file_size_mb:.2f}MB"
-        return {"success": False, "error": error_msg}
+        except Exception:
+            pass
+
 
     def _convert_standard_excel_to_parquet(self, file_path: str, parquet_path: str) -> Dict[str, Any]:
         """Método estándar para archivos Excel normales"""
@@ -492,7 +588,7 @@ class FileConversionController:
                 print("Conversión Excel estándar: EXITOSA")
                 return {"success": True, "method": "standard_excel"}
             else:
-                raise ValueError("Parquet vacío")
+                raise ValueError(self.parquet_vacio)
             
         except Exception as e:
             print(f"Conversión Excel estándar falló: {e}")

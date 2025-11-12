@@ -430,7 +430,7 @@ class GenerateReport:
                     item, item.get('numerador', 0), item.get('denominador', 0)
                 )
             
-            log(f"✅ Reporte generado exitosamente con fecha: {corte_fecha}")
+            log(f"Reporte generado exitosamente con fecha: {corte_fecha}")
             
             # Construir reporte final
             return AnalysisNumeratorDenominator().build_success_report_with_numerator_denominator(
@@ -440,7 +440,7 @@ class GenerateReport:
             )
             
         except Exception as e:
-            log(f"❌ Error generando reporte: {e}")
+            log(f"Error generando reporte: {e}")
             import traceback
             traceback.print_exc()
             raise ValueError(f"Error en generación de reporte: {e}")

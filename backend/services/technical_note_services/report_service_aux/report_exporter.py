@@ -6,7 +6,6 @@ from typing import Any, Dict, Optional
 try:
     from reportlab.lib.units import inch
 except ImportError:
-    # Fallback si ReportLab no está instalado
     inch = 72  # 1 pulgada = 72 puntos
 from services.technical_note_services.report_service_aux.csv_exporter import CSVExporter
 from services.technical_note_services.report_service_aux.pdf_exporter import PDFExporter

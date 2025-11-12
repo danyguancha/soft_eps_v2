@@ -30,8 +30,23 @@ export const AppHeader: React.FC<Props> = ({
   const navigate = useNavigate();
   const crossData = useCrossDataContext();
   
-  // ✅ Verificar si hay resultados de cruce disponibles
   const hasCrossResults = crossData.crossResult && crossData.processedCrossData.length > 0;
+
+  // Refactorización: extraer lógica del título
+  const getAppTitle = (): string => {
+    return 'EvalNote';
+  };
+
+  // Refactorización: extraer lógica del nombre del archivo
+  const getDisplayFileName = (): string => {
+    if (!currentFile) return '';
+    
+    if (isMobile && currentFile.original_name.length > 10) {
+      return `${currentFile.original_name.slice(0, 10)}…`;
+    }
+    
+    return currentFile.original_name;
+  };
 
   return (
     <div className="header-content" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
@@ -46,25 +61,18 @@ export const AppHeader: React.FC<Props> = ({
         <HomeOutlined className="home-icon" />
 
         <Title level={isMobile ? 4 : 3} className="app-title">
-          {isMobile
-            ? 'EvalNote'
-            : isTablet
-            ? 'EvalNote'
-            : 'EvalNote'}
+          {getAppTitle()}
         </Title>
         
         {currentFile && (
           <Badge>
             <Button type="primary" ghost size={isMobile ? 'small' : 'middle'}>
-              {isMobile && currentFile.original_name.length > 10
-                ? `${currentFile.original_name.slice(0, 10)}…`
-                : currentFile.original_name}
+              {getDisplayFileName()}
             </Button>
           </Badge>
         )}
       </div>
 
-      {/* ✅ Botón para ver resultados del cruce - solo visible cuando hay resultados */}
       {hasCrossResults && (
         <div className="header-right" style={{ marginLeft: 'auto' }}>
           <Badge count={crossData.crossDataTotal} overflowCount={9999} showZero={false}>

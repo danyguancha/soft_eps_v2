@@ -435,7 +435,7 @@ class PDFExporter:
         
         styles = getSampleStyleSheet()
         elements.append(PageBreak())
-        elements.append(Paragraph("📅 Análisis Temporal por Actividad", styles['Heading2']))
+        elements.append(Paragraph("Análisis Temporal por Actividad", styles['Heading2']))
         elements.append(Spacer(1, 0.2 * inch))
         
         for key, temporal_info in temporal_data.items():

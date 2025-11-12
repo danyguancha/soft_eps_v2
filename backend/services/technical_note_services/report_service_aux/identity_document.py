@@ -16,18 +16,18 @@ class IdentityDocument:
             'Documento', 'documento', 'Identificación', 'Identificacion',
             'cedula', 'Cedula', 'ID', 'id'
         ]
-        # 1️⃣ búsqueda exacta
+        # búsqueda exacta
         for field in doc_candidates:
             if field in cols:
                 print(f'Campo documento detectado: {field}')
                 return f'"{field}"'
 
-        # 2️⃣ búsqueda por similitud (contiene “doc”, “ident”, “ced”)
+        # búsqueda por similitud (contiene “doc”, “ident”, “ced”)
         for field in cols:
             if any(k in field.lower() for k in ['doc', 'ident', 'ced']):
                 print(f'Campo documento por similitud: {field}')
                 return f'"{field}"'
 
-        # 3️⃣ último recurso: primer campo de la tabla
+        # último recurso: primer campo de la tabla
         print(f'Usando primer campo como ID: {cols[0]}')
         return f'"{cols[0]}"'
