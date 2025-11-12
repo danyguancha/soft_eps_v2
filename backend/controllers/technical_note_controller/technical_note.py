@@ -1,18 +1,22 @@
-# controllers/technical_note_controller/technical_note.py - MODIFICADO PARA FECHA DINÁMICA
+# controllers/technical_note_controller/technical_note.py
 import os
+import shutil
 from typing import Dict, Any, List, Optional
 from fastapi import HTTPException
+
 
 from controllers.technical_note_controller.absent_user_controller import AbsentUserController
 from controllers.technical_note_controller.age_controller import AgeController
 from services.duckdb_service.duckdb_service import duckdb_service
 from services.aux_duckdb_services.query_pagination import QueryPagination
 
+
 from services.technical_note_services.data_source_service import DataSourceService
 from services.technical_note_services.geographic_service import GeographicService
 from services.technical_note_services.report_service import ReportService
 from utils.technical_note_utils.file_utils import generate_file_key, is_supported_file
 from utils.technical_note_utils.display_utils import generate_display_name, generate_description
+
 
 class TechnicalNoteController:
     """Controlador principal refactorizado con separación de responsabilidades"""
@@ -22,11 +26,32 @@ class TechnicalNoteController:
         self.static_files_dir = "technical_note"
         self.loaded_technical_files = {}
         
+        # NUEVO: Limpiar archivos precargados al iniciar
+        self._clear_technical_note_directory()
+        
         # Servicios inyectados
         self.data_source_service = DataSourceService(self.static_files_dir)
         self.geographic_service = GeographicService()
         self.report_service = ReportService()
         self.query_pagination = QueryPagination()
+    
+    def _clear_technical_note_directory(self):
+        """Limpia archivos precargados del directorio technical_note al iniciar"""
+        try:
+            if os.path.exists(self.static_files_dir):
+                # Eliminar directorio completo
+                shutil.rmtree(self.static_files_dir)
+                print(f"✓ Directorio eliminado: {self.static_files_dir}")
+            
+            # Recrear directorio vacío
+            os.makedirs(self.static_files_dir, exist_ok=True)
+            print(f"✓ Directorio recreado vacío: {self.static_files_dir}")
+            print("✓ Archivos precargados de technical_note eliminados")
+            
+        except Exception as e:
+            print(f"✗ Error limpiando directorio technical_note: {e}")
+            # Asegurar que el directorio exista incluso si falla la limpieza
+            os.makedirs(self.static_files_dir, exist_ok=True)
     
     def get_geographic_values(
         self, 
@@ -415,9 +440,11 @@ class TechnicalNoteController:
             corte_fecha, departamento, municipio, ips, self.static_files_dir
         )
 
+
 # Función factory para mantener compatibilidad
 def get_technical_note_controller():
     from controllers.files_controllers.storage_manager import storage_manager
     return TechnicalNoteController(storage_manager)
+
 
 technical_note_controller = get_technical_note_controller()

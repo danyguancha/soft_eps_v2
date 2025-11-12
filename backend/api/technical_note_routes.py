@@ -1,25 +1,35 @@
-# api/technical_note_routes.py - REFACTORIZADO
+# api/technical_note_routes.py - REFACTORIZADO CON LIMPIEZA DE CACHE
 from datetime import datetime
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from typing import Any, Dict, List, Optional
 import json
+import os
+import shutil
+import pandas as pd
+
 
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, validator
 
+
 from controllers.technical_note_controller.technical_note import technical_note_controller
 from services.technical_note_services.report_service_aux.report_exporter import ReportExporter
+from services.duckdb_service.duckdb_service import duckdb_service
+
 
 report_exporter = ReportExporter()
 router = APIRouter()
 
+
 # ========== MODELOS PYDANTIC ==========
 mandatory_date = "Fecha de corte OBLIGATORIA (YYYY-MM-DD)"
+
 class GeographicFiltersModel(BaseModel):
     """Filtros geográficos para el reporte"""
     departamento: Optional[str] = Field(None, description="Departamento específico")
     municipio: Optional[str] = Field(None, description="Municipio específico")
     ips: Optional[str] = Field(None, description="IPS específica")
+
 
 class AdvancedReportRequestModel(BaseModel):
     """Modelo de solicitud para generar reporte avanzado"""
@@ -39,6 +49,146 @@ class AdvancedReportRequestModel(BaseModel):
         except ValueError:
             raise ValueError('corte_fecha debe estar en formato YYYY-MM-DD')
 
+
+# ========== ENDPOINTS DE LIMPIEZA DE CACHE ==========
+
+
+@router.post("/cache/cleanup-all")
+async def cleanup_all_cache() -> Dict[str, Any]:
+    """
+    Endpoint para limpiar todos los directorios de cache y archivos precargados.
+    Llamado desde el frontend al iniciar la aplicación.
+    """
+    try:
+        print("🧹 Iniciando limpieza completa de cache...")
+        
+        # Directorios a limpiar
+        directories_to_clean = [
+            "duckdb_storage",
+            "metadata_cache",
+            "parquet_cache",
+            "technical_note"
+        ]
+        
+        cleaned_dirs = []
+        errors = []
+        
+        # Limpiar cada directorio
+        for directory in directories_to_clean:
+            try:
+                if os.path.exists(directory):
+                    # Eliminar directorio completo
+                    shutil.rmtree(directory)
+                    print(f"✓ Directorio eliminado: {directory}")
+                
+                # Recrear directorio vacío
+                os.makedirs(directory, exist_ok=True)
+                print(f"✓ Directorio recreado: {directory}")
+                cleaned_dirs.append(directory)
+                
+            except Exception as e:
+                error_msg = f"Error limpiando {directory}: {str(e)}"
+                print(f"✗ {error_msg}")
+                errors.append(error_msg)
+                # Asegurar que el directorio exista
+                os.makedirs(directory, exist_ok=True)
+        
+        # Limpiar tablas cargadas en memoria de DuckDB
+        tables_count = 0
+        if hasattr(duckdb_service, 'loaded_tables'):
+            tables_count = len(duckdb_service.loaded_tables)
+            duckdb_service.loaded_tables.clear()
+            print(f"✓ {tables_count} tablas eliminadas de memoria DuckDB")
+        
+        # Limpiar archivos técnicos cargados
+        tech_files_count = 0
+        if hasattr(technical_note_controller, 'loaded_technical_files'):
+            tech_files_count = len(technical_note_controller.loaded_technical_files)
+            technical_note_controller.loaded_technical_files.clear()
+            print(f"✓ {tech_files_count} archivos técnicos eliminados de memoria")
+        
+        # Reiniciar conexión DuckDB para liberar recursos
+        try:
+            if hasattr(duckdb_service, 'restart_connection'):
+                duckdb_service.restart_connection()
+                print("✓ Conexión DuckDB reiniciada")
+        except Exception as e:
+            error_msg = f"Error reiniciando conexión DuckDB: {str(e)}"
+            print(f"✗ {error_msg}")
+            errors.append(error_msg)
+        
+        success_message = "Cache limpiado completamente" if len(errors) == 0 else "Cache limpiado con algunos errores"
+        print(f"✓ {success_message}")
+        
+        return {
+            "success": len(errors) == 0,
+            "message": success_message,
+            "cleaned_directories": cleaned_dirs,
+            "tables_cleared": tables_count,
+            "technical_files_cleared": tech_files_count,
+            "errors": errors if errors else None,
+            "timestamp": str(pd.Timestamp.now())
+        }
+        
+    except Exception as e:
+        print(f"✗ Error crítico en cleanup_all_cache: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error limpiando cache: {str(e)}"
+        )
+
+
+@router.get("/cache/status")
+async def get_cache_status() -> Dict[str, Any]:
+    """
+    Obtiene el estado actual del cache (útil para debugging y monitoreo)
+    """
+    try:
+        directories_status = {}
+        
+        # Verificar estado de cada directorio
+        for directory in ["duckdb_storage", "metadata_cache", "parquet_cache", "technical_note"]:
+            if os.path.exists(directory):
+                file_count = sum(len(files) for _, _, files in os.walk(directory))
+                dir_size = sum(
+                    os.path.getsize(os.path.join(root, file))
+                    for root, _, files in os.walk(directory)
+                    for file in files
+                )
+                directories_status[directory] = {
+                    "exists": True,
+                    "file_count": file_count,
+                    "size_mb": round(dir_size / (1024 * 1024), 2)
+                }
+            else:
+                directories_status[directory] = {
+                    "exists": False,
+                    "file_count": 0,
+                    "size_mb": 0
+                }
+        
+        # Estado de memoria
+        loaded_tables_count = len(duckdb_service.loaded_tables) if hasattr(duckdb_service, 'loaded_tables') else 0
+        loaded_technical_count = len(technical_note_controller.loaded_technical_files) if hasattr(technical_note_controller, 'loaded_technical_files') else 0
+        
+        return {
+            "success": True,
+            "directories": directories_status,
+            "memory_state": {
+                "loaded_tables_count": loaded_tables_count,
+                "loaded_technical_files_count": loaded_technical_count,
+                "duckdb_available": duckdb_service.is_available()
+            },
+            "timestamp": str(pd.Timestamp.now())
+        }
+        
+    except Exception as e:
+        print(f"Error obteniendo estado del cache: {e}")
+        raise HTTPException(status_code=500, detail=f"Error obteniendo estado: {str(e)}")
+
+
 # ========== ENDPOINTS PRINCIPALES ==========
 
 
@@ -50,6 +200,7 @@ def get_available_technical_files():
     except Exception as e:
         print(f"Error en /available: {e}")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
 
 @router.get("/data/{filename}")
 def get_technical_file_data_with_excel_filters(
@@ -92,6 +243,7 @@ def get_technical_file_data_with_excel_filters(
         print(f"Error en /data/{filename}: {e}")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
+
 @router.get("/metadata/{filename}")
 def get_technical_file_metadata(filename: str):
     """Metadatos del archivo"""
@@ -102,6 +254,7 @@ def get_technical_file_metadata(filename: str):
     except Exception as e:
         print(f"Error en /metadata/{filename}: {e}")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
 
 @router.get("/columns/{filename}")
 def get_file_columns(filename: str):
@@ -120,7 +273,9 @@ def get_file_columns(filename: str):
         print(f"Error en /columns/{filename}: {e}")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
+
 # ========== ENDPOINTS GEOGRÁFICOS ==========
+
 
 @router.get("/geographic/{filename}/departamentos")
 def get_departamentos(filename: str):
@@ -135,6 +290,7 @@ def get_departamentos(filename: str):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
 
 @router.get("/geographic/{filename}/municipios")
 def get_municipios(
@@ -153,6 +309,7 @@ def get_municipios(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
 
 @router.get("/geographic/{filename}/ips")
 def get_ips(
@@ -174,7 +331,9 @@ def get_ips(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
+
 # ========== ENDPOINT DE REPORTE PRINCIPAL ==========
+
 
 @router.get("/report/{filename}")
 def get_keyword_age_report(
@@ -231,7 +390,9 @@ def get_keyword_age_report(
         print(f"Error en /report/{filename}: {e}")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
+
 # ========== ENDPOINTS DE VALORES ÚNICOS ==========
+
 
 @router.get("/unique-values/{filename}/{column_name}")
 def get_column_unique_values(
@@ -251,7 +412,9 @@ def get_column_unique_values(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
+
 # ========== ENDPOINTS DE RANGOS DE EDAD ==========
+
 
 @router.get("/age-ranges/{filename}")
 def get_age_ranges(
@@ -286,7 +449,9 @@ def get_age_ranges(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
+
 # ========== ENDPOINTS DE INASISTENTES ==========
+
 
 @router.post("/inasistentes-report/{filename}")
 def get_inasistentes_report(
@@ -338,6 +503,7 @@ def get_inasistentes_report(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
+
 @router.post("/inasistentes-report/{filename}/export-csv")
 def export_inasistentes_csv(
     filename: str,
@@ -376,7 +542,9 @@ def export_inasistentes_csv(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
+
 # ========== ENDPOINTS DE EXPORTACIÓN ==========
+
 
 @router.get("/reports/download/{file_id}")
 async def download_report_file(file_id: str):
@@ -406,6 +574,7 @@ async def download_report_file(file_id: str):
     except Exception as e:
         print(f"Error descargando archivo: {e}")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
 
 @router.post("/reports/export-current")
 async def export_current_report(
@@ -460,4 +629,3 @@ async def export_current_report(
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
-

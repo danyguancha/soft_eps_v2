@@ -1,12 +1,11 @@
 // components/technical-note/TechnicalNoteViewer.tsx
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Modal, message } from 'antd';
 import dayjs, { Dayjs } from 'dayjs';
 import 'dayjs/locale/es';
 import { useTechnicalNote } from '../../hooks/useTechnicalNote';
 import { useFileUpload } from '../../hooks/useFileUpload';
-import { BASE_AGE_GROUPS, convertUploadedFilesToGroups } from '../../config/ageGroups.config';
+import { getVisibleGroups, isPredefinedFile, getPredefinedGroupKey } from '../../config/ageGroups.config';
 import type { AgeGroupIcon, CustomUploadedFile } from '../../types/FileTypes';
 
 // Componentes refactorizados
@@ -24,7 +23,7 @@ const TechnicalNoteViewer: React.FC = () => {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [cutoffDate, setCutoffDate] = useState<Dayjs | null>(null);
 
-  // ✅ CONVERTIR cutoffDate de Dayjs a string YYYY-MM-DD
+  // CONVERTIR cutoffDate de Dayjs a string YYYY-MM-DD
   const cutoffDateString = useMemo(() => {
     const result = cutoffDate ? cutoffDate.format('YYYY-MM-DD') : undefined;
     console.log('🔍 TechnicalNoteViewer - cutoffDateString calculado:', result);
@@ -93,18 +92,21 @@ const TechnicalNoteViewer: React.FC = () => {
     geographicSummary,
   } = useTechnicalNote();
 
-  // Combinar grupos etarios base con archivos personalizados
-  const allFileGroups = useMemo(() => {
-    const customGroups = convertUploadedFilesToGroups(uploadedFiles);
-    return [...BASE_AGE_GROUPS, ...customGroups];
-  }, [uploadedFiles]);
+  // ✅ CALCULAR GRUPOS VISIBLES DINÁMICAMENTE
+  // Esta función ya filtra correctamente para que NO se dupliquen los archivos predefinidos
+  const visibleFileGroups = useMemo(() => {
+    const groups = getVisibleGroups(availableFiles, uploadedFiles);
+    console.log('📊 Grupos visibles calculados:', groups.length);
+    console.log('📋 Nombres de grupos:', groups.map(g => `${g.displayName} (${g.filename})`));
+    return groups;
+  }, [availableFiles, uploadedFiles]);
 
   // Handler para cambio de fecha de corte
   const handleCutoffDateChange = (date: Dayjs | null) => {
     console.log('📅 handleCutoffDateChange llamado con:', date?.format('YYYY-MM-DD'));
     setCutoffDate(date);
     if (date) {
-      console.log(`✅ Fecha de corte seleccionada: ${date.format('DD/MM/YYYY')}`);
+      console.log(`Fecha de corte seleccionada: ${date.format('DD/MM/YYYY')}`);
       message.success(`Fecha de corte establecida: ${date.format('DD/MM/YYYY')}`);
     } else {
       console.log('⚠️ Fecha de corte eliminada');
@@ -112,7 +114,7 @@ const TechnicalNoteViewer: React.FC = () => {
     }
   };
 
-  // ✅ DEBUG: Log cuando cambia cutoffDate
+  // DEBUG: Log cuando cambia cutoffDate
   useEffect(() => {
     console.log('🔍 TechnicalNoteViewer - Estado cutoffDate:', {
       cutoffDate: cutoffDate?.format('YYYY-MM-DD'),
@@ -121,17 +123,17 @@ const TechnicalNoteViewer: React.FC = () => {
     });
   }, [cutoffDate, cutoffDateString]);
 
-  // Cargar archivos personalizados al iniciar
+  // Cargar archivos disponibles al iniciar
   useEffect(() => {
-    const loadCustomFiles = async () => {
+    const loadFiles = async () => {
       try {
-        // Aquí podrías hacer una llamada al backend para obtener archivos ya subidos
+        await loadAvailableFiles();
       } catch (error) {
-        console.error('Error cargando archivos personalizados:', error);
+        console.error('Error cargando archivos disponibles:', error);
       }
     };
-    loadCustomFiles();
-  }, []);
+    loadFiles();
+  }, [loadAvailableFiles]);
 
   // Handler unificado para selección de archivos
   const handleFileGroupClick = async (group: AgeGroupIcon) => {
@@ -145,25 +147,19 @@ const TechnicalNoteViewer: React.FC = () => {
     try {
       setFileSelectionLoading(true);
 
-      if (group.isCustomFile) {
-        console.log(`🔍 Cargando archivo personalizado: ${group.filename}`);
-        console.log(`📅 Con fecha de corte: ${cutoffDate.format('YYYY-MM-DD')}`);
-        await loadFileData(group.filename, cutoffDate.format('YYYY-MM-DD'));
+      console.log(`🔍 Cargando archivo: ${group.filename}`);
+      console.log(`📅 Con fecha de corte: ${cutoffDate.format('YYYY-MM-DD')}`);
+      
+      await loadFileData(group.filename, cutoffDate.format('YYYY-MM-DD'));
+      
+      if (showUploadModal) {
         setShowUploadModal(false);
-      } else {
-        const fileInfo = getFileByDisplayName(group.displayName);
-        const filename = fileInfo?.filename || group.filename;
-        console.log(`🔍 Cargando archivo precargado: ${filename} para ${group.displayName}`);
-        console.log(`📅 Con fecha de corte: ${cutoffDate.format('YYYY-MM-DD')}`);
-        await loadFileData(filename, cutoffDate.format('YYYY-MM-DD'));
       }
 
       console.log(`✅ Archivo cargado exitosamente: ${group.displayName}`);
     } catch (error) {
       console.error(`❌ Error cargando ${group.displayName}:`, error);
-      if (group.isCustomFile) {
-        message.error(`Error cargando ${group.displayName}`);
-      }
+      message.error(`Error cargando ${group.displayName}`);
     } finally {
       setFileSelectionLoading(false);
     }
@@ -171,6 +167,12 @@ const TechnicalNoteViewer: React.FC = () => {
 
   // Handler para eliminar archivo personalizado
   const handleRemoveUploadedFileWithConfirm = (fileToRemove: CustomUploadedFile) => {
+    // No permitir eliminar archivos predefinidos
+    if (isPredefinedFile(fileToRemove.filename)) {
+      message.warning('No se pueden eliminar archivos del sistema predefinidos');
+      return;
+    }
+
     Modal.confirm({
       title: '¿Eliminar archivo?',
       content: `¿Estás seguro de que quieres eliminar "${fileToRemove.name}"?`,
@@ -178,6 +180,7 @@ const TechnicalNoteViewer: React.FC = () => {
         try {
           await handleRemoveUploadedFile(fileToRemove);
           await loadAvailableFiles();
+          message.success('Archivo eliminado correctamente');
         } catch (error) {
           console.error('Error eliminando archivo:', error);
           message.error('Error eliminando archivo');
@@ -196,6 +199,15 @@ const TechnicalNoteViewer: React.FC = () => {
     try {
       await handleCustomUpload(options);
       await loadAvailableFiles();
+      
+      // Verificar si el archivo subido es predefinido
+      const uploadedFilename = options.file.name;
+      if (isPredefinedFile(uploadedFilename)) {
+        const groupKey = getPredefinedGroupKey(uploadedFilename);
+        message.success(`Archivo "${uploadedFilename}" asociado al grupo: ${groupKey}`, 3);
+      } else {
+        message.success(`Archivo "${uploadedFilename}" cargado como personalizado`, 2);
+      }
     } catch (error) {
       // Error ya manejado en handleCustomUpload
     }
@@ -210,7 +222,7 @@ const TechnicalNoteViewer: React.FC = () => {
     setShowUploadModal(true);
   };
 
-  // ✅ ACTUALIZADO: Wrapper para regenerar reporte con cutoffDate
+  // Wrapper para regenerar reporte con cutoffDate
   const handleRegenerateReport = () => {
     if (!cutoffDateString) {
       message.error('Debe seleccionar una fecha de corte antes de regenerar el reporte');
@@ -260,9 +272,9 @@ const TechnicalNoteViewer: React.FC = () => {
         isLoadingFiles={true}
       />
 
-      {/* File Grid Section */}
+      {/* File Grid Section - USANDO GRUPOS VISIBLES FILTRADOS */}
       <FileGridSection
-        allFileGroups={allFileGroups}
+        allFileGroups={visibleFileGroups}
         selectedFile={selectedFile}
         availableFiles={availableFiles}
         uploadedFiles={uploadedFiles}
@@ -282,7 +294,7 @@ const TechnicalNoteViewer: React.FC = () => {
         uploadedFiles={uploadedFiles}
         fileList={fileList}
         fileSelectionLoading={fileSelectionLoading}
-        allFileGroups={allFileGroups}
+        allFileGroups={visibleFileGroups}
         onCancel={() => setShowUploadModal(false)}
         onCustomUpload={handleCustomUploadWithRefresh}
         onBeforeUpload={handleBeforeUpload}
@@ -301,7 +313,7 @@ const TechnicalNoteViewer: React.FC = () => {
         isLoadingFiles={false}
       />
 
-      {/* ✅ Main Content CON cutoffDate */}
+      {/* Main Content CON cutoffDate */}
       <MainContent
         loading={loading}
         hasData={hasData}
@@ -323,7 +335,7 @@ const TechnicalNoteViewer: React.FC = () => {
         loadingReport={loadingReport}
         showReport={showReport}
         hasReport={hasReport}
-        reportTotalRecords={reportTotalRecords}
+        reportTotalRecords={reportTotalRecords ?? 0}
         reportKeywords={reportKeywords}
         reportMinCount={reportMinCount}
         showTemporalData={showTemporalData}
@@ -332,7 +344,7 @@ const TechnicalNoteViewer: React.FC = () => {
         municipiosOptions={municipiosOptions}
         ipsOptions={ipsOptions}
         loadingGeoFilters={loadingGeoFilters}
-        cutoffDate={cutoffDateString} // ✅ PASAR cutoffDate como string YYYY-MM-DD
+        cutoffDate={cutoffDateString}
         
         // Event handlers
         onPaginationChange={handlePaginationChange}

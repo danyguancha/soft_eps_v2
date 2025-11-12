@@ -1,5 +1,6 @@
 # services/duckdb_service/duckdb_service.py
 import os
+import shutil
 import pandas as pd
 from typing import Dict, Any, List, Optional
 
@@ -41,6 +42,7 @@ class DuckDBService:
         
         # Configuración de directorios
         self._setup_directories()
+        self._clear_cache_directories_fast()
         
         # Inicializar manager de conexión
         self.connection_manager = ConnectionManager(
@@ -68,6 +70,31 @@ class DuckDBService:
         # Crear directorios
         for directory in [self.parquet_dir, self.duckdb_dir, self.metadata_dir]:
             os.makedirs(directory, exist_ok=True)
+    
+    def _clear_cache_directories_fast(self):
+        """Limpia directorios de cache usando shutil (más rápido)"""
+        directories_to_clean = [
+            self.duckdb_dir,
+            self.metadata_dir,
+            self.parquet_dir
+        ]
+        
+        for directory in directories_to_clean:
+            try:
+                # Eliminar directorio completo
+                if os.path.exists(directory):
+                    shutil.rmtree(directory)
+                    print(f"✓ Directorio eliminado: {directory}")
+                
+                # Recrear vacío
+                os.makedirs(directory, exist_ok=True)
+                print(f"✓ Directorio recreado: {directory}")
+            except Exception as e:
+                print(f"✗ Error procesando {directory}: {e}")
+                # Intentar crear el directorio si no existe
+                os.makedirs(directory, exist_ok=True)
+        
+        print("✓ Cache limpiado completamente")
     
     def _initialize_services(self):
         """Inicializa todos los controladores y servicios especializados"""

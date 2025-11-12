@@ -1,213 +1,84 @@
-// services/TechnicalNoteService.tsx - REFACTORIZADO Y CORREGIDO
+// services/TechnicalNoteService.tsx - REFACTORIZADO CON LIMPIEZA DE CACHE
 import api from '../Api';
 import type { InasistentesReportResponse } from '../interfaces/IAbsentUser';
 import type { AgeRangesResponse } from '../interfaces/IAge';
+import type { CacheStatusResponse, CleanupCacheResponse, ColumnUniqueValues, GeographicFilters, 
+  GeographicValuesResponse, KeywordAgeReport, TechnicalFileData, TechnicalFileInfo, TechnicalFileMetadata } from '../interfaces/ITechnicalNote';
 import type { FilterCondition } from '../types/api.types';
 
-export interface TechnicalFileInfo {
-  filename: string;
-  display_name: string;
-  description: string;
-  extension: string;
-  file_size: number;
-  file_path: string;
-  columns: string[];
-  total_rows: number;
-}
 
-export interface TechnicalFileData {
-  success: boolean;
-  filename: string;
-  display_name: string;
-  description: string;
-  data: Record<string, any>[];
-  columns: string[];
-  pagination: {
-    current_page: number;
-    page_size: number;
-    total_rows: number;
-    total_pages: number;
-    rows_in_page: number;
-    start_row: number;
-    end_row: number;
-    has_next: boolean;
-    has_prev: boolean;
-    showing: string;
-    original_total?: number;
-    filtered?: boolean;
-    is_last_page?: boolean;
-    is_first_page?: boolean;
-  };
-  file_info: {
-    extension: string;
-    file_size: number;
-    sheet_name: string;
-    encoding_used: string;
-    total_columns: number;
-    processing_method: string;
-  };
-  filters_applied?: FilterCondition[];
-  search_applied?: string;
-  sort_applied?: {
-    column?: string;
-    order?: string;
-  };
-}
 
-export interface TechnicalFileMetadata {
-  filename: string;
-  display_name: string;
-  description: string;
-  total_rows: number;
-  total_columns: number;
-  columns: string[];
-  file_size: number;
-  extension: string;
-  encoding: string;
-  separator?: string;
-  sheets?: string[];
-  recommended_page_size: number;
-}
-
-export interface ColumnUniqueValues {
-  filename: string;
-  column_name: string;
-  unique_values: string[];
-  total_unique: number;
-  limited: boolean;
-  limit_applied: number;
-}
-
-export interface KeywordAgeReportItem {
-  color: any;
-  descripcion: string;
-  column: string;
-  keyword: string;
-  age_range: string;
-  count: number;
-  numerador?: number;
-  denominador?: number;
-  cobertura_porcentaje?: number;
-  sin_datos?: number;
-  metodo?: string;
-  age_range_extracted?: {
-    min_age: number;
-    max_age: number;
-    unit: string;
-    sql_filter: string;
-  };
-  corte_fecha?: string;
-  semaforizacion: string;
-}
-
-export interface TemporalMonth {
-  month: number;
-  month_name: string;
-  count: number;
-  numerador?: number;
-  denominador?: number;
-  pct?: number;
-  cobertura_porcentaje?: number;
-  semaforizacion?: string;
-  color?: string;
-  color_name?: string;
-  descripcion?: string;
-}
-
-export interface TemporalYear {
-  year: number;
-  total: number;
-  total_num?: number;
-  total_den?: number;
-  pct?: number;
-  semaforizacion?: string;
-  color?: string;
-  color_name?: string;
-  descripcion?: string;
-  months: Record<string, TemporalMonth>;
-}
-
-export interface TemporalColumnData {
-  column: string;
-  keyword: string;
-  age_range: string;
-  years: Record<string, TemporalYear>;
-}
-
-export interface GeographicFilters {
-  departamento?: string | null;
-  municipio?: string | null;
-  ips?: string | null;
-}
-
-export interface GeographicValuesResponse {
-  success: boolean;
-  filename: string;
-  geo_type: string;
-  values: string[];
-  total_values: number;
-  filters_applied: Record<string, string>;
-  engine: string;
-}
-
-export interface TotalsByKeyword {
-  count: number;
-  numerador?: number;
-  denominador?: number;
-  actividades?: number;
-  cobertura_promedio?: number;
-}
-
-export interface GlobalStatistics {
-  total_actividades: number;
-  total_denominador_global: number;
-  total_numerador_global: number;
-  total_sin_datos_global: number;
-  cobertura_global_porcentaje: number;
-  actividades_100_pct_cobertura: number;
-  actividades_menos_50_pct_cobertura: number;
-  mejor_cobertura: number;
-  peor_cobertura: number;
-  cobertura_promedio: number;
-}
-
-export interface KeywordAgeReport {
-  success: boolean;
-  filename: string;
-  corte_fecha: string;
-  rules: {
-    keywords: string[];
-  };
-  geographic_filters: GeographicFilters & {
-    filter_type?: string;
-  };
-  items: KeywordAgeReportItem[];
-  totals_by_keyword: Record<string, TotalsByKeyword>;
-  temporal_data: Record<string, TemporalColumnData>;
-  global_statistics?: GlobalStatistics;
-  metodo?: string;
-  version?: string;
-  caracteristicas?: string[];
-  ultra_fast?: boolean;
-  engine?: string;
-  data_source_used?: string;
-  message?: string;
-  temporal_columns?: number;
-}
 
 export class TechnicalNoteService {
-
-  static async getAvailableFiles(): Promise<TechnicalFileInfo[]> {
+  static async cleanupAllCache(): Promise<CleanupCacheResponse> {
     try {
-      console.log('🌐 GET /technical-note/available');
-      const response = await api.get('/technical-note/available', { timeout: 10000 });
-      console.log(`✅ ${response.data?.length || 0} archivos disponibles`);
-      return response.data;
+      console.log('Limpiando cache del backend...');
+
+      const response = await api.post('/technical-note/cache/cleanup-all', {}, {
+        timeout: 30000
+      });
+
+      const data = response.data as CleanupCacheResponse;
+
+      if (data.success) {
+        console.log('Cache limpiado exitosamente:');
+        console.log(`${data.cleaned_directories.length} directorios limpiados`);
+        console.log(`${data.tables_cleared} tablas eliminadas`);
+        console.log(`${data.technical_files_cleared} archivos técnicos eliminados`);
+      } else {
+        console.warn('Cache limpiado:', data.errors);
+      }
+
+      return data;
     } catch (error) {
-      console.error('❌ Error obteniendo archivos:', error);
+      console.error('Error limpiando cache:', error);
       throw error;
     }
   }
+
+
+  /**
+   * Obtiene el estado actual del cache (útil para debugging)
+   */
+  static async getCacheStatus(): Promise<CacheStatusResponse> {
+    try {
+      console.log('Obteniendo estado del cache...');
+
+      const response = await api.get('/technical-note/cache/status', {
+        timeout: 10000
+      });
+
+      const data = response.data as CacheStatusResponse;
+
+      console.log('Estado del cache obtenido:');
+      Object.entries(data.directories).forEach(([dir, status]) => {
+        console.log(`${dir}: ${status.file_count} archivos (${status.size_mb} MB)`);
+      });
+      console.log(`Tablas en memoria: ${data.memory_state.loaded_tables_count}`);
+      console.log(`Archivos técnicos: ${data.memory_state.loaded_technical_files_count}`);
+
+      return data;
+    } catch (error) {
+      console.error('Error obteniendo estado del cache:', error);
+      throw error;
+    }
+  }
+
+
+  // ========== ENDPOINTS EXISTENTES ==========
+
+  static async getAvailableFiles(): Promise<TechnicalFileInfo[]> {
+    try {
+      console.log('GET /technical-note/available');
+      const response = await api.get('/technical-note/available', { timeout: 10000 });
+      console.log(`${response.data?.length || 0} archivos disponibles`);
+      return response.data;
+    } catch (error) {
+      console.error('Error obteniendo archivos:', error);
+      throw error;
+    }
+  }
+
 
   static async getFileData(
     filename: string,
@@ -230,13 +101,13 @@ export class TechnicalNoteService {
         ...(filters && filters.length > 0 && { filters: JSON.stringify(filters) })
       });
 
-      console.log(`🌐 GET /technical-note/data/${filename}?${params}`);
+      console.log(`GET /technical-note/data/${filename}?${params}`);
 
       const response = await api.get(`/technical-note/data/${filename}?${params}`, {
         timeout: 45000
       });
 
-      console.log('✅ Respuesta:', {
+      console.log('Respuesta:', {
         status: response.status,
         rowsInPage: response.data?.pagination?.rows_in_page,
         totalFiltered: response.data?.pagination?.total_rows
@@ -244,10 +115,11 @@ export class TechnicalNoteService {
 
       return response.data;
     } catch (error) {
-      console.error(`❌ Error obteniendo datos:`, error);
+      console.error(`Error obteniendo datos:`, error);
       throw error;
     }
   }
+
 
   static async getColumnUniqueValues(
     filename: string,
@@ -261,21 +133,22 @@ export class TechnicalNoteService {
         limit: limit.toString()
       });
 
-      console.log(`🔍 Obteniendo valores únicos: ${filename} - ${columnName}`);
+      console.log(`Obteniendo valores únicos: ${filename} - ${columnName}`);
 
       const response = await api.get(
         `/technical-note/unique-values/${filename}/${columnName}?${params}`,
         { timeout: 15000 }
       );
 
-      console.log(`✅ Valores únicos obtenidos: ${response.data.total_unique} para ${columnName}`);
+      console.log(`Valores únicos obtenidos: ${response.data.total_unique} para ${columnName}`);
 
       return response.data;
     } catch (error) {
-      console.error(`❌ Error obteniendo valores únicos:`, error);
+      console.error(`Error obteniendo valores únicos:`, error);
       throw error;
     }
   }
+
 
   static async getGeographicValues(
     filename: string,
@@ -298,14 +171,15 @@ export class TechnicalNoteService {
 
       const response = await api.get(url, { timeout: 15000 });
 
-      console.log(`✅ ${geoType} obtenidos: ${response.data?.values?.length || 0} valores`);
+      console.log(`${geoType} obtenidos: ${response.data?.values?.length || 0} valores`);
 
       return response.data;
     } catch (error) {
-      console.error(`❌ Error obteniendo ${geoType}:`, error);
+      console.error(`Error obteniendo ${geoType}:`, error);
       throw error;
     }
   }
+
 
   static async getKeywordAgeReport(
     filename: string,
@@ -316,7 +190,7 @@ export class TechnicalNoteService {
     geographicFilters: GeographicFilters = {}
   ): Promise<KeywordAgeReport> {
     if (!cutoffDate) {
-      throw new Error('❌ Fecha de corte es obligatoria');
+      throw new Error('Fecha de corte es obligatoria');
     }
 
     try {
@@ -337,7 +211,7 @@ export class TechnicalNoteService {
         params.append('ips', geographicFilters.ips);
       }
 
-      console.log(`📊 Generando reporte con fecha: ${cutoffDate}`);
+      console.log(`Generando reporte con fecha: ${cutoffDate}`);
 
       const response = await api.get(
         `/technical-note/report/${filename}?${params}`,
@@ -350,29 +224,30 @@ export class TechnicalNoteService {
       const totalNumerador = globalStats.total_numerador_global || 0;
       const coberturaGlobal = globalStats.cobertura_global_porcentaje || 0;
 
-      console.log(`✅ Reporte obtenido:`);
-      console.log(`   📊 ${itemsCount} actividades`);
-      console.log(`   📊 DENOMINADOR: ${totalDenominador.toLocaleString()}`);
-      console.log(`   ✅ NUMERADOR: ${totalNumerador.toLocaleString()}`);
-      console.log(`   📈 COBERTURA: ${coberturaGlobal}%`);
-      console.log(`   🗓️ Fecha: ${cutoffDate}`);
+      console.log(`Reporte obtenido:`);
+      console.log(`${itemsCount} actividades`);
+      console.log(`DENOMINADOR: ${totalDenominador.toLocaleString()}`);
+      console.log(`NUMERADOR: ${totalNumerador.toLocaleString()}`);
+      console.log(`COBERTURA: ${coberturaGlobal}%`);
+      console.log(`Fecha: ${cutoffDate}`);
 
       return response.data;
     } catch (error) {
-      console.error(`❌ Error obteniendo reporte:`, error);
+      console.error(`Error obteniendo reporte:`, error);
       throw error;
     }
   }
 
+
   static async getFileMetadata(filename: string): Promise<TechnicalFileMetadata> {
     try {
-      console.log(`📋 Obteniendo metadatos: ${filename}`);
+      console.log(`Obteniendo metadatos: ${filename}`);
 
       const response = await api.get(`/technical-note/metadata/${filename}`, {
         timeout: 15000
       });
 
-      console.log(`✅ Metadatos obtenidos: ${response.data.total_rows?.toLocaleString()} filas`);
+      console.log(`Metadatos obtenidos: ${response.data.total_rows?.toLocaleString()} filas`);
 
       return response.data;
     } catch (error) {
@@ -381,6 +256,7 @@ export class TechnicalNoteService {
     }
   }
 
+
   static async getFileColumns(filename: string): Promise<{
     filename: string;
     columns: string[];
@@ -388,7 +264,7 @@ export class TechnicalNoteService {
     display_name: string;
   }> {
     try {
-      console.log(`📋 Obteniendo columnas: ${filename}`);
+      console.log(`Obteniendo columnas: ${filename}`);
 
       const response = await api.get(`/technical-note/columns/${filename}`, {
         timeout: 10000
@@ -401,6 +277,7 @@ export class TechnicalNoteService {
     }
   }
 
+
   static async getDepartamentos(filename: string): Promise<string[]> {
     try {
       const result = await this.getGeographicValues(filename, 'departamentos');
@@ -410,6 +287,7 @@ export class TechnicalNoteService {
       return [];
     }
   }
+
 
   static async getMunicipios(filename: string, departamento: string): Promise<string[]> {
     try {
@@ -421,6 +299,7 @@ export class TechnicalNoteService {
     }
   }
 
+
   static async getIps(filename: string, departamento: string, municipio: string): Promise<string[]> {
     try {
       const result = await this.getGeographicValues(filename, 'ips', { departamento, municipio });
@@ -431,16 +310,17 @@ export class TechnicalNoteService {
     }
   }
 
+
   static async getAgeRanges(
     filename: string,
     cutoffDate: string
   ): Promise<AgeRangesResponse> {
     if (!cutoffDate) {
-      throw new Error('❌ Fecha de corte es obligatoria');
+      throw new Error('Fecha de corte es obligatoria');
     }
 
     try {
-      console.log(`📅 Obteniendo rangos de edades: ${filename} con corte ${cutoffDate}`);
+      console.log(`Obteniendo rangos de edades: ${filename} con corte ${cutoffDate}`);
 
       const params = new URLSearchParams({
         corte_fecha: cutoffDate
@@ -454,14 +334,15 @@ export class TechnicalNoteService {
       const yearsCount = response.data.age_ranges?.years?.length || 0;
       const monthsCount = response.data.age_ranges?.months?.length || 0;
 
-      console.log(`✅ Rangos obtenidos: ${yearsCount} años, ${monthsCount} meses (corte: ${cutoffDate})`);
+      console.log(`Rangos obtenidos: ${yearsCount} años, ${monthsCount} meses (corte: ${cutoffDate})`);
 
       return response.data;
     } catch (error) {
-      console.error(`❌ Error obteniendo rangos:`, error);
+      console.error(`Error obteniendo rangos:`, error);
       throw error;
     }
   }
+
 
   static async getInasistentesReport(
     filename: string,
@@ -472,14 +353,10 @@ export class TechnicalNoteService {
     geographicFilters: GeographicFilters = {}
   ): Promise<InasistentesReportResponse> {
     if (!cutoffDate) {
-      throw new Error('❌ Fecha de corte es obligatoria');
+      throw new Error('Fecha de corte es obligatoria');
     }
 
     try {
-      console.log(`🏥 Generando reporte de inasistentes: ${filename}`);
-      console.log(`📅 Filtros edad:`, { selectedMonths, selectedYears });
-      console.log(`🗓️ Fecha corte: ${cutoffDate}`);
-
       const requestBody = {
         selectedMonths,
         selectedYears,
@@ -502,17 +379,18 @@ export class TechnicalNoteService {
       const totalInasistentes = response.data.resumen_general?.total_inasistentes_global || 0;
       const totalActividades = response.data.resumen_general?.total_actividades_evaluadas || 0;
 
-      console.log(`✅ Reporte obtenido:`);
-      console.log(`   👥 ${totalInasistentes} inasistentes totales`);
-      console.log(`   📋 ${totalActividades} actividades evaluadas`);
-      console.log(`   🗓️ Fecha corte: ${cutoffDate}`);
+      console.log(`Reporte obtenido:`);
+      console.log(`${totalInasistentes} inasistentes totales`);
+      console.log(`${totalActividades} actividades evaluadas`);
+      console.log(`Fecha corte: ${cutoffDate}`);
 
       return response.data;
     } catch (error) {
-      console.error(`❌ Error obteniendo reporte inasistentes:`, error);
+      console.error(`Error obteniendo reporte inasistentes:`, error);
       throw error;
     }
   }
+
 
   static async exportInasistentesCSV(
     filename: string,
@@ -523,12 +401,12 @@ export class TechnicalNoteService {
     geographicFilters: GeographicFilters = {}
   ): Promise<Blob> {
     if (!cutoffDate) {
-      throw new Error('❌ Fecha de corte es obligatoria');
+      throw new Error('Fecha de corte es obligatoria');
     }
 
     try {
-      console.log(`📥 Exportando CSV: ${filename}`);
-      console.log(`🗓️ Fecha corte: ${cutoffDate}`);
+      console.log(`Exportando CSV: ${filename}`);
+      console.log(`Fecha corte: ${cutoffDate}`);
 
       const requestBody = {
         selectedMonths,
@@ -555,14 +433,15 @@ export class TechnicalNoteService {
         }
       );
 
-      console.log(`✅ CSV exportado exitosamente (fecha: ${cutoffDate})`);
+      console.log(`CSV exportado exitosamente (fecha: ${cutoffDate})`);
       return response.data;
 
     } catch (error) {
-      console.error(`❌ Error exportando CSV:`, error);
+      console.error(`Error exportando CSV:`, error);
       throw error;
     }
   }
+
 
   // ===========================
   // MÉTODOS DE UTILIDAD
@@ -575,9 +454,11 @@ export class TechnicalNoteService {
     return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
   }
 
+
   static isLargeFile(totalRows: number): boolean {
     return totalRows > 10000;
   }
+
 
   static getRecommendedPageSize(totalRows: number): number {
     if (totalRows <= 1000) return 100;
@@ -586,9 +467,11 @@ export class TechnicalNoteService {
     return 1500;
   }
 
+
   static calculateTotalPages(totalRows: number, pageSize: number): number {
     return Math.ceil(totalRows / pageSize);
   }
+
 
   static downloadBlobAsFile(blob: Blob, filename: string): void {
     try {
@@ -600,12 +483,13 @@ export class TechnicalNoteService {
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-      console.log(`✅ Archivo descargado: ${filename}`);
+      console.log(`Archivo descargado: ${filename}`);
     } catch (error) {
-      console.error(`❌ Error descargando:`, error);
+      console.error(`Error descargando:`, error);
       throw error;
     }
   }
+
 
   static async downloadFromLink(downloadLink: string, filename?: string): Promise<void> {
     try {
@@ -632,10 +516,11 @@ export class TechnicalNoteService {
 
       this.downloadBlobAsFile(response.data, finalFilename);
     } catch (error) {
-      console.error(`❌ Error descargando desde enlace:`, error);
+      console.error(`Error descargando desde enlace:`, error);
       throw error;
     }
   }
+
 
   static getSemaforoColor(estado: string): string {
     const colores = {
@@ -649,6 +534,7 @@ export class TechnicalNoteService {
   }
 }
 
+
 export const TechnicalNoteHelpers = {
   formatFileSize: TechnicalNoteService.formatFileSize,
   isLargeFile: TechnicalNoteService.isLargeFile,
@@ -656,5 +542,7 @@ export const TechnicalNoteHelpers = {
   calculateTotalPages: TechnicalNoteService.calculateTotalPages,
   downloadBlobAsFile: TechnicalNoteService.downloadBlobAsFile,
   downloadFromLink: TechnicalNoteService.downloadFromLink,
-  getSemaforoColor: TechnicalNoteService.getSemaforoColor
+  getSemaforoColor: TechnicalNoteService.getSemaforoColor,
+  cleanupCache: TechnicalNoteService.cleanupAllCache,
+  getCacheStatus: TechnicalNoteService.getCacheStatus
 };

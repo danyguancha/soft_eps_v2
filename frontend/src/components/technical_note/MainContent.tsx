@@ -37,7 +37,7 @@ interface MainContentProps {
   municipiosOptions: string[];
   ipsOptions: string[];
   loadingGeoFilters: any;
-  cutoffDate?: string; // ✅ NUEVA PROP: Fecha de corte
+  cutoffDate?: string; 
   
   // Event handlers
   onPaginationChange: any;

@@ -14,6 +14,7 @@ import { ChatBot } from './components/chatbot/ChatBot';
 import { useFileOperations } from './hooks/useFileOperations';
 import { CrossDataProvider, useCrossDataContext } from './contexts/CrossDataContext';
 import { healthMonitor } from './services/HealthMonitor';
+import { TechnicalNoteService } from './services/TechnicalNoteService';
 import type { TabKey } from './types/api.types';
 
 import 'antd/dist/reset.css';
@@ -49,6 +50,37 @@ const AppContent: React.FC = () => {
     serverStatus: 'online'
   });
 
+  // ========== LIMPIEZA DE CACHE AL INICIAR LA APLICACIÓN ==========
+  useEffect(() => {
+    const initializeCache = async () => {
+      try {
+        console.log('Limpiando cache del backend al iniciar...');
+        
+        const cleanupResult = await TechnicalNoteService.cleanupAllCache();
+        
+        if (cleanupResult.success) {
+          console.log('Cache limpiado exitosamente:');
+          console.log(`Directorios limpiados: ${cleanupResult.cleaned_directories.join(', ')}`);
+          console.log(`Tablas eliminadas: ${cleanupResult.tables_cleared}`);
+          console.log(`Archivos técnicos eliminados: ${cleanupResult.technical_files_cleared}`);
+          
+          // Mensaje discreto de confirmación
+          message.success('Sistema inicializado correctamente', 1.5);
+        } else if (cleanupResult.errors && cleanupResult.errors.length > 0) {
+          console.warn('Limpieza completada con algunos errores:', cleanupResult.errors);
+          message.warning('Cache limpiado', 2);
+        }
+      } catch (error) {
+        console.error('Error limpiando cache:', error);
+        // No bloqueamos la aplicación si falla la limpieza
+        message.warning('No se pudo limpiar el cache, continuando...', 2);
+      }
+    };
+
+    // Ejecutar limpieza al montar el componente
+    initializeCache();
+  }, []); // Solo ejecutar una vez al montar
+
   // ========== HEALTH MONITOR SETUP ==========
   useEffect(() => {
     console.log('🚀 Iniciando monitoreo de servidor...');
@@ -68,7 +100,7 @@ const AppContent: React.FC = () => {
       },
       
       onServerDown: () => {
-        console.log('⚠️ Servidor no disponible, buscando...');
+        console.log('Servidor no disponible, buscando...');
         
         setUI(prev => ({ 
           ...prev, 
@@ -77,7 +109,7 @@ const AppContent: React.FC = () => {
       },
       
       onServerUp: (port) => {
-        console.log(`✅ Servidor reconectado en puerto ${port}`);
+        console.log(`Servidor reconectado en puerto ${port}`);
         
         setUI(prev => ({ 
           ...prev, 

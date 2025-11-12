@@ -1,15 +1,16 @@
 // hooks/useTechnicalNote.ts - VERSIÓN COMPLETA CORREGIDA CON VALIDACIÓN ROBUSTA
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  TechnicalNoteService,
   type TechnicalFileInfo,
   type TechnicalFileData,
   type TechnicalFileMetadata,
   type KeywordAgeReport,
   type GeographicFilters,
   type GlobalStatistics
-} from '../services/TechnicalNoteService';
+} from '../interfaces/ITechnicalNote';
+
 import type { FilterCondition, SortCondition } from '../types/api.types';
+import { TechnicalNoteService } from '../services/TechnicalNoteService';
 
 export const useTechnicalNote = () => {
   // Refs para evitar loops infinitos
