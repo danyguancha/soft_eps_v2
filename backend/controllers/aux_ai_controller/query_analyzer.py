@@ -124,7 +124,7 @@ class QueryAnalyzer:
         """Evalúa complejidad automáticamente"""
         num_tokens = len(doc)
         num_entities = len(doc.ents)
-        num_clauses = len([sent for sent in doc.sents])
+        num_clauses = len(list(doc.sents))
         
         score = 0
         if num_tokens > 15: score += 1
@@ -137,6 +137,7 @@ class QueryAnalyzer:
             return 'moderate'
         else:
             return 'complex'
+
     
     def _extract_column_references(self, doc) -> List[str]:
         """Extrae referencias a columnas del texto"""

@@ -75,7 +75,7 @@ const FileCrossManager: React.FC<FileCrossManagerProps> = ({
     }
   }, []);
 
-  // ✅ CORRECCIÓN: Detectar archivos grandes
+  // CORRECCIÓN: Detectar archivos grandes
   useEffect(() => {
     if (file1 && file2) {
       const totalRows = (file1.total_rows || 0) + (file2.total_rows || 0);
@@ -85,7 +85,7 @@ const FileCrossManager: React.FC<FileCrossManagerProps> = ({
       setIsLargeFile(isLarge);
       
       if (isLarge) {
-        // ✅ CORRECCIÓN: Usar .toLocaleString() en lugar de :,
+        // CORRECCIÓN: Usar .toLocaleString() en lugar de :,
         console.log(`🔔 Archivo grande detectado: ${totalRows.toLocaleString()} filas, ${totalColumns} columnas`);
       }
     }
@@ -247,8 +247,8 @@ const FileCrossManager: React.FC<FileCrossManagerProps> = ({
         onCrossComplete(result);
       }
       
-      // ✅ CORRECCIÓN: Usar .toLocaleString()
-      message.success(`✅ Cruce completado: ${result.total_rows.toLocaleString()} registros procesados`);
+      // CORRECCIÓN: Usar .toLocaleString()
+      message.success(`Cruce completado: ${result.total_rows.toLocaleString()} registros procesados`);
       
     } finally {
       setLoading(false);
@@ -261,7 +261,7 @@ const FileCrossManager: React.FC<FileCrossManagerProps> = ({
       icon: <WarningOutlined style={{ color: '#faad14' }} />,
       content: (
         <div>
-          {/* ✅ CORRECCIÓN: Usar .toLocaleString() */}
+          {/* CORRECCIÓN: Usar .toLocaleString() */}
           <p>Este cruce procesará <strong>{totalRows.toLocaleString()} registros</strong> con <strong>{totalColumns} columnas</strong>.</p>
           <p>Debido al tamaño, el resultado se <strong>descargará automáticamente como archivo CSV</strong> para optimizar el rendimiento.</p>
           <Alert 
@@ -300,13 +300,13 @@ const FileCrossManager: React.FC<FileCrossManagerProps> = ({
             message: 'Archivo descargado exitosamente'
           });
           
-          // ✅ CORRECCIÓN: Usar .toLocaleString()
-          message.success(`✅ Cruce completado y descargado: ${totalRows.toLocaleString()} registros`);
+          // CORRECCIÓN: Usar .toLocaleString()
+          message.success(`Cruce completado y descargado: ${totalRows.toLocaleString()} registros`);
           
         } catch (error: any) {
           setDownloadProgress(0);
           if (error.message.includes('timeout')) {
-            // ✅ CORRECCIÓN: Usar .toLocaleString()
+            // CORRECCIÓN: Usar .toLocaleString()
             message.warning(`⏱️ El proceso está tardando más de lo esperado. Esto es normal con archivos de ${totalRows.toLocaleString()} filas.`);
           } else {
             throw error;
@@ -327,7 +327,7 @@ const FileCrossManager: React.FC<FileCrossManagerProps> = ({
         <div>
           <p>El servidor detectó que este cruce requiere procesamiento especial:</p>
           <ul>
-            {/* ✅ CORRECCIÓN: Usar .toLocaleString() */}
+            {/* CORRECCIÓN: Usar .toLocaleString() */}
             <li><strong>Total filas:</strong> {total_rows.toLocaleString()}</li>
             <li><strong>Total columnas:</strong> {total_columns}</li>
           </ul>
@@ -391,7 +391,7 @@ const FileCrossManager: React.FC<FileCrossManagerProps> = ({
                 <Alert
                   message="📊 Archivo Grande Detectado"
                   description={
-                    // ✅ CORRECCIÓN: Usar .toLocaleString()
+                    // CORRECCIÓN: Usar .toLocaleString()
                     `Total: ${((file1?.total_rows || 0) + (file2?.total_rows || 0)).toLocaleString()} filas. El resultado se descargará como CSV para optimizar el rendimiento.`
                   }
                   type="info"
@@ -432,7 +432,7 @@ const FileCrossManager: React.FC<FileCrossManagerProps> = ({
                           {file.original_name}
                           <br />
                           <Text type="secondary" style={{ fontSize: '12px' }}>
-                            {/* ✅ CORRECCIÓN: Usar .toLocaleString() */}
+                            {/* CORRECCIÓN: Usar .toLocaleString() */}
                             {file.total_rows?.toLocaleString()} filas, {file.columns?.length} columnas
                             {(file.total_rows || 0) > 100000 && <Tag color="orange"  style={{ marginLeft: 4 }}>Grande</Tag>}
                           </Text>
@@ -458,7 +458,7 @@ const FileCrossManager: React.FC<FileCrossManagerProps> = ({
                   <Alert
                     message={file1.original_name}
                     description={
-                      // ✅ CORRECCIÓN: Usar .toLocaleString()
+                      // CORRECCIÓN: Usar .toLocaleString()
                       `${file1.total_rows?.toLocaleString()} filas, ${file1.columns?.length} columnas`
                     }
                     type="success"
@@ -497,7 +497,7 @@ const FileCrossManager: React.FC<FileCrossManagerProps> = ({
                           {file.original_name}
                           <br />
                           <Text type="secondary" style={{ fontSize: '12px' }}>
-                            {/* ✅ CORRECCIÓN: Usar .toLocaleString() */}
+                            {/* CORRECCIÓN: Usar .toLocaleString() */}
                             {file.total_rows?.toLocaleString()} filas, {file.columns?.length} columnas
                             {(file.total_rows || 0) > 100000 && <Tag color="orange" style={{ marginLeft: 4 }}>Grande</Tag>}
                           </Text>
@@ -523,7 +523,7 @@ const FileCrossManager: React.FC<FileCrossManagerProps> = ({
                   <Alert
                     message={file2.original_name}
                     description={
-                      // ✅ CORRECCIÓN: Usar .toLocaleString()
+                      // CORRECCIÓN: Usar .toLocaleString()
                       `${file2.total_rows?.toLocaleString()} filas, ${file2.columns?.length} columnas`
                     }
                     type="warning"
@@ -665,7 +665,7 @@ const FileCrossManager: React.FC<FileCrossManagerProps> = ({
                   message="🎉 Cruce Completado Exitosamente"
                   description={
                     crossResult.download_completed 
-                      ? // ✅ CORRECCIÓN: Usar .toLocaleString()
+                      ? // CORRECCIÓN: Usar .toLocaleString()
                         `Se procesaron ${crossResult.total_rows?.toLocaleString()} registros y el archivo fue descargado automáticamente.`
                       : `Se procesaron ${crossResult.total_rows?.toLocaleString()} registros con ${crossResult.columns?.length} columnas.`
                   }
@@ -685,7 +685,7 @@ const FileCrossManager: React.FC<FileCrossManagerProps> = ({
                     />
                     <div style={{ marginTop: 8, textAlign: 'center' }}>
                       <Text type="secondary">
-                        {downloadProgress >= 100 ? '✅ Descarga completada' : 'Procesando y descargando...'}
+                        {downloadProgress >= 100 ? 'Descarga completada' : 'Procesando y descargando...'}
                       </Text>
                     </div>
                   </Card>

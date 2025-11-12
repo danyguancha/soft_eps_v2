@@ -43,7 +43,7 @@ class ReportService:
     
     def _debug_age_range_coverage(
         self, data_source: str, age_range_obj, edad_meses_field: str, 
-        edad_años_field: str, geo_filter: str, corte_fecha: str, document_field: str
+        edad_anios_field: str, geo_filter: str, corte_fecha: str, document_field: str
     ):
         """Debug con campo documento correcto"""
         try:
@@ -65,7 +65,7 @@ class ReportService:
                 """
                 
                 debug_result = duckdb_service.conn.execute(debug_sql).fetchall()
-                print(f"      🔍 DESGLOSE POR MES:")
+                print("DESGLOSE POR MES:")
                 total_verification = 0
                 for row in debug_result:
                     edad_mes = row[0]

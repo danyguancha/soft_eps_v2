@@ -23,19 +23,19 @@ export class CrossService {
   
   static async crossFiles(request: FileCrossRequest): Promise<any> {
     const response = await api.post('/cross', request, {
-      timeout: 300000 // ✅ 5 minutos para archivos grandes
+      timeout: 300000 // 5 minutos para archivos grandes
     });
     return response.data;
   }
 
-  // ✅ NUEVO: Método para descarga de archivos grandes
+  // NUEVO: Método para descarga de archivos grandes
   static async crossFilesDownload(request: FileCrossRequest): Promise<void> {
     try {
-      console.log('🚀 Iniciando descarga de cruce para archivo grande...');
+      console.log('Iniciando descarga de cruce para archivo grande...');
       
       const response = await api.post('/cross-download', request, {
-        responseType: 'blob', // ✅ Importante para archivos
-        timeout: 0, // ✅ Sin timeout para archivos grandes
+        responseType: 'blob', // Importante para archivos
+        timeout: 0, // Sin timeout para archivos grandes
         onDownloadProgress: (progressEvent) => {
           if (progressEvent.total) {
             const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
@@ -44,7 +44,7 @@ export class CrossService {
         }
       });
       
-      // ✅ Crear descarga automática
+      // Crear descarga automática
       const blob = new Blob([response.data], { type: 'text/csv' });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');

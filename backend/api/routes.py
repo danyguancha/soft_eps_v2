@@ -218,108 +218,136 @@ def cross_files_download(request: FileCrossRequest):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+# Para endpoint de cross
+def _validate_file_id(file_id: str) -> dict:
+    """Valida y obtiene información del archivo"""
+    if not file_id or file_id.strip() == "":
+        raise HTTPException(status_code=400, detail="File ID no puede estar vacío")
+    
+    try:
+        return file_controller.get_file_info(file_id)
+    except ValueError:
+        all_files_info = file_controller.list_all_files()
+        available_files = [f["file_id"] for f in all_files_info.get("files", [])]
+        raise HTTPException(
+            status_code=404, 
+            detail=f"Archivo no encontrado: {file_id}. Disponibles: {available_files[:5]}"
+        )
+    
+def _try_load_file_to_duckdb(file_id: str, file_info: dict) -> bool:
+    """Intenta cargar el archivo en DuckDB si no está cargado"""
+    if not duckdb_service:
+        return False
+    
+    loaded_tables = getattr(duckdb_service, 'loaded_tables', {})
+    if file_id in loaded_tables:
+        return True
+    
+    file_path = file_info.get("path")
+    if not file_path or not os.path.exists(file_path):
+        return False
+    
+    try:
+        result = execute_with_timeout(
+            duckdb_service.convert_file_to_parquet,
+            timeout_seconds=180,
+            file_path=file_path,
+            file_id=file_id,
+            original_name=file_info["original_name"],
+            ext=file_info.get("extension", "xlsx")
+        )
+        
+        if result.get("success"):
+            duckdb_service.load_parquet_lazy(file_id, result["parquet_path"])
+            return True
+    except Exception as conv_error:
+        print(f"Error cargando en DuckDB: {conv_error}")
+    
+    return False
+
+def _get_columns_from_duckdb(file_id: str, sheet_name: str, file_info: dict) -> dict:
+    """Obtiene columnas usando DuckDB"""
+    if not duckdb_service:
+        return {}
+    
+    try:
+        _try_load_file_to_duckdb(file_id, file_info)
+        
+        columns_info = execute_with_timeout(
+            duckdb_service.get_file_columns_for_cross,
+            timeout_seconds=30,
+            file_id=file_id,
+            sheet_name=sheet_name
+        )
+        
+        if columns_info.get("success"):
+            return {
+                "success": True,
+                "file_id": file_id,
+                "columns": columns_info["columns"],
+                "total_columns": len(columns_info["columns"]),
+                "sheet_name": sheet_name,
+                "file_name": file_info["original_name"],
+                "method": "duckdb_ultra_fast"
+            }
+    except Exception as duckdb_error:
+        print(f"Error con DuckDB: {duckdb_error}")
+    
+    return {}
+
+
+def _get_columns_from_fallback(file_id: str, sheet_name: str, file_info: dict) -> dict:
+    """Obtiene columnas usando el método fallback"""
+    existing_columns = execute_with_timeout(
+        file_controller.get_columns,
+        timeout_seconds=45,
+        file_id=file_id,
+        sheet_name=sheet_name
+    )
+    
+    columns = existing_columns.get("columns", [])
+    if not columns:
+        raise HTTPException(status_code=404, detail="No se encontraron columnas en el archivo")
+    
+    response = {
+        "success": True,
+        "file_id": file_id,
+        "columns": columns,
+        "total_columns": len(columns),
+        "sheet_name": sheet_name,
+        "file_name": file_info["original_name"],
+        "method": "fallback_file_controller"
+    }
+    
+    if file_info:
+        response["file_info"] = {
+            "original_name": file_info.get("original_name", ""),
+            "is_excel": file_info.get("is_excel", False),
+            "available_sheets": file_info.get("sheets", []),
+            "default_sheet": file_info.get("default_sheet"),
+            "selected_sheet": sheet_name,
+            "total_rows": file_info.get("total_rows", 0)
+        }
+    
+    return response
+
 @router.get("/cross/columns/{file_id}")
-async def get_columns_for_cross(
+def get_columns_for_cross(
     file_id: str, 
     sheet_name: str = Query(None)
 ):
     """Obtiene columnas de un archivo para realizar cruces"""
-    try:        
-        if not file_id or file_id.strip() == "":
-            raise HTTPException(status_code=400, detail="File ID no puede estar vacío")
-        
-        try:
-            file_info = file_controller.get_file_info(file_id)
-        except ValueError as e:
-            all_files_info = file_controller.list_all_files()
-            available_files = [f["file_id"] for f in all_files_info.get("files", [])]
-            raise HTTPException(
-                status_code=404, 
-                detail=f"Archivo no encontrado: {file_id}. Disponibles: {available_files[:5]}"
-            )
+    try:
+        file_info = _validate_file_id(file_id)
         
         # ESTRATEGIA 1: Intentar con DuckDB
-        if duckdb_service:
-            try:
-                loaded_tables = getattr(duckdb_service, 'loaded_tables', {})
-                
-                if file_id not in loaded_tables:
-                    file_path = file_info.get("path")
-                    if file_path and os.path.exists(file_path):
-                        try:
-                            result = execute_with_timeout(
-                                duckdb_service.convert_file_to_parquet,
-                                timeout_seconds=180,
-                                file_path=file_path,
-                                file_id=file_id,
-                                original_name=file_info["original_name"],
-                                ext=file_info.get("extension", "xlsx")
-                            )
-                            
-                            if result.get("success"):
-                                duckdb_service.load_parquet_lazy(file_id, result["parquet_path"])
-                        except Exception as conv_error:
-                            print(f"⚠️ Error cargando en DuckDB: {conv_error}")
-                
-                try:
-                    columns_info = execute_with_timeout(
-                        duckdb_service.get_file_columns_for_cross,
-                        timeout_seconds=30,
-                        file_id=file_id,
-                        sheet_name=sheet_name
-                    )
-                    
-                    if columns_info.get("success"):
-                        return {
-                            "success": True,
-                            "file_id": file_id,
-                            "columns": columns_info["columns"],
-                            "total_columns": len(columns_info["columns"]),
-                            "sheet_name": sheet_name,
-                            "file_name": file_info["original_name"],
-                            "method": "duckdb_ultra_fast"
-                        }
-                except Exception as duckdb_error:
-                    print(f"⚠️ Error con DuckDB: {duckdb_error}")
-                    
-            except Exception as e:
-                print(f"⚠️ Error general con DuckDB: {e}")
+        duckdb_result = _get_columns_from_duckdb(file_id, sheet_name, file_info)
+        if duckdb_result:
+            return duckdb_result
         
         # ESTRATEGIA 2: Fallback
         try:
-            existing_columns = execute_with_timeout(
-                file_controller.get_columns,
-                timeout_seconds=45,
-                file_id=file_id,
-                sheet_name=sheet_name
-            )
-            
-            columns = existing_columns.get("columns", [])
-            if not columns:
-                raise Exception("No se encontraron columnas")
-            
-            response = {
-                "success": True,
-                "file_id": file_id,
-                "columns": columns,
-                "total_columns": len(columns),
-                "sheet_name": sheet_name,
-                "file_name": file_info["original_name"],
-                "method": "fallback_file_controller"
-            }
-            
-            if file_info:
-                response["file_info"] = {
-                    "original_name": file_info.get("original_name", ""),
-                    "is_excel": file_info.get("is_excel", False),
-                    "available_sheets": file_info.get("sheets", []),
-                    "default_sheet": file_info.get("default_sheet"),
-                    "selected_sheet": sheet_name,
-                    "total_rows": file_info.get("total_rows", 0)
-                }
-            
-            return response
-            
+            return _get_columns_from_fallback(file_id, sheet_name, file_info)
         except Exception as fallback_error:
             raise HTTPException(
                 status_code=500,
@@ -331,6 +359,7 @@ async def get_columns_for_cross(
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
+
 
 # ========== ENDPOINTS DE EXPORTACIÓN ==========
 
@@ -383,7 +412,7 @@ def list_exported_files():
             try:
                 file_info = ExportService.get_export_info(filename)
                 files.append(file_info)
-            except:
+            except Exception as e:
                 continue
         
         return {"files": files, "total": len(files)}

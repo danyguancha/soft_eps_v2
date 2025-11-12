@@ -14,7 +14,7 @@ from services.technical_note_services.report_service_aux.pdf_exporter import PDF
 
 class ReportExporter:
     """
-    📤 ORQUESTADOR DE EXPORTACIÓN EN MEMORIA (SIN ARCHIVOS TEMPORALES)
+    ORQUESTADOR DE EXPORTACIÓN EN MEMORIA (SIN ARCHIVOS TEMPORALES)
     
     Responsabilidades:
     - Coordina exportación de CSV y PDF en memoria
@@ -35,7 +35,7 @@ class ReportExporter:
         self.csv_exporter = CSVExporter(separator=';', encoding='latin1')
         self.pdf_exporter = PDFExporter(
             watermark_image="assets/mallamas.png",
-            watermark_opacity=0.2,
+            watermark_opacity=0.1,
             image_width=6 * inch,
             image_height=6 * inch,
             image_position='center',
@@ -66,10 +66,10 @@ class ReportExporter:
         try:
             start_time = datetime.now()
             
-            print(f"\n🚀 ========== EXPORTACIÓN EN MEMORIA ==========")
-            print(f"📋 Archivo: {base_filename}")
+            print("\========== EXPORTACIÓN EN MEMORIA ==========")
+            print(f"Archivo: {base_filename}")
             print(f"CSV: {export_csv}, PDF: {export_pdf}")
-            print(f"⏰ Temporal: {include_temporal}")
+            print(f"Temporal: {include_temporal}")
             
             files = {}
             download_links = {}
@@ -88,12 +88,7 @@ class ReportExporter:
                     files.update(pdf_result['files'])
                     download_links.update(pdf_result['links'])
             
-            elapsed = (datetime.now() - start_time).total_seconds()
-            
-            print(f"Exportación completada en {elapsed:.2f}s (EN MEMORIA)")
-            print(f"📄 Archivos: {list(files.keys())}")
-            print(f"==============================================\n")
-            
+            elapsed = (datetime.now() - start_time).total_seconds()            
             return {
                 'success': True,
                 'message': f'Exportación completada: {len(files)} archivo(s)',
@@ -137,7 +132,7 @@ class ReportExporter:
                 'links': {'csv_temporal': f"/technical-note/reports/download/{file_id}"}
             }
         
-        print(f"CSV Temporal no generado")
+        print("CSV Temporal no generado")
         return None
     
     def _export_pdf(
@@ -165,7 +160,7 @@ class ReportExporter:
                 'links': {'pdf': f"/technical-note/reports/download/{file_id}"}
             }
         
-        print(f"PDF no generado")
+        print("PDF no generado")
         return None
     
     def get_temp_file(self, file_id: str) -> Optional[Dict[str, Any]]:

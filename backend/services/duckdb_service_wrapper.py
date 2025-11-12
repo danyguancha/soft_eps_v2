@@ -91,7 +91,7 @@ class SafeDuckDBService:
             if self._service:
                 try:
                     self._service.close()
-                except:
+                except Exception:
                     pass
                 self._service = None
             
@@ -108,7 +108,7 @@ class SafeDuckDBService:
             self._initialize_service()
         
         if not self._service:
-            raise Exception("DuckDB Service no disponible")
+            raise ValueError("DuckDB Service no disponible")
         
         attr = getattr(self._service, name)
         

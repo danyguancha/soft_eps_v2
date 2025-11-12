@@ -1,9 +1,8 @@
 // src/App.tsx
 import '@ant-design/v5-patch-for-react-19';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
-import { Layout, Alert, Spin, Drawer, Modal } from 'antd';
-import { Grid } from 'antd';
+import { Layout, Alert, Spin, Drawer, Modal, message, Grid } from 'antd';
 
 import { AppHeader } from './components/layout/AppHeader';
 import { NavigationMenu } from './components/navigation/NavigationMenu';
@@ -14,7 +13,9 @@ import { ChatBot } from './components/chatbot/ChatBot';
 
 import { useFileOperations } from './hooks/useFileOperations';
 import { CrossDataProvider, useCrossDataContext } from './contexts/CrossDataContext';
+import { healthMonitor } from './services/HealthMonitor';
 import type { TabKey } from './types/api.types';
+
 import 'antd/dist/reset.css';
 import './App.css';
 
@@ -25,6 +26,8 @@ interface UIState {
   collapsed: boolean;
   mobileMenuVisible: boolean;
   crossModalVisible: boolean;
+  serverPort: number;
+  serverStatus: 'online' | 'offline' | 'reconnecting';
 }
 
 const AppContent: React.FC = () => {
@@ -42,7 +45,56 @@ const AppContent: React.FC = () => {
     collapsed: isMobile,
     mobileMenuVisible: false,
     crossModalVisible: false,
+    serverPort: 8000,
+    serverStatus: 'online'
   });
+
+  // ========== HEALTH MONITOR SETUP ==========
+  useEffect(() => {
+    console.log('🚀 Iniciando monitoreo de servidor...');
+    
+    healthMonitor.start({
+      onPortChange: (newPort, oldPort) => {
+        console.log(`🔄 Puerto actualizado: ${oldPort} → ${newPort}`);
+        
+        setUI(prev => ({ 
+          ...prev, 
+          serverPort: newPort,
+          serverStatus: 'online'
+        }));
+        
+        // Notificación discreta
+        message.info(`Servidor actualizado al puerto ${newPort}`, 2);
+      },
+      
+      onServerDown: () => {
+        console.log('⚠️ Servidor no disponible, buscando...');
+        
+        setUI(prev => ({ 
+          ...prev, 
+          serverStatus: 'reconnecting'
+        }));
+      },
+      
+      onServerUp: (port) => {
+        console.log(`✅ Servidor reconectado en puerto ${port}`);
+        
+        setUI(prev => ({ 
+          ...prev, 
+          serverPort: port,
+          serverStatus: 'online'
+        }));
+        
+        message.success(`Conectado al servidor en puerto ${port}`, 2);
+      }
+    }, 10000); // Check cada 10 segundos
+    
+    // Cleanup al desmontar
+    return () => {
+      console.log('🛑 Deteniendo monitoreo de servidor...');
+      healthMonitor.stop();
+    };
+  }, []);
 
   const getActiveKey = (): TabKey => {
     const path = location.pathname.slice(1) || 'welcome';
@@ -95,6 +147,18 @@ const AppContent: React.FC = () => {
 
             <Layout className="content-layout">
               <Content className="app-content">
+                {/* Alerta de estado del servidor (solo si está reconectando) */}
+                {ui.serverStatus === 'reconnecting' && (
+                  <Alert
+                    type="warning"
+                    message="Reconectando..."
+                    description="Buscando servidor en puertos disponibles..."
+                    showIcon
+                    closable={false}
+                    style={{ marginBottom: 16 }}
+                  />
+                )}
+
                 {fileOperations.error && (
                   <Alert
                     type="error"
@@ -157,7 +221,19 @@ const AppContent: React.FC = () => {
               </Content>
               
               <Footer className="app-footer">
-                {isMobile ? 'Procesador ©2025' : 'Evaluación de nota técnica ©2025'}
+                <span>
+                  {isMobile ? 'Procesador ©2025' : 'Evaluación de nota técnica ©2025'}
+                </span>
+                
+                {/* Indicador discreto de puerto (opcional) */}
+                <span style={{ 
+                  marginLeft: '10px', 
+                  fontSize: '11px', 
+                  opacity: 0.5,
+                  display: isMobile ? 'none' : 'inline'
+                }}>
+                  Puerto: {ui.serverPort}
+                </span>
               </Footer>
             </Layout>
           </Layout>
@@ -207,7 +283,7 @@ const AppContent: React.FC = () => {
             />
           </Modal>
 
-          {/* ✅ CHATBOT FLOTANTE - DISPONIBLE EN TODAS LAS PÁGINAS */}
+          {/* CHATBOT FLOTANTE - DISPONIBLE EN TODAS LAS PÁGINAS */}
           <ChatBot fileContext={fileOperations.currentFile?.file_id} />
         </Layout>
       </div>

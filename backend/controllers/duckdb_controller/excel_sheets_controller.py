@@ -102,8 +102,7 @@ class ExcelSheetsController:
                 "total_sheets": len(sheet_names)
             }
             
-        except Exception as e:
-            # Fallback final
+        except Exception:
             return self._get_sheets_standard_method(file_path, start_time)
 
     def _get_sheets_standard_method(self, file_path: str, start_time: float) -> Dict[str, Any]:
@@ -143,7 +142,7 @@ class ExcelSheetsController:
             if sheet_info["success"]:
                 return sheet_name in sheet_info["sheets"]
             return False
-        except:
+        except Exception:
             return False
 
     def get_first_valid_sheet(self, file_path: str) -> str:
@@ -152,6 +151,6 @@ class ExcelSheetsController:
             sheet_info = self.get_excel_sheets(file_path)
             if sheet_info["success"] and sheet_info["sheets"]:
                 return sheet_info["sheets"][0]
-            return None
-        except:
-            return None
+            return ""
+        except Exception:
+            return ""

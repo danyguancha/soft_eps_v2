@@ -14,22 +14,22 @@ report_exporter = ReportExporter()
 router = APIRouter()
 
 # ========== MODELOS PYDANTIC ==========
-
+mandatory_date = "Fecha de corte OBLIGATORIA (YYYY-MM-DD)"
 class GeographicFiltersModel(BaseModel):
-    """🗺️ Filtros geográficos para el reporte"""
+    """Filtros geográficos para el reporte"""
     departamento: Optional[str] = Field(None, description="Departamento específico")
     municipio: Optional[str] = Field(None, description="Municipio específico")
     ips: Optional[str] = Field(None, description="IPS específica")
 
 class AdvancedReportRequestModel(BaseModel):
-    """📄 Modelo de solicitud para generar reporte avanzado"""
+    """Modelo de solicitud para generar reporte avanzado"""
     data_source: str = Field(..., description="Nombre de la tabla/fuente de datos")
     filename: str = Field(..., description="Nombre base del archivo de salida")
     keywords: Optional[List[str]] = Field(default=[], description="Lista de palabras clave")
     min_count: int = Field(default=0, description="Conteo mínimo para incluir resultados")
     include_temporal: bool = Field(default=True, description="Incluir análisis temporal")
     geographic_filters: Optional[GeographicFiltersModel] = Field(default=None)
-    corte_fecha: str = Field(..., description="Fecha de corte DINÁMICA (YYYY-MM-DD)")
+    corte_fecha: str = Field(..., description=mandatory_date)
     
     @validator('corte_fecha')
     def validate_corte_fecha(cls, v):
@@ -41,13 +41,14 @@ class AdvancedReportRequestModel(BaseModel):
 
 # ========== ENDPOINTS PRINCIPALES ==========
 
+
 @router.get("/available")
 def get_available_technical_files():
     """Lista archivos técnicos disponibles"""
     try:
         return technical_note_controller.get_available_static_files()
     except Exception as e:
-        print(f"❌ Error en /available: {e}")
+        print(f"Error en /available: {e}")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 @router.get("/data/{filename}")
@@ -63,14 +64,14 @@ def get_technical_file_data_with_excel_filters(
 ):
     """Obtiene datos con filtros estilo Excel"""
     try:
-        print(f"📡 GET /data/{filename} - página {page}")
+        print(f"GET /data/{filename} - página {page}")
         
         parsed_filters = None
         if filters:
             try:
                 parsed_filters = json.loads(filters)
             except json.JSONDecodeError as e:
-                print(f"⚠️ Error parseando filtros: {e}")
+                print(f"Error parseando filtros: {e}")
         
         result = technical_note_controller.read_technical_file_data_paginated(
             filename=filename,
@@ -88,7 +89,7 @@ def get_technical_file_data_with_excel_filters(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"❌ Error en /data/{filename}: {e}")
+        print(f"Error en /data/{filename}: {e}")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 @router.get("/metadata/{filename}")
@@ -99,7 +100,7 @@ def get_technical_file_metadata(filename: str):
     except HTTPException:
         raise
     except Exception as e:
-        print(f"❌ Error en /metadata/{filename}: {e}")
+        print(f"Error en /metadata/{filename}: {e}")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 @router.get("/columns/{filename}")
@@ -116,7 +117,7 @@ def get_file_columns(filename: str):
     except HTTPException:
         raise
     except Exception as e:
-        print(f"❌ Error en /columns/{filename}: {e}")
+        print(f"Error en /columns/{filename}: {e}")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 # ========== ENDPOINTS GEOGRÁFICOS ==========
@@ -184,12 +185,12 @@ def get_keyword_age_report(
     departamento: Optional[str] = Query(None),
     municipio: Optional[str] = Query(None),
     ips: Optional[str] = Query(None),
-    corte_fecha: str = Query(..., description="Fecha de corte OBLIGATORIA (YYYY-MM-DD)")
+    corte_fecha: str = Query(..., description=mandatory_date)
 ):
     """Genera reporte con numerador/denominador y fecha de corte dinámica"""
     try:
-        print(f"\n📊 ========== GET /report/{filename} ==========")
-        print(f"🗓️ Fecha corte: {corte_fecha}")
+        print(f"\n========== GET /report/{filename} ==========")
+        print(f"Fecha corte: {corte_fecha}")
         
         # Validar formato de fecha
         try:
@@ -219,15 +220,15 @@ def get_keyword_age_report(
         items_count = len(result.get('items', []))
         global_stats = result.get('global_statistics', {})
         
-        print(f"✅ Reporte completado: {items_count} items")
-        print(f"📊 Cobertura global: {global_stats.get('cobertura_global_porcentaje', 0)}%")
+        print(f"Reporte completado: {items_count} items")
+        print(f"Cobertura global: {global_stats.get('cobertura_global_porcentaje', 0)}%")
         
         return result
         
     except HTTPException:
         raise
     except Exception as e:
-        print(f"❌ Error en /report/{filename}: {e}")
+        print(f"Error en /report/{filename}: {e}")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 # ========== ENDPOINTS DE VALORES ÚNICOS ==========
@@ -255,11 +256,11 @@ def get_column_unique_values(
 @router.get("/age-ranges/{filename}")
 def get_age_ranges(
     filename: str,
-    corte_fecha: str = Query(..., description="Fecha de corte OBLIGATORIA (YYYY-MM-DD)")
+    corte_fecha: str = Query(..., description=mandatory_date)
 ):
     """Obtiene rangos de edades únicos con fecha dinámica"""
     try:
-        print(f"📅 GET /age-ranges/{filename} con fecha: {corte_fecha}")
+        print(f"GET /age-ranges/{filename} con fecha: {corte_fecha}")
         
         # Validar formato
         try:
@@ -291,11 +292,11 @@ def get_age_ranges(
 def get_inasistentes_report(
     filename: str,
     request: Dict[str, Any],
-    corte_fecha: str = Query(..., description="Fecha de corte OBLIGATORIA (YYYY-MM-DD)")
+    corte_fecha: str = Query(..., description=mandatory_date)
 ):
     """Genera reporte de inasistentes con fecha dinámica"""
     try:
-        print(f"🏥 POST /inasistentes-report/{filename}")
+        print(f"POST /inasistentes-report/{filename}")
         
         selected_months = request.get("selectedMonths", [])
         selected_years = request.get("selectedYears", [])
@@ -341,11 +342,11 @@ def get_inasistentes_report(
 def export_inasistentes_csv(
     filename: str,
     request: Dict[str, Any],
-    corte_fecha: str = Query(..., description="Fecha de corte OBLIGATORIA (YYYY-MM-DD)")
+    corte_fecha: str = Query(..., description=mandatory_date)
 ):
     """Exporta reporte de inasistentes a CSV"""
     try:
-        print(f"📥 POST /inasistentes-report/{filename}/export-csv")
+        print(f"POST /inasistentes-report/{filename}/export-csv")
         
         selected_months = request.get("selectedMonths", [])
         selected_years = request.get("selectedYears", [])
@@ -403,7 +404,7 @@ async def download_report_file(file_id: str):
     except HTTPException:
         raise
     except Exception as e:
-        print(f"❌ Error descargando archivo: {e}")
+        print(f"Error descargando archivo: {e}")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 @router.post("/reports/export-current")
@@ -412,14 +413,14 @@ async def export_current_report(
     background_tasks: BackgroundTasks,
 ):
     """
-    ✅ ENDPOINT CRÍTICO: Exporta el reporte actual visible en el frontend
+    ENDPOINT CRÍTICO: Exporta el reporte actual visible en el frontend
     """
     try:
         print("📤 Exportando reporte actual del frontend")
         
         report_data = request_data.get('report_data')
         filename = request_data.get('filename', 'reporte')
-        export_type = request_data.get('export_type', 'all')
+        request_data.get('export_type', 'all')
         export_options = request_data.get('export_options', {})
         
         if not report_data:
@@ -435,8 +436,8 @@ async def export_current_report(
                 detail="corte_fecha es obligatorio en report_data"
             )
         
-        print(f"📊 Exportando: {len(report_data.get('items', []))} items")
-        print(f"🗓️ Fecha corte: {corte_fecha}")
+        print(f"Exportando: {len(report_data.get('items', []))} items")
+        print(f"Fecha corte: {corte_fecha}")
         
         export_result = report_exporter.export_report(
             report_data=report_data,
@@ -448,14 +449,14 @@ async def export_current_report(
         
         background_tasks.add_task(report_exporter.cleanup_old_temp_files, 30)
         
-        print(f"✅ Exportación completada: {len(export_result.get('files', {}))} archivos")
+        print(f"Exportación completada: {len(export_result.get('files', {}))} archivos")
         
         return export_result
         
     except HTTPException:
         raise
     except Exception as e:
-        print(f"❌ Error en export-current: {e}")
+        print(f"Error en export-current: {e}")
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")

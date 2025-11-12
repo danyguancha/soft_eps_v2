@@ -74,7 +74,7 @@ class TransformationService:
         try:
             # Evaluación segura de expresiones matemáticas básicas
             df[new_column] = df.eval(expression)
-        except:
+        except Exception:
             df[new_column] = None
         
         return df

@@ -7,12 +7,14 @@ from controllers.files_controllers.storage_manager import FileStorageManager
 class DeleteHandler:
     def __init__(self, storage_manager: FileStorageManager):
         self.storage_manager = storage_manager
+        self.not_file = "Archivo no encontrado"
+        self.not_data = "Datos no encontrados en cache"
     
     def delete_specific_rows(self, request: DeleteRowsRequest) -> Dict[str, Any]:
         """Elimina filas específicas por índices"""
         file_info = self.storage_manager.get_file_info(request.file_id)
         if not file_info:
-            raise ValueError("Archivo no encontrado")
+            raise ValueError(self.not_file)
         
         # Obtener DataFrame desde cache
         sheet_name = request.sheet_name or file_info.get("default_sheet")
@@ -20,7 +22,7 @@ class DeleteHandler:
         
         df = self.storage_manager.get_cached_dataframe(cache_key)
         if df is None:
-            raise ValueError("Datos no encontrados en cache")
+            raise ValueError(self.not_data)
         
         # Eliminar filas
         result = DeleteService.delete_rows_by_indices(df, request.row_indices)
@@ -43,14 +45,14 @@ class DeleteHandler:
         """Elimina filas que cumplan con filtros específicos"""
         file_info = self.storage_manager.get_file_info(request.file_id)
         if not file_info:
-            raise ValueError("Archivo no encontrado")
+            raise ValueError(self.not_file)
         
         sheet_name = request.sheet_name or file_info.get("default_sheet")
         cache_key = self.storage_manager.generate_cache_key(request.file_id, sheet_name)
         
         df = self.storage_manager.get_cached_dataframe(cache_key)
         if df is None:
-            raise ValueError("Datos no encontrados en cache")
+            raise ValueError(self.not_data)
         
         # Eliminar filas por filtro
         result = DeleteService.delete_rows_by_filters(df, request.filters)
@@ -73,14 +75,14 @@ class DeleteHandler:
         """Previsualiza qué filas serían eliminadas"""
         file_info = self.storage_manager.get_file_info(file_id)
         if not file_info:
-            raise ValueError("Archivo no encontrado")
+            raise ValueError(self.not_file)
         
         sheet_name = sheet_name or file_info.get("default_sheet")
         cache_key = self.storage_manager.generate_cache_key(file_id, sheet_name)
         
         df = self.storage_manager.get_cached_dataframe(cache_key)
         if df is None:
-            raise ValueError("Datos no encontrados en cache")
+            raise ValueError(self.not_data)
         
         return DeleteService.preview_delete_by_filters(df, filters)
     
@@ -91,14 +93,14 @@ class DeleteHandler:
         
         file_info = self.storage_manager.get_file_info(request.file_id)
         if not file_info:
-            raise ValueError("Archivo no encontrado")
+            raise ValueError(self.not_file)
         
         sheet_name = request.sheet_name or file_info.get("default_sheet")
         cache_key = self.storage_manager.generate_cache_key(request.file_id, sheet_name)
         
         df = self.storage_manager.get_cached_dataframe(cache_key)
         if df is None:
-            raise ValueError("Datos no encontrados en cache")
+            raise ValueError(self.not_data)
         
         # Verificar que la operación no elimine más del 90% de los datos
         preview = DeleteService.preview_delete_by_filters(df, request.conditions)
@@ -125,14 +127,14 @@ class DeleteHandler:
         """Elimina filas duplicadas"""
         file_info = self.storage_manager.get_file_info(file_id)
         if not file_info:
-            raise ValueError("Archivo no encontrado")
+            raise ValueError(self.not_file)
         
         sheet_name = sheet_name or file_info.get("default_sheet")
         cache_key = self.storage_manager.generate_cache_key(file_id, sheet_name)
         
         df = self.storage_manager.get_cached_dataframe(cache_key)
         if df is None:
-            raise ValueError("Datos no encontrados en cache")
+            raise ValueError(self.not_data)
         
         result = DeleteService.delete_duplicates(df, columns, keep)
         

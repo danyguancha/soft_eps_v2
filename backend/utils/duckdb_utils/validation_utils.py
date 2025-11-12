@@ -8,7 +8,7 @@ def validate_connection_health(conn) -> bool:
             return False
         conn.execute("SELECT 1").fetchone()
         return True
-    except:
+    except Exception:
         return False
 
 def validate_file_id_format(file_id: str) -> bool:

@@ -55,7 +55,7 @@ def try_common_encodings(file_path: str) -> str:
                         break
                 print(f"Encoding funcional encontrado: {encoding}")
                 return encoding
-        except (UnicodeDecodeError, UnicodeError):
+        except Exception:
             continue
     
     return 'latin1'
@@ -76,7 +76,7 @@ def sniff_delimiter(path: str, encoding: str) -> str:
             detected_delimiter = csv.Sniffer().sniff(sample, delimiters=''.join(separators)).delimiter
             lines = [line for line in sample.split('\n')[:5] if line.strip()]
             if lines and lines[0].count(detected_delimiter) > 0:
-                print(f"📊 Separador detectado: '{detected_delimiter}'")
+                print(f"Separador detectado: '{detected_delimiter}'")
                 return detected_delimiter
         except csv.Error:
             pass
@@ -93,7 +93,7 @@ def sniff_delimiter(path: str, encoding: str) -> str:
         
         if separator_scores:
             best_sep = max(separator_scores, key=separator_scores.get)
-            print(f"📊 Separador detectado: '{best_sep}'")
+            print(f"Separador detectado: '{best_sep}'")
             return best_sep
             
     except Exception as e:

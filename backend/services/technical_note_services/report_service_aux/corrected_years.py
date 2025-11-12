@@ -10,7 +10,7 @@ class CorrectedYear:
         DuckDB: date_diff('year', fecha_nacimiento, fecha_corte)
         """
         try:
-            print(f"\n===== DEBUG get_age_years_field_corrected =====")
+            print("\n===== DEBUG get_age_years_field_corrected =====")
             print(f"   corte_fecha RECIBIDA: {corte_fecha}")
             
             describe_sql = f"DESCRIBE SELECT * FROM {data_source}"
@@ -51,7 +51,7 @@ class CorrectedYear:
                     """
                     test_result = duckdb_service.conn.execute(test_sql).fetchall()
                     
-                    print(f"   Validación OK - Ejemplos:")
+                    print("Validación OK - Ejemplos:")
                     for row in test_result:
                         print(f"      Nac: {row[0]} → Edad: {row[1]} años (corte: {row[2]})")
                         
@@ -59,10 +59,10 @@ class CorrectedYear:
                     print(f"   Error en validación: {test_error}")
                     raise
                 
-                print(f"===== FIN DEBUG =====\n")
+                print("===== FIN DEBUG =====\n")
                 return calc_field
             
-            raise Exception("No se encontró campo de edad en años ni fecha de nacimiento")
+            raise ValueError("No se encontró campo de edad en años ni fecha de nacimiento")
             
         except Exception as e:
             print(f"   Error: {e}")

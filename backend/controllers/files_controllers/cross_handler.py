@@ -19,7 +19,7 @@ class CrossHandler:
             if not file1_info or not file2_info:
                 raise ValueError("Uno o ambos archivos no fueron encontrados")
             
-            total_rows = (file1_info.get('total_rows', 0) + file2_info.get('total_rows', 0))
+            (file1_info.get('total_rows', 0) + file2_info.get('total_rows', 0))
             
             # USAR DUCKDB para cruce ultra-rápido
             result = duckdb_service.cross_files_ultra_fast(

@@ -422,9 +422,8 @@ class PDFExporter:
                 table_style.append(('BACKGROUND', (5, i), (5, i), bg_color))
                 table_style.append(('TEXTCOLOR', (5, i), (5, i), colors.HexColor(color_hex)))
                 table_style.append(('FONTNAME', (5, i), (5, i), 'Helvetica-Bold'))
-            except:
-                pass
-        
+            except Exception:
+                pass        
         return table_style
     
     def _add_temporal_analysis(self, elements: List, report_data: Dict[str, Any]):

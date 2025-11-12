@@ -7,8 +7,7 @@ class DeleteService:
     @staticmethod
     def delete_rows_by_indices(df: pd.DataFrame, indices: List[int]) -> dict:
         """Elimina filas por índices específicos"""
-        initial_count = len(df)
-        
+                
         # Validar índices
         valid_indices = [idx for idx in indices if 0 <= idx < len(df)]
         invalid_indices = [idx for idx in indices if idx not in valid_indices]
@@ -32,7 +31,6 @@ class DeleteService:
     @staticmethod
     def delete_rows_by_filters(df: pd.DataFrame, filters: List[FilterCondition]) -> dict:
         """Elimina filas que cumplan con los filtros especificados"""
-        initial_count = len(df)
         
         # Encontrar filas que cumplen con los filtros (estas se eliminarán)
         rows_to_delete = FilterService.apply_filters(df, filters)

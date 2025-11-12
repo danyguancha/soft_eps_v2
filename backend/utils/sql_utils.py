@@ -10,7 +10,7 @@ class SQLUtils:
         
         # Reemplazar guiones con guiones bajos y otros caracteres problemáticos
         sanitized = table_name.replace('-', '_')
-        sanitized = re.sub(r'[^a-zA-Z0-9_]', '_', sanitized)
+        sanitized = re.sub(r'\W', '_', sanitized) 
         
         # Asegurar que no comience con número
         if sanitized and sanitized[0].isdigit():
@@ -52,9 +52,136 @@ class SQLUtils:
         str_value = str(value).replace("'", "''")
         return f"'{str_value}'"
 
+    def _build_equals_condition(self, escaped_column: str, value: Any, **kwargs) -> str:
+        """Construye condición de igualdad"""
+        return f"{escaped_column} = {self.escape_sql_value(value)}"
+
+
+    def _build_not_equals_condition(self, escaped_column: str, value: Any, **kwargs) -> str:
+        """Construye condición de desigualdad"""
+        return f"{escaped_column} != {self.escape_sql_value(value)}"
+
+
+    def _build_contains_condition(self, escaped_column: str, value: Any, **kwargs) -> str:
+        """Construye condición LIKE para búsqueda de texto"""
+        escaped_value = str(value).replace("'", "''")
+        return f"LOWER(CAST({escaped_column} AS VARCHAR)) LIKE LOWER('%{escaped_value}%')"
+
+
+    def _build_not_contains_condition(self, escaped_column: str, value: Any, **kwargs) -> str:
+        """Construye condición NOT LIKE para búsqueda de texto"""
+        escaped_value = str(value).replace("'", "''")
+        return f"LOWER(CAST({escaped_column} AS VARCHAR)) NOT LIKE LOWER('%{escaped_value}%')"
+
+
+    def _build_starts_with_condition(self, escaped_column: str, value: Any, **kwargs) -> str:
+        """Construye condición para texto que comienza con"""
+        escaped_value = str(value).replace("'", "''")
+        return f"LOWER(CAST({escaped_column} AS VARCHAR)) LIKE LOWER('{escaped_value}%')"
+
+
+    def _build_ends_with_condition(self, escaped_column: str, value: Any, **kwargs) -> str:
+        """Construye condición para texto que termina con"""
+        escaped_value = str(value).replace("'", "''")
+        return f"LOWER(CAST({escaped_column} AS VARCHAR)) LIKE LOWER('%{escaped_value}')"
+
+
+    def _build_in_condition(self, escaped_column: str, values: list, **kwargs) -> str:
+        """Construye condición IN"""
+        if not values:
+            return ""
+        values_str = ", ".join(self.escape_sql_value(v) for v in values)
+        return f"{escaped_column} IN ({values_str})"
+
+
+    def _build_not_in_condition(self, escaped_column: str, values: list, **kwargs) -> str:
+        """Construye condición NOT IN"""
+        if not values:
+            return ""
+        values_str = ", ".join(self.escape_sql_value(v) for v in values)
+        return f"{escaped_column} NOT IN ({values_str})"
+
+
+    def _build_is_null_condition(self, escaped_column: str, **kwargs) -> str:
+        """Construye condición IS NULL"""
+        return f"({escaped_column} IS NULL OR {escaped_column} = '')"
+
+
+    def _build_is_not_null_condition(self, escaped_column: str, **kwargs) -> str:
+        """Construye condición IS NOT NULL"""
+        return f"({escaped_column} IS NOT NULL AND {escaped_column} != '')"
+
+
+    def _build_greater_than_condition(self, escaped_column: str, value: Any, **kwargs) -> str:
+        """Construye condición mayor que"""
+        numeric_value = float(value) if self._is_numeric(value) else 0
+        return f"CAST({escaped_column} AS DOUBLE) > {numeric_value}"
+
+
+    def _build_greater_equal_condition(self, escaped_column: str, value: Any, **kwargs) -> str:
+        """Construye condición mayor o igual"""
+        numeric_value = float(value) if self._is_numeric(value) else 0
+        return f"CAST({escaped_column} AS DOUBLE) >= {numeric_value}"
+
+
+    def _build_less_than_condition(self, escaped_column: str, value: Any, **kwargs) -> str:
+        """Construye condición menor que"""
+        numeric_value = float(value) if self._is_numeric(value) else 0
+        return f"CAST({escaped_column} AS DOUBLE) < {numeric_value}"
+
+
+    def _build_less_equal_condition(self, escaped_column: str, value: Any, **kwargs) -> str:
+        """Construye condición menor o igual"""
+        numeric_value = float(value) if self._is_numeric(value) else 0
+        return f"CAST({escaped_column} AS DOUBLE) <= {numeric_value}"
+
+
+    def _build_between_condition(self, escaped_column: str, values: list, **kwargs) -> str:
+        """Construye condición BETWEEN"""
+        if not isinstance(values, list) or len(values) != 2:
+            return ""
+        
+        val1, val2 = values
+        if not self._is_numeric(val1) or not self._is_numeric(val2):
+            return ""
+        
+        return f"CAST({escaped_column} AS DOUBLE) BETWEEN {float(val1)} AND {float(val2)}"
+
+
+    def _build_regex_condition(self, escaped_column: str, value: Any, **kwargs) -> str:
+        """Construye condición de expresión regular"""
+        if not value:
+            return ""
+        escaped_value = str(value).replace("'", "''")
+        return f"regexp_matches({escaped_column}, '{escaped_value}')"
+
+
+    def _get_condition_builders(self) -> dict:
+        """Retorna diccionario de funciones builder por operador"""
+        return {
+            'equals': self._build_equals_condition,
+            'not_equals': self._build_not_equals_condition,
+            'contains': self._build_contains_condition,
+            'not_contains': self._build_not_contains_condition,
+            'starts_with': self._build_starts_with_condition,
+            'ends_with': self._build_ends_with_condition,
+            'in': self._build_in_condition,
+            'not_in': self._build_not_in_condition,
+            'is_null': self._build_is_null_condition,
+            'is_not_null': self._build_is_not_null_condition,
+            'greater_than': self._build_greater_than_condition,
+            'greater_equal': self._build_greater_equal_condition,
+            'less_than': self._build_less_than_condition,
+            'less_equal': self._build_less_equal_condition,
+            'between': self._build_between_condition,
+            'regex': self._build_regex_condition
+        }
+
+
     def build_filter_conditions(self, filters: List[Dict[str, Any]]) -> List[str]:
-        """Construye condiciones WHERE desde filtros"""
+        """Construye condiciones WHERE desde filtros usando Strategy Pattern"""
         conditions = []
+        condition_builders = self._get_condition_builders()
         
         for filter_item in filters:
             column = filter_item.get('column')
@@ -62,85 +189,32 @@ class SQLUtils:
             value = filter_item.get('value')
             values = filter_item.get('values', [])
             
-            if not column:
+            if not column or not operator:
                 continue
             
+            # Obtener builder para el operador
+            builder = condition_builders.get(operator)
+            if not builder:
+                continue
+            
+            # Construir condición usando el builder correspondiente
             escaped_column = self.escape_identifier(column)
             
-            if operator == 'equals':
-                condition = f"{escaped_column} = {self.escape_sql_value(value)}"
-                conditions.append(condition)
+            try:
+                condition = builder(
+                    escaped_column=escaped_column,
+                    value=value,
+                    values=values
+                )
                 
-            elif operator == 'not_equals':
-                condition = f"{escaped_column} != {self.escape_sql_value(value)}"
-                conditions.append(condition)
-                
-            elif operator == 'contains':
-                escaped_value = str(value).replace("'", "''")
-                condition = f"LOWER(CAST({escaped_column} AS VARCHAR)) LIKE LOWER('%{escaped_value}%')"
-                conditions.append(condition)
-                
-            elif operator == 'not_contains':
-                escaped_value = str(value).replace("'", "''")
-                condition = f"LOWER(CAST({escaped_column} AS VARCHAR)) NOT LIKE LOWER('%{escaped_value}%')"
-                conditions.append(condition)
-                
-            elif operator == 'starts_with':
-                escaped_value = str(value).replace("'", "''")
-                condition = f"LOWER(CAST({escaped_column} AS VARCHAR)) LIKE LOWER('{escaped_value}%')"
-                conditions.append(condition)
-                
-            elif operator == 'ends_with':
-                escaped_value = str(value).replace("'", "''")
-                condition = f"LOWER(CAST({escaped_column} AS VARCHAR)) LIKE LOWER('%{escaped_value}')"
-                conditions.append(condition)
-                
-            elif operator == 'in' and values:
-                values_str = ", ".join(self.escape_sql_value(v) for v in values)
-                condition = f"{escaped_column} IN ({values_str})"
-                conditions.append(condition)
-                
-            elif operator == 'not_in' and values:
-                values_str = ", ".join(self.escape_sql_value(v) for v in values)
-                condition = f"{escaped_column} NOT IN ({values_str})"
-                conditions.append(condition)
-                
-            elif operator == 'is_null':
-                condition = f"({escaped_column} IS NULL OR {escaped_column} = '')"
-                conditions.append(condition)
-                
-            elif operator == 'is_not_null':
-                condition = f"({escaped_column} IS NOT NULL AND {escaped_column} != '')"
-                conditions.append(condition)
-                
-            elif operator == 'greater_than':
-                condition = f"CAST({escaped_column} AS DOUBLE) > {float(value) if self._is_numeric(value) else 0}"
-                conditions.append(condition)
-                
-            elif operator == 'greater_equal':
-                condition = f"CAST({escaped_column} AS DOUBLE) >= {float(value) if self._is_numeric(value) else 0}"
-                conditions.append(condition)
-                
-            elif operator == 'less_than':
-                condition = f"CAST({escaped_column} AS DOUBLE) < {float(value) if self._is_numeric(value) else 0}"
-                conditions.append(condition)
-                
-            elif operator == 'less_equal':
-                condition = f"CAST({escaped_column} AS DOUBLE) <= {float(value) if self._is_numeric(value) else 0}"
-                conditions.append(condition)
-                
-            elif operator == 'between' and isinstance(values, list) and len(values) == 2:
-                val1, val2 = values
-                if self._is_numeric(val1) and self._is_numeric(val2):
-                    condition = f"CAST({escaped_column} AS DOUBLE) BETWEEN {float(val1)} AND {float(val2)}"
+                if condition:
                     conditions.append(condition)
-                    
-            elif operator == 'regex' and value:
-                escaped_value = str(value).replace("'", "''")
-                condition = f"regexp_matches({escaped_column}, '{escaped_value}')"
-                conditions.append(condition)
+            except Exception as e:
+                print(f"⚠️ Error construyendo condición para operador '{operator}': {e}")
+                continue
         
         return conditions
+
 
     def _is_numeric(self, value: Any) -> bool:
         """Verifica si un valor es numérico"""
@@ -228,7 +302,7 @@ class SQLUtils:
             return "unnamed_column"
         
         # Remover caracteres problemáticos
-        sanitized = re.sub(r'[^\w\s-_.]', '_', str(column_name))
+        sanitized = re.sub(r'[^\w\s-.]', '_', str(column_name))
         
         # Reemplazar espacios con guiones bajos
         sanitized = re.sub(r'\s+', '_', sanitized)
@@ -254,6 +328,16 @@ class SQLUtils:
             join_type = "INNER"
         
         return f"{join_type} JOIN ON {left_escaped} = {right_escaped}"
+
+    def _estimate_execution_time(self, complexity_score: int) -> str:
+        """Estima el tiempo de ejecución basado en el score de complejidad"""
+        if complexity_score <= 2:
+            return "fast"
+        elif complexity_score <= 4:
+            return "moderate"
+        else:
+            return "slow"
+
 
     def estimate_query_complexity(self, sql: str) -> Dict[str, Any]:
         """Estima la complejidad de una consulta SQL"""
@@ -287,8 +371,9 @@ class SQLUtils:
             "complexity_score": complexity_score,
             "complexity_level": complexity_level,
             "features": features,
-            "estimated_execution_time": "fast" if complexity_score <= 2 else "moderate" if complexity_score <= 4 else "slow"
+            "estimated_execution_time": self._estimate_execution_time(complexity_score)  #  Extraído
         }
+
 
     def format_sql_for_logging(self, sql: str, max_length: int = 500) -> str:
         """Formatea SQL para logging (trunca si es muy largo)"""

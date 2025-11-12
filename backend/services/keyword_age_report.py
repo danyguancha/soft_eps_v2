@@ -95,7 +95,7 @@ class ColumnKeywordReportService:
         if geo_filters:
             print(f"🔍 Aplicando filtros COMBINADOS: {' AND '.join(geo_filters)}")
         else:
-            print(f"📊 Sin filtros geográficos - consultando todo el archivo")
+            print("Sin filtros geográficos - consultando todo el archivo")
         
         union_parts = []
         

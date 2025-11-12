@@ -29,7 +29,7 @@ class ExcelSheetService:
             }
         
         file_size_mb = os.path.getsize(file_path) / 1024 / 1024
-        print(f"📊 Tamaño del archivo: {file_size_mb:.1f}MB")
+        print(f"Tamaño del archivo: {file_size_mb:.1f}MB")
         
         # Determinar estrategia según tamaño
         if file_size_mb > 50:  # Archivos > 50MB
@@ -174,7 +174,7 @@ class ExcelSheetService:
             if sheet_info["success"]:
                 return sheet_name in sheet_info["sheets"]
             return False
-        except:
+        except Exception:
             return False
 
     @staticmethod
@@ -185,7 +185,7 @@ class ExcelSheetService:
             if sheet_info["success"] and sheet_info["sheets"]:
                 return sheet_info["sheets"][0]
             return None
-        except:
+        except Exception:
             return None
 
 

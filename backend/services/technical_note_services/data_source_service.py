@@ -41,16 +41,16 @@ class DataSourceService:
             return self._convert_from_csv(filename, file_key)
             
         except Exception as e:
-            print(f"❌ Error asegurando fuente de datos: {e}")
-            raise Exception(f"No se pudo obtener fuente de datos para {filename}: {e}")
+            print(f"anioError asegurando fuente de datos: {e}")
+            raise ValueError(f"No se pudo obtener fuente de datos para {filename}: {e}")
     
     def _convert_from_csv(self, filename: str, file_key: str) -> str:
         """Convierte CSV a formato DuckDB usando métodos existentes"""
         csv_path = self._find_csv_file(filename)
         if not csv_path:
-            raise Exception(f"No se encontró archivo CSV para {filename}")
+            raise ValueError(f"No se encontró archivo CSV para {filename}")
         
-        print(f"🔄 Convirtiendo usando DuckDBService: {csv_path}")
+        print(f"anioConvirtiendo usando DuckDBService: {csv_path}")
         
         # Usar método existente: convert_file_to_parquet
         _, ext = os.path.splitext(filename)
@@ -85,5 +85,5 @@ class DataSourceService:
             print(f"Archivo legible: {result[0]} filas totales")
             return True
         except Exception as test_error:
-            print(f"❌ Error leyendo archivo: {test_error}")
+            print(f"anioError leyendo archivo: {test_error}")
             return False

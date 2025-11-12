@@ -45,7 +45,7 @@ class GeographicService:
             
         except Exception as e:
             print(f"Error en get_geographic_values: {e}")
-            raise Exception(f"Error obteniendo valores geográficos: {e}")
+            raise ValueError(f"Error obteniendo valores geográficos: {e}")
     
     def _build_parent_filters(
         self, 

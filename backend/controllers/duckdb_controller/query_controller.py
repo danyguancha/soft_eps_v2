@@ -19,18 +19,15 @@ class QueryController:
             table_name = safe_file_id
         else:
             table_name = self.sql_utils.sanitize_table_name(table_name)
-        start_time = time.time()
         
         # Solo registrar la información, no cargar datos
         loaded_tables[file_id] = {
             "table_name": table_name,
             "parquet_path": parquet_path,
             "loaded_at": datetime.now().isoformat(),
-            "load_time": 0.001,  # Instantáneo
+            "load_time": 0.001,
             "type": "lazy"
-        }
-        
-        load_time = time.time() - start_time
+        }        
         return table_name
 
     def load_parquet_to_view(self, file_id: str, parquet_path: str, table_name: Optional[str], loaded_tables: Dict) -> str:
@@ -61,12 +58,12 @@ class QueryController:
                 "type": "view"  # Indicar que es vista, no tabla
             }
             
-            load_time = time.time() - start_time
+            time.time() - start_time
             
             return table_name
             
         except Exception as e:
-            raise e
+            raise ValueError(f"Error al crear vista: {str(e)}")
 
     def query_data_ultra_fast(
         self, 
@@ -98,6 +95,64 @@ class QueryController:
                 file_id, filters, search, sort_by, sort_order, page, page_size, selected_columns
             )
 
+    def _build_select_clause(self, selected_columns: Optional[List[str]]) -> str:
+        """Construye la cláusula SELECT"""
+        if selected_columns:
+            return ", ".join(self.sql_utils.escape_identifier(col) for col in selected_columns)
+        return "*"
+
+
+    def _build_search_condition(self, search: str, parquet_path: str) -> Optional[str]:
+        """Construye la condición de búsqueda global"""
+        if not search or not search.strip():
+            return None
+        
+        # Obtener columnas de texto
+        columns_sql = f"DESCRIBE SELECT * FROM read_parquet('{parquet_path}')"
+        all_columns = self.conn.execute(columns_sql).fetchall()
+        text_columns = [col[0] for col in all_columns if col[1] in ['VARCHAR', 'TEXT']]
+        
+        if not text_columns:
+            return None
+        
+        # Construir condiciones de búsqueda
+        search_escaped = search.strip().replace("'", "''")
+        search_conditions = [
+            f"LOWER(CAST({self.sql_utils.escape_identifier(col)} AS VARCHAR)) LIKE LOWER('%{search_escaped}%')"
+            for col in text_columns
+        ]
+        
+        return f"({' OR '.join(search_conditions)})" if search_conditions else None
+
+
+    def _build_where_clause(self, search_condition: Optional[str], filters: Optional[List[Dict]]) -> str:
+        """Construye la cláusula WHERE completa"""
+        where_conditions = []
+        
+        if search_condition:
+            where_conditions.append(search_condition)
+        
+        if filters:
+            where_conditions.extend(self.sql_utils.build_filter_conditions(filters))
+        
+        return f"WHERE {' AND '.join(where_conditions)}" if where_conditions else ""
+
+
+    def _build_order_clause(self, sort_by: Optional[str], sort_order: str) -> str:
+        """Construye la cláusula ORDER BY"""
+        if not sort_by:
+            return ""
+        
+        escaped_sort_column = self.sql_utils.escape_identifier(sort_by)
+        return f"ORDER BY {escaped_sort_column} {sort_order.upper()}"
+
+
+    def _build_limit_clause(self, page: int, page_size: int) -> str:
+        """Construye la cláusula LIMIT/OFFSET"""
+        offset = (page - 1) * page_size
+        return f"LIMIT {page_size} OFFSET {offset}"
+
+
     def _query_parquet_direct(
         self,
         file_id: str,
@@ -111,59 +166,21 @@ class QueryController:
     ) -> Dict[str, Any]:
         """Consulta directa al Parquet sin tabla intermedia"""
         
+        # Guard clause: validar archivo
         if file_id not in self.loaded_tables:
             raise ValueError("Archivo no registrado")
         
         parquet_path = self.loaded_tables[file_id]["parquet_path"]
         start_time = time.time()
         
-        # Selección de columnas
-        if selected_columns:
-            select_clause = ", ".join(self.sql_utils.escape_identifier(col) for col in selected_columns)
-        else:
-            select_clause = "*"
+        # Construir componentes del query
+        select_clause = self._build_select_clause(selected_columns)
+        search_condition = self._build_search_condition(search, parquet_path)
+        where_clause = self._build_where_clause(search_condition, filters)
+        order_clause = self._build_order_clause(sort_by, sort_order)
+        limit_clause = self._build_limit_clause(page, page_size)
         
-        # Construir condiciones WHERE
-        where_conditions = []
-        
-        # Búsqueda global
-        if search and search.strip():
-            # Para consulta directa, necesitamos obtener las columnas primero
-            columns_sql = f"DESCRIBE SELECT * FROM read_parquet('{parquet_path}')"
-            all_columns = self.conn.execute(columns_sql).fetchall()
-            text_columns = [col[0] for col in all_columns if col[1] in ['VARCHAR', 'TEXT']]
-            
-            if text_columns:
-                search_escaped = search.strip().replace("'", "''")
-                search_conditions = []
-                for col in text_columns:
-                    escaped_col = self.sql_utils.escape_identifier(col)
-                    condition = f"LOWER(CAST({escaped_col} AS VARCHAR)) LIKE LOWER('%{search_escaped}%')"
-                    search_conditions.append(condition)
-                
-                if search_conditions:
-                    where_conditions.append("({})".format(' OR '.join(search_conditions)))
-        
-        # Filtros por columna
-        where_conditions.extend(
-            self.sql_utils.build_filter_conditions(filters) if filters else []
-        )
-        
-        where_clause = ""
-        if where_conditions:
-            where_clause = "WHERE " + " AND ".join(where_conditions)
-        
-        # ORDER BY
-        order_clause = ""
-        if sort_by:
-            escaped_sort_column = self.sql_utils.escape_identifier(sort_by)
-            order_clause = f"ORDER BY {escaped_sort_column} {sort_order.upper()}"
-        
-        # LIMIT y OFFSET
-        offset = (page - 1) * page_size
-        limit_clause = f"LIMIT {page_size} OFFSET {offset}"
-        
-        # CONSULTA DIRECTA AL PARQUET
+        # Construir queries completos
         data_sql = f"""
         SELECT {select_clause}
         FROM read_parquet('{parquet_path}')
@@ -178,35 +195,84 @@ class QueryController:
         {where_clause}
         """
         
-        try:
-            # Ejecutar consultas directamente en Parquet
-            data_result = self.conn.execute(data_sql).fetchdf()
-            total_result = self.conn.execute(count_sql).fetchone()[0]
-            
-            query_time = time.time() - start_time
-            
-            data_records = data_result.to_dict(orient='records')
-            total_pages = (total_result + page_size - 1) // page_size if total_result > 0 else 1
-            
-            return {
-                "data": data_records,
-                "pagination": {
-                    "current_page": page,
-                    "page_size": page_size,
-                    "total_rows": total_result,
-                    "total_pages": total_pages,
-                    "rows_in_page": len(data_records),
-                    "has_next": page < total_pages,
-                    "has_prev": page > 1
-                },
-                "query_time": query_time,
-                "ultra_fast": True,
-                "engine": "DuckDB Direct Parquet",
-                "method": "direct_parquet_query"
-            }
-            
-        except Exception as e:
-            raise e
+        # Ejecutar consultas
+        data_result = self.conn.execute(data_sql).fetchdf()
+        total_result = self.conn.execute(count_sql).fetchone()[0]
+        
+        query_time = time.time() - start_time
+        data_records = data_result.to_dict(orient='records')
+        total_pages = (total_result + page_size - 1) // page_size if total_result > 0 else 1
+        
+        return {
+            "data": data_records,
+            "pagination": {
+                "current_page": page,
+                "page_size": page_size,
+                "total_rows": total_result,
+                "total_pages": total_pages,
+                "rows_in_page": len(data_records),
+                "has_next": page < total_pages,
+                "has_prev": page > 1
+            },
+            "query_time": query_time,
+            "ultra_fast": True,
+            "engine": "DuckDB Direct Parquet",
+            "method": "direct_parquet_query"
+        }
+
+
+    def _execute_query_with_pagination(
+        self,
+        source: str,  # Puede ser table_name o read_parquet(path)
+        select_clause: str,
+        where_clause: str,
+        order_clause: str,
+        limit_clause: str,
+        engine: str,
+        start_time: float,
+        page: int,
+        page_size: int
+    ) -> Dict[str, Any]:
+        """Método base para ejecutar queries con paginación"""
+        
+        data_sql = f"""
+        SELECT {select_clause}
+        FROM {source}
+        {where_clause}
+        {order_clause}
+        {limit_clause}
+        """
+        
+        count_sql = f"""
+        SELECT COUNT(*) as total
+        FROM {source}
+        {where_clause}
+        """
+        
+        # Ejecutar consultas
+        data_result = self.conn.execute(data_sql).fetchdf()
+        total_result = self.conn.execute(count_sql).fetchone()[0]
+        
+        query_time = time.time() - start_time
+        data_records = data_result.to_dict(orient='records')
+        total_pages = (total_result + page_size - 1) // page_size if total_result > 0 else 1
+        
+        return {
+            "data": data_records,
+            "pagination": {
+                "current_page": page,
+                "page_size": page_size,
+                "total_rows": total_result,
+                "total_pages": total_pages,
+                "rows_in_page": len(data_records),
+                "has_next": page < total_pages,
+                "has_prev": page > 1
+            },
+            "query_time": query_time,
+            "ultra_fast": True,
+            "engine": engine
+        }
+
 
     def _query_table_or_view(
         self,
@@ -224,97 +290,26 @@ class QueryController:
         table_name = self.loaded_tables[file_id]["table_name"]
         start_time = time.time()
         
-        # Selección de columnas con escape
-        if selected_columns:
-            select_clause = ", ".join(self.sql_utils.escape_identifier(col) for col in selected_columns)
-        else:
-            select_clause = "*"
+        # Construir componentes del query
+        select_clause = self._build_select_clause(selected_columns)
+        search_condition = self._build_search_condition_from_table(search, table_name)
+        where_clause = self._build_where_clause(search_condition, filters)
+        order_clause = self._build_order_clause(sort_by, sort_order)
+        limit_clause = self._build_limit_clause(page, page_size)
         
-        # WHERE clause para filtros
-        where_conditions = []
-        
-        # Búsqueda global
-        if search and search.strip():
-            columns_sql = f"DESCRIBE {table_name}"
-            all_columns = self.conn.execute(columns_sql).fetchall()
-            text_columns = [col[0] for col in all_columns if col[1] in ['VARCHAR', 'TEXT']]
-            
-            if text_columns:
-                search_escaped = search.strip().replace("'", "''")
-                search_conditions = []
-                for col in text_columns:
-                    escaped_col = self.sql_utils.escape_identifier(col)
-                    condition = f"LOWER(CAST({escaped_col} AS VARCHAR)) LIKE LOWER('%{search_escaped}%')"
-                    search_conditions.append(condition)
-                
-                if search_conditions:
-                    where_conditions.append("({})".format(' OR '.join(search_conditions)))
-        
-        # Filtros por columna
-        where_conditions.extend(
-            self.sql_utils.build_filter_conditions(filters) if filters else []
+        # Ejecutar con método base
+        return self._execute_query_with_pagination(
+            source=table_name,
+            select_clause=select_clause,
+            where_clause=where_clause,
+            order_clause=order_clause,
+            limit_clause=limit_clause,
+            engine="DuckDB Table/View",
+            start_time=start_time,
+            page=page,
+            page_size=page_size
         )
-        
-        where_clause = ""
-        if where_conditions:
-            where_clause = "WHERE " + " AND ".join(where_conditions)
-        
-        # ORDER BY clause con escape
-        order_clause = ""
-        if sort_by:
-            escaped_sort_column = self.sql_utils.escape_identifier(sort_by)
-            order_clause = f"ORDER BY {escaped_sort_column} {sort_order.upper()}"
-        
-        # LIMIT y OFFSET para paginación
-        offset = (page - 1) * page_size
-        limit_clause = f"LIMIT {page_size} OFFSET {offset}"
-        
-        # Consultas SQL
-        data_sql = f"""
-        SELECT {select_clause}
-        FROM {table_name}
-        {where_clause}
-        {order_clause}
-        {limit_clause}
-        """
-        
-        count_sql = f"""
-        SELECT COUNT(*) as total
-        FROM {table_name}
-        {where_clause}
-        """
-        
-        try:
-            # Ejecutar consultas
-            data_result = self.conn.execute(data_sql).fetchdf()
-            total_result = self.conn.execute(count_sql).fetchone()[0]
-            
-            query_time = time.time() - start_time
-            
-            # Convertir a registros
-            data_records = data_result.to_dict(orient='records')
-            
-            # Metadatos de paginación
-            total_pages = (total_result + page_size - 1) // page_size if total_result > 0 else 1
-            
-            return {
-                "data": data_records,
-                "pagination": {
-                    "current_page": page,
-                    "page_size": page_size,
-                    "total_rows": total_result,
-                    "total_pages": total_pages,
-                    "rows_in_page": len(data_records),
-                    "has_next": page < total_pages,
-                    "has_prev": page > 1
-                },
-                "query_time": query_time,
-                "ultra_fast": True,
-                "engine": "DuckDB Table/View"
-            }
-            
-        except Exception as e:
-            raise e
+
 
     def get_unique_values_ultra_fast(self, file_id: str, column_name: str, limit: int = 1000) -> List[str]:
         """Valores únicos con consulta directa si es lazy"""
@@ -359,7 +354,7 @@ class QueryController:
             
             return unique_values
             
-        except Exception as e:
+        except Exception:
             return []
 
     def get_file_stats(self, file_id: str) -> Dict[str, Any]:

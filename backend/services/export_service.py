@@ -135,7 +135,7 @@ class ExportService:
                 try:
                     os.remove(file_path)
                     deleted_count += 1
-                except:
+                except Exception:
                     pass
         
         return {

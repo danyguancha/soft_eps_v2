@@ -16,10 +16,10 @@ def find_csv_file(filename: str, search_paths: List[str]) -> Optional[str]:
     
     for path in possible_paths:
         if os.path.exists(path):
-            print(f"📁 CSV encontrado: {path}")
+            print(f"CSV encontrado: {path}")
             return os.path.abspath(path)
     
-    print(f"❌ CSV no encontrado en rutas: {possible_paths}")
+    print(f"CSV no encontrado en rutas: {possible_paths}")
     return None
 
 def generate_file_key(filename: str, prefix: str = "technical") -> str:

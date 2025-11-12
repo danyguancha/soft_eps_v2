@@ -74,7 +74,7 @@ class FileController:
         
         file_info = self.storage_manager.get_file_info(request.file_id)
         if file_info and file_info.get('total_rows', 0) > 20000:
-            print(f"Exportación con hilos para archivo grande")
+            print("Exportación con hilos para archivo grande")
             
             # Usar hilo para exportaciones de archivos grandes
             export_future = thread_manager.submit_io_task(

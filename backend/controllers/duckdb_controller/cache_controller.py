@@ -25,7 +25,7 @@ class CacheController:
             file_id = hash_sha256.hexdigest()[:16]
             return file_id
             
-        except Exception as e:
+        except Exception:
             stat = os.stat(file_path)
             fallback_hash = hashlib.sha256(
                 f"{stat.st_size}_{stat.st_mtime}_{os.path.basename(file_path)}".encode()
@@ -182,6 +182,30 @@ class CacheController:
             "average_accesses_per_file": round(total_accesses / total_files, 1) if total_files > 0 else 0
         }
 
+    def _should_remove_file(self, file_id: str, metadata: dict, cutoff_time: float, min_access_count: int) -> tuple:
+        """Evalúa si un archivo debe ser removido del cache"""
+        # Guard clause: verificar archivo físico
+        parquet_path = self.get_cached_parquet_path(file_id)
+        if not os.path.exists(parquet_path):
+            return (True, "archivo Parquet faltante")
+        
+        # Verificar antigüedad y bajo uso
+        cached_at = metadata.get("cached_at")
+        if not cached_at:
+            return (False, "")
+        
+        try:
+            cached_timestamp = datetime.fromisoformat(cached_at).timestamp()
+            access_count = metadata.get("access_count", 0)
+            
+            if cached_timestamp < cutoff_time and access_count <= min_access_count:
+                return (True, f"antiguo y poco usado ({access_count} accesos)")
+        except Exception:
+            return (True, "error de evaluación")
+        
+        return (False, "")
+
+
     def cleanup_old_cache(self, days_old: int = 30, min_access_count: int = 1):
         """Limpieza inteligente del cache"""
         import time
@@ -189,33 +213,13 @@ class CacheController:
         cleaned_files = 0
         total_size_cleaned = 0
         
-        files_to_remove = []
-        
-        for file_id, metadata in self.file_cache.items():
-            cached_at = metadata.get("cached_at")
-            access_count = metadata.get("access_count", 0)
-            
-            should_remove = False
-            reason = ""
-            
-            try:
-                if cached_at:
-                    cached_timestamp = datetime.fromisoformat(cached_at).timestamp()
-                    if cached_timestamp < cutoff_time and access_count <= min_access_count:
-                        should_remove = True
-                        reason = f"antiguo ({days_old}+ días) y poco usado ({access_count} accesos)"
-                
-                # Verificar si los archivos físicos existen
-                parquet_path = self.get_cached_parquet_path(file_id)
-                if not os.path.exists(parquet_path):
-                    should_remove = True
-                    reason = "archivo Parquet faltante"
-                
-                if should_remove:
-                    files_to_remove.append((file_id, reason))
-                    
-            except Exception as e:
-                files_to_remove.append((file_id, "error de evaluación"))
+        # Identificar archivos a remover
+        files_to_remove = [
+            (file_id, reason)
+            for file_id, metadata in self.file_cache.items()
+            if (should_remove := self._should_remove_file(file_id, metadata, cutoff_time, min_access_count))[0]
+            for reason in [should_remove[1]]
+        ]
         
         # Remover archivos identificados
         for file_id, reason in files_to_remove:
@@ -223,26 +227,25 @@ class CacheController:
                 parquet_path = self.get_cached_parquet_path(file_id)
                 metadata_path = self.get_cache_metadata_path(file_id)
                 
-                # Calcular tamaño antes de remover
+                # Calcular y acumular tamaño
                 if os.path.exists(parquet_path):
                     total_size_cleaned += os.path.getsize(parquet_path)
+                    os.remove(parquet_path)
                 
-                # Remover archivos físicos
-                for path in [parquet_path, metadata_path]:
-                    if os.path.exists(path):
-                        os.remove(path)
+                if os.path.exists(metadata_path):
+                    os.remove(metadata_path)
                 
                 # Remover de memoria
                 if file_id in self.file_cache:
-                    original_name = self.file_cache[file_id].get("original_name", file_id[:8])
                     del self.file_cache[file_id]
                     cleaned_files += 1
-                
+                    
             except Exception as e:
                 print(f"Error removiendo {file_id}: {e}")
-                
+        
         return {
             "cleaned_files": cleaned_files,
-            "size_cleaned_mb": round(total_size_cleaned/1024/1024, 1),
+            "size_cleaned_mb": round(total_size_cleaned / 1024 / 1024, 1),
             "remaining_files": len(self.file_cache)
         }
+

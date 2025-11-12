@@ -50,10 +50,10 @@ class FileUtils:
             except UnicodeDecodeError:
                 continue
             except Exception as e:
-                print(f"⚠️ Error probando encoding {encoding}: {e}")
+                print(f"Error probando encoding {encoding}: {e}")
                 continue
         
-        print("⚠️ No se pudo detectar automáticamente, usando valores por defecto")
+        print("No se pudo detectar automáticamente, usando valores por defecto")
         return detected_config
 
     def robust_csv_read(self, file_path: str, encoding: str, separator: str, **kwargs) -> pd.DataFrame:
@@ -93,11 +93,11 @@ class FileUtils:
             
             df = df.fillna('')
             
-            print(f"Limpieza completada: todos los tipos son string")
+            print("Limpieza completada: todos los tipos son string")
             return df
             
         except Exception as e:
-            print(f"❌ Error en lectura robusta: {e}")
+            print(f"Error en lectura robusta: {e}")
             raise e
 
     def calculate_file_size_mb(self, file_path: str) -> float:
@@ -223,7 +223,7 @@ class FileUtils:
                 return True
             return False
         except Exception as e:
-            print(f"⚠️ Error removiendo archivo {file_path}: {e}")
+            print(f"Error removiendo archivo {file_path}: {e}")
             return False
 
     def get_directory_size(self, directory_path: str) -> Dict[str, Any]:
@@ -238,7 +238,7 @@ class FileUtils:
                     try:
                         total_size += os.path.getsize(file_path)
                         file_count += 1
-                    except (OSError, FileNotFoundError):
+                    except FileNotFoundError:
                         continue
             
             return {

@@ -43,42 +43,72 @@ class FileStorageManager:
         
         return existing_files
     
+    def _load_json_storage(self) -> dict:
+        """Carga el archivo JSON de storage si existe"""
+        if not os.path.exists(self.storage_file):
+            return {}
+        
+        try:
+            with open(self.storage_file, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"Error leyendo JSON storage: {e}")
+            return {}
+
+
+    def _sync_file_entry(self, file_id: str, file_info: dict, existing_files: set) -> tuple:
+        """Sincroniza una entrada del JSON con archivos físicos"""
+        original_name = file_info.get("original_name", file_id)
+        
+        # Verificar por nombre original, no por UUID
+        if original_name not in existing_files:
+            print(f"Eliminando del JSON archivo inexistente: {original_name}")
+            return (False, None)
+        
+        # Verificar existencia física del archivo
+        file_path = os.path.join(self.upload_dir, original_name)
+        if not os.path.exists(file_path):
+            print(f"JSON tiene entrada pero archivo no existe: {original_name}")
+            return (False, None)
+        
+        # Actualizar path con el correcto
+        file_info["path"] = file_path
+        return (True, file_info)
+
+
+    def _sync_storage_entries(self, json_data: dict, existing_files: set) -> dict:
+        """Sincroniza todas las entradas del JSON con archivos físicos"""
+        synced_storage = {}
+        
+        for file_id, file_info in json_data.items():
+            is_valid, updated_info = self._sync_file_entry(file_id, file_info, existing_files)
+            if is_valid:
+                synced_storage[file_id] = updated_info
+        
+        return synced_storage
+
+
     def _load_and_sync_storage(self):
         """Carga y sincroniza el storage con archivos físicos usando nombres originales"""
         try:
-            # OBTENER ARCHIVOS REALES
+            # PASO 1: Obtener archivos reales
             existing_files = self._get_existing_files()
             
-            # CARGAR JSON SI EXISTE
-            if os.path.exists(self.storage_file):
-                with open(self.storage_file, 'r', encoding='utf-8') as f:
-                    json_data = json.load(f)
-                
-                # SINCRONIZAR: Solo mantener archivos que existen físicamente
-                synced_storage = {}
-                for file_id, file_info in json_data.items():
-                    original_name = file_info.get("original_name", file_id)
-                    
-                    # VERIFICAR POR NOMBRE ORIGINAL, NO POR UUID
-                    if original_name in existing_files:
-                        file_path = os.path.join(self.upload_dir, original_name)
-                        if os.path.exists(file_path):
-                            # ACTUALIZAR PATH CON EL CORRECTO
-                            file_info["path"] = file_path
-                            synced_storage[file_id] = file_info
-                        else:
-                            print(f"JSON tiene entrada pero archivo no existe: {original_name}")
-                    else:
-                        print(f"Eliminando del JSON archivo inexistente: {original_name}")
-                
-                self.storage = synced_storage
-                
-                # GUARDAR JSON SINCRONIZADO
-                if len(synced_storage) != len(json_data):
-                    self._save_storage()
-                
-            else:                
+            # PASO 2: Cargar JSON
+            json_data = self._load_json_storage()
+            
+            # PASO 3: Si no hay JSON, inicializar vacío
+            if not json_data:
                 self.storage = {}
+                return
+            
+            # PASO 4: Sincronizar entradas
+            synced_storage = self._sync_storage_entries(json_data, existing_files)
+            self.storage = synced_storage
+            
+            # PASO 5: Guardar JSON sincronizado si hubo cambios
+            if len(synced_storage) != len(json_data):
+                self._save_storage()
                 
         except Exception as e:
             print(f"Error cargando storage: {e}")

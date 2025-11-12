@@ -22,7 +22,6 @@ class CrossService:
         
         # CLAVE: Eliminar duplicados del archivo de búsqueda (solo primer match)
         df2_lookup = df2_copy.drop_duplicates(subset=[key2], keep='first')
-        duplicates_removed = len(df2_copy) - len(df2_lookup)
                 
         # ESTRATEGIA HÍBRIDA: usar map() para archivos grandes, merge() para medianos
         if len(df1) > 100000:  # Archivos grandes: usar map (más eficiente)
@@ -138,7 +137,7 @@ class CrossService:
                 chunk_df = result_df.iloc[chunk_start:chunk_end]
                 
                 # Convertir chunk a CSV
-                chunk_csv = chunk_df.to_csv(index=False, header=False, quoting=1)  # quoting=1 = QUOTE_ALL
+                chunk_csv = chunk_df.to_csv(index=False, header=False, quoting=1)
                 yield chunk_csv
                 
                 # Log progreso

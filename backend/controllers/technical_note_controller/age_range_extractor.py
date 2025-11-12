@@ -68,11 +68,11 @@ class AgeRangeExtractor:
             
             # Casos especiales primero
             if any(word in normalized for word in ['recién nacido', 'recien nacido', 'neonato']):
-                print(f"   Detectado: Recién nacido = 0 months")
+                print("Detectado: Recién nacido = 0 months")
                 return AgeRange(0, 0, 'months', column_name)
             
             if 'lactante' in normalized:
-                print(f"   Detectado: Lactante = 1 a 12 months")
+                print("Detectado: Lactante = 1 a 12 months")
                 return AgeRange(1, 12, 'months', column_name)
             
             # Probar cada patrón en orden
@@ -85,7 +85,7 @@ class AgeRangeExtractor:
                         print(f"   Extraído: {result.get_description()}")
                         return result
             
-            print(f"   No se pudo extraer rango de edad")
+            print("No se pudo extraer rango de edad")
             return None
             
         except Exception as e:
@@ -95,7 +95,7 @@ class AgeRangeExtractor:
     def _parse_match(self, match: re.Match, normalized: str, original_column: str, pattern_info: tuple) -> Optional[AgeRange]:
         """COMPLETAMENTE CORREGIDO: Parsea resultado usando información del patrón"""
         groups = match.groups()
-        pattern_str, unit, match_type = pattern_info
+        _, unit, match_type = pattern_info
         
         print(f"      Parsing groups: {groups}, type: {match_type}, unit: {unit}")
         

@@ -28,29 +28,70 @@ class AnalysisVaccination:
         
         return states_data
     
+    def _extract_vaccination_row_data(self, row: tuple) -> tuple:
+        """Extrae y valida datos de una fila de resultado de vacunación"""
+        column_name = str(row[0]) if row[0] is not None else ""
+        keyword = str(row[1]) if row[1] is not None else ""
+        age_range = str(row[2]) if row[2] is not None else ""
+        estado = str(row[3]) if row[3] is not None else ""
+        count = int(row[4]) if row[4] is not None else 0
+        
+        return (column_name, keyword, age_range, estado, count)
+
+
+    def _is_valid_vaccination_state(self, estado: str, count: int) -> bool:
+        """Valida que el estado sea válido y tenga conteo positivo"""
+        return estado in ['Completo', 'Incompleto'] and count > 0
+
+
+    def _initialize_vaccination_structure(self, column_name: str, keyword: str, age_range: str) -> dict:
+        """Inicializa estructura de datos para estados de vacunación"""
+        return {
+            "column": column_name,
+            "keyword": keyword,
+            "age_range": age_range,
+            "type": "states",
+            "states": {}
+        }
+
+
+    def _add_vaccination_state(self, states_data: dict, column_key: str, estado: str, count: int):
+        """Agrega un estado de vacunación a la estructura"""
+        states_data[column_key]["states"][estado] = {
+            "state": estado,
+            "count": count
+        }
+
+
+    def _process_vaccination_row(self, row: tuple, states_data: dict):
+        """Procesa una fila individual de resultado de vacunación"""
+        # Extraer datos de la fila
+        column_name, keyword, age_range, estado, count = self._extract_vaccination_row_data(row)
+        
+        # Validar estado
+        if not self._is_valid_vaccination_state(estado, count):
+            return
+        
+        # Crear clave de columna
+        column_key = f"{column_name}|{keyword}|{age_range}"
+        
+        # Inicializar estructura si no existe
+        if column_key not in states_data:
+            states_data[column_key] = self._initialize_vaccination_structure(column_name, keyword, age_range)
+        
+        # Agregar estado
+        self._add_vaccination_state(states_data, column_key, estado, count)
+
+
     def _process_vaccination_states_results(self, states_result) -> Dict[str, Any]:
-        """Procesa resultados de estados"""
+        """Procesa resultados de estados de vacunación"""
         states_data = {}
+        
         for row in states_result:
-            column_name = str(row[0]) if row[0] is not None else ""
-            keyword = str(row[1]) if row[1] is not None else ""
-            age_range = str(row[2]) if row[2] is not None else ""
-            estado = str(row[3]) if row[3] is not None else ""
-            count = int(row[4]) if row[4] is not None else 0
-            
-            if estado in ['Completo', 'Incompleto'] and count > 0:
-                column_key = f"{column_name}|{keyword}|{age_range}"
-                if column_key not in states_data:
-                    states_data[column_key] = {
-                        "column": column_name,
-                        "keyword": keyword,
-                        "age_range": age_range,
-                        "type": "states",
-                        "states": {}
-                    }
-                states_data[column_key]["states"][estado] = {"state": estado, "count": count}
+            self._process_vaccination_row(row, states_data)
         
         return states_data
+
     
     def _build_vaccination_states_sql_simple(self, data_source: str, vaccination_columns, escape_func, departamento, municipio, ips) -> str:
         """Construye SQL para estados de vacunación"""
@@ -92,5 +133,5 @@ class AnalysisVaccination:
             """
             result = duckdb_service.conn.execute(check_sql).fetchall()
             return len(result) > 0
-        except:
+        except Exception:
             return False
