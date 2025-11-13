@@ -124,18 +124,6 @@ class TransformRequest(BaseModel):
     operation: TransformOperation
     params: dict
 
-class AIRequest(BaseModel):
-    question: str
-    file_context: Optional[str] = None  # ID del archivo para contexto específico
-    session_id: Optional[str] = "default_session"
-    class Config:
-        schema_extra = {
-            "example": {
-                "question": "¿Cuáles son las estadísticas principales de este archivo?",
-                "file_context": "archivo.csv"
-            }
-        }
-
 class ExportFormat(str, Enum):
     CSV = "csv"
     EXCEL = "excel"

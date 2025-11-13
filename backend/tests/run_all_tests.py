@@ -10,7 +10,6 @@ from test_obtener_data import TestObtenerData
 from test_cruce_archivos import TestCruceArchivos
 from test_exportacion_datos import TestExportacionDatos
 from test_eliminacion_datos import TestEliminacionDatos
-from test_chatbot_ia import TestChatbotIA
 from test_technical_note import (
     TestTechnicalNote,
     TestFiltrosGeograficos,
@@ -35,9 +34,6 @@ def suite():
     
     # Agregar tests de eliminación
     test_suite.addTest(unittest.makeSuite(TestEliminacionDatos))
-    
-    # Agregar tests de chatbot
-    test_suite.addTest(unittest.makeSuite(TestChatbotIA))
     
     # Agregar tests de technical note
     test_suite.addTest(unittest.makeSuite(TestTechnicalNote))

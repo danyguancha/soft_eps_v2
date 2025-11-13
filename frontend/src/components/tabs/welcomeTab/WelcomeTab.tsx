@@ -2,7 +2,6 @@
 import React from 'react';
 import { Typography } from 'antd';
 import {
-    BulbOutlined,
     ThunderboltOutlined,
     StarOutlined,
     CrownOutlined,
@@ -15,7 +14,6 @@ export const WelcomeTab: React.FC<TabProps> = ({ isMobile }) => {
     const highlights = [
         { icon: <ThunderboltOutlined className="highlight-icon lightning" />, text: "Procesamiento Ultra Rápido" },
         { icon: <StarOutlined className="highlight-icon star" />, text: "Interfaz Intuitiva" },
-        { icon: <BulbOutlined className="highlight-icon bulb" />, text: "IA Integrada" },
         { icon: <CrownOutlined className="highlight-icon crown" />, text: "Resultados Profesionales" }
     ];
 
@@ -25,8 +23,6 @@ export const WelcomeTab: React.FC<TabProps> = ({ isMobile }) => {
             <div className="hero-title-area">
                 <Title level={isMobile ? 1 : 1} className="hero-title-enhanced">
                     Evaluación de nota técnica
-                    <br />
-                    <span className="hero-subtitle">Potenciado con IA</span>
                 </Title>
             </div>
 
@@ -36,8 +32,7 @@ export const WelcomeTab: React.FC<TabProps> = ({ isMobile }) => {
                     🎯 Transforma tus datos como un profesional
                     <br />
                     ⚡ Resultados instantáneos con tecnología avanzada
-                    <br />
-                    🤖 Asistente inteligente que entiende tus necesidades
+                    
                 </Paragraph>
 
                 <div className="hero-highlights">

@@ -8,10 +8,9 @@ from fastapi.responses import FileResponse
 from models.schemas import (
     BulkDeleteRequest, DeleteResponse, DeleteRowsByFilterRequest, DeleteRowsRequest, 
     ExportRequest, ExportResponse, FileCrossRequest, FileUploadResponse, DataRequest, 
-    TransformRequest, AIRequest
+    TransformRequest
 )
 from controllers import file_controller
-from controllers.ai_controller import ai_controller
 from services.cross_service import CrossService
 from services.export_service import ExportService
 from controllers.cross_controller import cross_controller
@@ -513,30 +512,3 @@ def remove_duplicates(
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-# ========== ENDPOINT DE IA ==========
-
-@router.post("/ai")
-async def ask_ai(request: AIRequest):
-    """Consulta al asistente IA con contexto de archivos"""
-    try:
-        print(f"🤖 Consulta AI recibida: file_context={request.file_context}")
-        
-        result = await execute_with_timeout(
-            ai_controller.ask_ai,
-            timeout_seconds=120,
-            request=request
-        )
-        
-        return {
-            "success": result.get("success", True),
-            "response": result.get("response", ""),
-            "context_type": result.get("context_type", "unknown"),
-            "query_type": result.get("query_type", "general"),
-            "file_context": request.file_context
-        }
-        
-    except TimeoutError:
-        raise HTTPException(status_code=408, detail="Timeout en consulta AI")
-    except Exception as e:
-        print(f"❌ Error en endpoint AI: {e}")
-        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
