@@ -1,9 +1,9 @@
-// components/technical-note/report/ReportControls.tsx - ✅ ACTUALIZADO
+// components/technical-note/report/ReportControls.tsx - ACTUALIZADO
 import { EyeInvisibleOutlined, EyeOutlined } from '@ant-design/icons';
 import { Button, Space, Statistic, Switch, Tooltip } from 'antd';
 import React, { memo } from 'react';
 
-// ✅ INTERFAZ ACTUALIZADA
+// INTERFAZ ACTUALIZADA
 export interface ReportControlsProps {
   hasReport: boolean;
   reportTotalRecords: number;
@@ -11,7 +11,7 @@ export interface ReportControlsProps {
   showReport: boolean;
   onSetShowTemporalData: (show: boolean) => void;
   onToggleReportVisibility: () => void;
-  // ✅ NUEVOS CAMPOS NUMERADOR/DENOMINADOR
+  // NUEVOS CAMPOS NUMERADOR/DENOMINADOR
   totalDenominador?: number;
   totalNumerador?: number;
   coberturaGlobal?: number;
@@ -24,7 +24,7 @@ export const ReportControls: React.FC<ReportControlsProps> = memo(({
   showReport,
   onSetShowTemporalData,
   onToggleReportVisibility,
-  // ✅ NUEVOS PROPS
+  // NUEVOS PROPS
   totalDenominador = 0,
   totalNumerador = 0,
   coberturaGlobal = 0
@@ -33,7 +33,7 @@ export const ReportControls: React.FC<ReportControlsProps> = memo(({
 
   return (
     <Space size="large">
-      {/* ✅ ESTADÍSTICAS NUMERADOR/DENOMINADOR O TRADICIONALES */}
+      {/* ESTADÍSTICAS NUMERADOR/DENOMINADOR O TRADICIONALES */}
       {tieneNumeradorDenominador ? (
         // Mostrar estadísticas N/D
         <Space size="middle">

@@ -1,9 +1,11 @@
-from pydantic import BaseModel, Field
+from datetime import datetime
+from pydantic import BaseModel, Field, validator
 from typing import List, Optional, Dict, Any, Generic, TypeVar
 from enum import Enum
 
 T = TypeVar('T')
 
+mandatory_date = "Fecha de corte OBLIGATORIA (YYYY-MM-DD)"
 class PaginatedResponse(BaseModel, Generic[T]):
     data: List[T]
     total: int
@@ -182,3 +184,7 @@ class KeywordAgeReport(BaseModel):
     totals_by_keyword: Dict[str, int]
     ultra_fast: bool = True
     engine: str = "DuckDB"
+
+class NTRPMSProcessRequest(BaseModel):
+    """Modelo de request para procesamiento NT RPMS"""
+    folder_path: str = Field(..., description="Ruta de la carpeta con archivos Excel NT RPMS")

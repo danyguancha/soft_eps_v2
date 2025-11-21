@@ -1,4 +1,4 @@
-// components/technical-note/MainContent.tsx - ✅ CORREGIDO
+// components/technical-note/MainContent.tsx - CORREGIDO
 
 import React from 'react';
 import { Card, Spin, Typography, Space, Alert, Button } from 'antd';
@@ -102,7 +102,7 @@ export const MainContent: React.FC<MainContentProps> = (props) => {
           onSearch={props.onSearch}
         /> */}
 
-        {/* ✅ COMPONENTE REPORT SIN reportItemsCount */}
+        {/* COMPONENTE REPORT SIN reportItemsCount */}
         <Report
           keywordReport={props.keywordReport}
           loadingReport={props.loadingReport}
@@ -118,7 +118,7 @@ export const MainContent: React.FC<MainContentProps> = (props) => {
           municipiosOptions={props.municipiosOptions}
           ipsOptions={props.ipsOptions}
           loadingGeoFilters={props.loadingGeoFilters}
-          cutoffDate={props.cutoffDate} // ✅ PASAR FECHA DE CORTE
+          cutoffDate={props.cutoffDate} // PASAR FECHA DE CORTE
           onToggleReportVisibility={props.onToggleReportVisibility}
           onSetReportKeywords={props.onSetReportKeywords}
           onSetShowTemporalData={props.onSetShowTemporalData}

@@ -11,10 +11,10 @@ import {
   LoadingOutlined
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
-import type { GeographicFilters, KeywordAgeReportItem } from '../../../services/TechnicalNoteService';
 import { TechnicalNoteService } from '../../../services/TechnicalNoteService';
 import dayjs from 'dayjs';
 import 'dayjs/locale/es';
+import type { GeographicFilters, KeywordAgeReportItem } from '../../../interfaces/ITechnicalNote';
 
 dayjs.locale('es');
 
@@ -34,7 +34,7 @@ const KEYWORD_COLORS: Record<string, string> = {
 };
 const kwColor = (k: string) => KEYWORD_COLORS[k.toLowerCase()] || 'default';
 
-const getSemaforizacionCellStyle = (color?: string, estado?: string) => {
+const getSemaforizacionCellStyle = (color?: string, _?: string) => {
   const mainColor = color || '#6c757d';
   const hex = mainColor.replace('#', '');
   const r = parseInt(hex.substr(0, 2), 16);

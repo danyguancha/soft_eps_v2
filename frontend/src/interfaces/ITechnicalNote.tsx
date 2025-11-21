@@ -239,3 +239,39 @@ export interface CleanupCacheResponse {
   errors: string[] | null;
   timestamp: string;
 }
+
+export interface NTRPMSProcessRequest {
+  folder_path: string;
+}
+
+export interface NTRPMSProcessResponse {
+  success: boolean;
+  message: string;
+  csv_path: string;
+  parquet_path: string;
+  total_rows: number;
+  total_columns: number;
+  columns: string[];
+  processing_time_seconds: number;
+  files_processed: number;
+  consolidation_details: {
+    source_folder: string;
+    files_found: number;
+    files_successfully_processed: number;
+    files_with_errors: number;
+    total_records_consolidated: number;
+  };
+  errors?: string[];
+  timestamp: string;
+}
+
+export interface NTRPMSFileInfo {
+  filename: string;
+  display_name: string;
+  total_rows: number;
+  total_columns: number;
+  columns: string[];
+  parquet_path: string;
+  csv_path: string;
+  is_available: boolean;
+}

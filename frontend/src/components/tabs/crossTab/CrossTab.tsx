@@ -40,7 +40,7 @@ export const CrossTab: React.FC<TabProps> = ({
     );
   }
 
-  // ✅ VERIFICACIÓN MÁS INTELIGENTE
+  // VERIFICACIÓN MÁS INTELIGENTE
   const hasAllData = processedCrossData?.length === crossDataTotal;
   const hasPartialData = processedCrossData && processedCrossData.length > 0;
   

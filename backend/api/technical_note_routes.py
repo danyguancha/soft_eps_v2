@@ -1,18 +1,15 @@
-# api/technical_note_routes.py - REFACTORIZADO CON LIMPIEZA DE CACHE
+# api/technical_note_routes.py - CON ENDPOINT NT RPMS INTEGRADO
 from datetime import datetime
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, UploadFile, File
 from typing import Any, Dict, List, Optional
 import json
 import os
 import shutil
 import pandas as pd
-
-
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field, validator
-
-
+from controllers.nt_rpms_controller import nt_rpms_controller
 from controllers.technical_note_controller.technical_note import technical_note_controller
+from models.schemas import NTRPMSProcessRequest
 from services.technical_note_services.report_service_aux.report_exporter import ReportExporter
 from services.duckdb_service.duckdb_service import duckdb_service
 
@@ -20,44 +17,95 @@ from services.duckdb_service.duckdb_service import duckdb_service
 report_exporter = ReportExporter()
 router = APIRouter()
 
-
 # ========== MODELOS PYDANTIC ==========
 mandatory_date = "Fecha de corte OBLIGATORIA (YYYY-MM-DD)"
-
-class GeographicFiltersModel(BaseModel):
-    """Filtros geográficos para el reporte"""
-    departamento: Optional[str] = Field(None, description="Departamento específico")
-    municipio: Optional[str] = Field(None, description="Municipio específico")
-    ips: Optional[str] = Field(None, description="IPS específica")
-
-
-class AdvancedReportRequestModel(BaseModel):
-    """Modelo de solicitud para generar reporte avanzado"""
-    data_source: str = Field(..., description="Nombre de la tabla/fuente de datos")
-    filename: str = Field(..., description="Nombre base del archivo de salida")
-    keywords: Optional[List[str]] = Field(default=[], description="Lista de palabras clave")
-    min_count: int = Field(default=0, description="Conteo mínimo para incluir resultados")
-    include_temporal: bool = Field(default=True, description="Incluir análisis temporal")
-    geographic_filters: Optional[GeographicFiltersModel] = Field(default=None)
-    corte_fecha: str = Field(..., description=mandatory_date)
-    
-    @validator('corte_fecha')
-    def validate_corte_fecha(cls, v):
-        try:
-            datetime.strptime(v, '%Y-%m-%d')
-            return v
-        except ValueError:
-            raise ValueError('corte_fecha debe estar en formato YYYY-MM-DD')
-
+EXCLUDED_FILES = {
+    "extract_info_nt": [
+        "departamentos.xlsx",
+    ],
+    "technical_note": [
+    ],
+    "duckdb_storage": [
+    ],
+    "metadata_cache": [
+    ],
+    "parquet_cache": [
+    ]
+}
 
 # ========== ENDPOINTS DE LIMPIEZA DE CACHE ==========
+
+def clean_directory_selective(directory: str, excluded_files: list) -> Dict[str, Any]:
+    """
+    Limpia un directorio eliminando todos los archivos EXCEPTO los especificados.
+    
+    Args:
+        directory: Ruta del directorio a limpiar
+        excluded_files: Lista de nombres de archivos a NO eliminar
+        
+    Returns:
+        Dict con información de la limpieza
+    """
+    result = {
+        "directory": directory,
+        "files_deleted": [],
+        "files_preserved": [],
+        "subdirs_deleted": [],
+        "errors": []
+    }
+    
+    try:
+        if not os.path.exists(directory):
+            print(f"⚠️  Directorio no existe: {directory}")
+            os.makedirs(directory, exist_ok=True)
+            return result
+        
+        # Listar todos los elementos en el directorio
+        for item_name in os.listdir(directory):
+            item_path = os.path.join(directory, item_name)
+            
+            try:
+                # Si es un archivo
+                if os.path.isfile(item_path):
+                    # Verificar si está en la lista de exclusión
+                    if item_name in excluded_files:
+                        print(f"✓ Archivo preservado: {item_name}")
+                        result["files_preserved"].append(item_name)
+                    else:
+                        # Eliminar archivo
+                        os.remove(item_path)
+                        print(f"✓ Archivo eliminado: {item_name}")
+                        result["files_deleted"].append(item_name)
+                
+                # Si es un subdirectorio, eliminarlo completamente
+                elif os.path.isdir(item_path):
+                    shutil.rmtree(item_path)
+                    print(f"✓ Subdirectorio eliminado: {item_name}")
+                    result["subdirs_deleted"].append(item_name)
+                    
+            except Exception as e:
+                error_msg = f"Error procesando {item_name}: {str(e)}"
+                print(f"✗ {error_msg}")
+                result["errors"].append(error_msg)
+        
+        # Asegurar que el directorio principal exista
+        os.makedirs(directory, exist_ok=True)
+        
+    except Exception as e:
+        error_msg = f"Error limpiando directorio {directory}: {str(e)}"
+        print(f"✗ {error_msg}")
+        result["errors"].append(error_msg)
+        # Asegurar que el directorio exista incluso si falla
+        os.makedirs(directory, exist_ok=True)
+    
+    return result
 
 
 @router.post("/cache/cleanup-all")
 async def cleanup_all_cache() -> Dict[str, Any]:
     """
     Endpoint para limpiar todos los directorios de cache y archivos precargados.
-    Llamado desde el frontend al iniciar la aplicación.
+    Respeta la lista de archivos excluidos definida en EXCLUDED_FILES.
     """
     try:
         print("🧹 Iniciando limpieza completa de cache...")
@@ -67,38 +115,41 @@ async def cleanup_all_cache() -> Dict[str, Any]:
             "duckdb_storage",
             "metadata_cache",
             "parquet_cache",
-            "technical_note"
+            "technical_note",
+            "extract_info_nt"
         ]
         
-        cleaned_dirs = []
-        errors = []
+        cleaned_results = []
+        global_errors = []
+        total_files_deleted = 0
+        total_files_preserved = 0
         
-        # Limpiar cada directorio
+        # Limpiar cada directorio selectivamente
         for directory in directories_to_clean:
-            try:
-                if os.path.exists(directory):
-                    # Eliminar directorio completo
-                    shutil.rmtree(directory)
-                    print(f"✓ Directorio eliminado: {directory}")
-                
-                # Recrear directorio vacío
-                os.makedirs(directory, exist_ok=True)
-                print(f"✓ Directorio recreado: {directory}")
-                cleaned_dirs.append(directory)
-                
-            except Exception as e:
-                error_msg = f"Error limpiando {directory}: {str(e)}"
-                print(f"✗ {error_msg}")
-                errors.append(error_msg)
-                # Asegurar que el directorio exista
-                os.makedirs(directory, exist_ok=True)
+            print(f"\n📁 Procesando directorio: {directory}")
+            
+            # Obtener lista de archivos excluidos para este directorio
+            excluded_files = EXCLUDED_FILES.get(directory, [])
+            
+            if excluded_files:
+                print(f"   Archivos a preservar: {', '.join(excluded_files)}")
+            
+            # Limpiar directorio selectivamente
+            clean_result = clean_directory_selective(directory, excluded_files)
+            
+            cleaned_results.append(clean_result)
+            total_files_deleted += len(clean_result["files_deleted"])
+            total_files_preserved += len(clean_result["files_preserved"])
+            
+            if clean_result["errors"]:
+                global_errors.extend(clean_result["errors"])
         
         # Limpiar tablas cargadas en memoria de DuckDB
         tables_count = 0
         if hasattr(duckdb_service, 'loaded_tables'):
             tables_count = len(duckdb_service.loaded_tables)
             duckdb_service.loaded_tables.clear()
-            print(f"✓ {tables_count} tablas eliminadas de memoria DuckDB")
+            print(f"\n✓ {tables_count} tablas eliminadas de memoria DuckDB")
         
         # Limpiar archivos técnicos cargados
         tech_files_count = 0
@@ -115,18 +166,33 @@ async def cleanup_all_cache() -> Dict[str, Any]:
         except Exception as e:
             error_msg = f"Error reiniciando conexión DuckDB: {str(e)}"
             print(f"✗ {error_msg}")
-            errors.append(error_msg)
+            global_errors.append(error_msg)
         
-        success_message = "Cache limpiado completamente" if len(errors) == 0 else "Cache limpiado con algunos errores"
-        print(f"✓ {success_message}")
+        # Mensaje final
+        success_message = (
+            f"Cache limpiado completamente. "
+            f"Archivos eliminados: {total_files_deleted}, "
+            f"Archivos preservados: {total_files_preserved}"
+        )
+        
+        if global_errors:
+            success_message = f"Cache limpiado con {len(global_errors)} errores"
+        
+        print(f"\n✓ {success_message}")
         
         return {
-            "success": len(errors) == 0,
+            "success": len(global_errors) == 0,
             "message": success_message,
-            "cleaned_directories": cleaned_dirs,
+            "summary": {
+                "total_files_deleted": total_files_deleted,
+                "total_files_preserved": total_files_preserved,
+                "directories_processed": len(directories_to_clean)
+            },
+            "detailed_results": cleaned_results,
             "tables_cleared": tables_count,
             "technical_files_cleared": tech_files_count,
-            "errors": errors if errors else None,
+            "errors": global_errors if global_errors else None,
+            "excluded_files_config": EXCLUDED_FILES,
             "timestamp": str(pd.Timestamp.now())
         }
         
@@ -149,7 +215,7 @@ async def get_cache_status() -> Dict[str, Any]:
         directories_status = {}
         
         # Verificar estado de cada directorio
-        for directory in ["duckdb_storage", "metadata_cache", "parquet_cache", "technical_note"]:
+        for directory in ["duckdb_storage", "metadata_cache", "parquet_cache", "technical_note", "extract_info_nt"]:
             if os.path.exists(directory):
                 file_count = sum(len(files) for _, _, files in os.walk(directory))
                 dir_size = sum(
@@ -189,8 +255,132 @@ async def get_cache_status() -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=f"Error obteniendo estado: {str(e)}")
 
 
-# ========== ENDPOINTS PRINCIPALES ==========
+# ========== NUEVO ENDPOINT NT RPMS ==========
 
+@router.post("/nt-rpms/process")
+async def process_nt_rpms_folder(request: NTRPMSProcessRequest) -> Dict[str, Any]:
+    """
+    Procesa archivos NT RPMS de una carpeta y los convierte a Parquet
+    
+    Args:
+        request: Contiene folder_path con la ruta de la carpeta
+    
+    Returns:
+        Resultado del procesamiento con rutas de archivos generados
+    """
+    try:
+        print(f"\n{'='*60}")
+        print("ENDPOINT: POST /nt-rpms/process")
+        print(f"{'='*60}")
+        print(f"Carpeta solicitada: {request.folder_path}")
+        
+        # Validar que la carpeta existe
+        if not os.path.isdir(request.folder_path):
+            raise HTTPException(
+                status_code=400,
+                detail=f"La carpeta no existe: {request.folder_path}"
+            )
+        
+        # Contar archivos Excel en la carpeta
+        excel_files = [f for f in os.listdir(request.folder_path) 
+                      if f.lower().endswith(('.xlsx', '.xls')) and not f.startswith('~$')]
+        
+        if not excel_files:
+            raise HTTPException(
+                status_code=400,
+                detail=f"No se encontraron archivos Excel en la carpeta: {request.folder_path}"
+            )
+        
+        print(f"📁 Archivos Excel encontrados: {len(excel_files)}")
+        
+        # Procesar carpeta usando el controlador global
+        result = nt_rpms_controller.process_nt_rpms_folder(request.folder_path)
+        
+        if not result.get("success"):
+            raise HTTPException(
+                status_code=500,
+                detail=result.get("error", "Error desconocido en procesamiento")
+            )
+        
+        print(f"\n✓ Procesamiento completado exitosamente")
+        print(f"  - CSV: {result['csv_path']}")
+        print(f"  - Parquet: {result['parquet_path']}")
+        print(f"  - Registros: {result['total_rows']:,}")
+        
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"✗ Error inesperado en /nt-rpms/process: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error inesperado: {str(e)}"
+        )
+
+
+@router.get("/nt-rpms/status/{file_hash}")
+async def get_nt_rpms_processing_status(file_hash: str) -> Dict[str, Any]:
+    """
+    Obtiene el estado de un procesamiento NT RPMS por su hash
+    
+    Args:
+        file_hash: Hash del archivo procesado
+    
+    Returns:
+        Estado del procesamiento y metadata
+    """
+    try:
+        result = nt_rpms_controller.get_processing_status(file_hash)
+        
+        if not result.get("success"):
+            raise HTTPException(
+                status_code=404,
+                detail=result.get("error", "Procesamiento no encontrado")
+            )
+        
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error obteniendo estado: {str(e)}"
+        )
+
+
+@router.get("/nt-rpms/list-processed")
+async def list_processed_nt_rpms() -> Dict[str, Any]:
+    """
+    Lista todos los archivos NT RPMS procesados disponibles
+    
+    Returns:
+        Lista de archivos procesados con metadata
+    """
+    try:
+        result = nt_rpms_controller.list_processed_files()
+        
+        if not result.get("success"):
+            raise HTTPException(
+                status_code=500,
+                detail=result.get("error", "Error listando archivos")
+            )
+        
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error listando archivos procesados: {str(e)}"
+        )
+
+
+# ========== ENDPOINTS PRINCIPALES ==========
 
 @router.get("/available")
 def get_available_technical_files():
@@ -276,7 +466,6 @@ def get_file_columns(filename: str):
 
 # ========== ENDPOINTS GEOGRÁFICOS ==========
 
-
 @router.get("/geographic/{filename}/departamentos")
 def get_departamentos(filename: str):
     """Obtiene departamentos únicos"""
@@ -333,7 +522,6 @@ def get_ips(
 
 
 # ========== ENDPOINT DE REPORTE PRINCIPAL ==========
-
 
 @router.get("/report/{filename}")
 def get_keyword_age_report(
@@ -393,7 +581,6 @@ def get_keyword_age_report(
 
 # ========== ENDPOINTS DE VALORES ÚNICOS ==========
 
-
 @router.get("/unique-values/{filename}/{column_name}")
 def get_column_unique_values(
     filename: str,
@@ -414,7 +601,6 @@ def get_column_unique_values(
 
 
 # ========== ENDPOINTS DE RANGOS DE EDAD ==========
-
 
 @router.get("/age-ranges/{filename}")
 def get_age_ranges(
@@ -451,7 +637,6 @@ def get_age_ranges(
 
 
 # ========== ENDPOINTS DE INASISTENTES ==========
-
 
 @router.post("/inasistentes-report/{filename}")
 def get_inasistentes_report(
@@ -545,7 +730,6 @@ def export_inasistentes_csv(
 
 # ========== ENDPOINTS DE EXPORTACIÓN ==========
 
-
 @router.get("/reports/download/{file_id}")
 async def download_report_file(file_id: str):
     """Descargar archivo desde memoria"""
@@ -589,7 +773,6 @@ async def export_current_report(
         
         report_data = request_data.get('report_data')
         filename = request_data.get('filename', 'reporte')
-        request_data.get('export_type', 'all')
         export_options = request_data.get('export_options', {})
         
         if not report_data:

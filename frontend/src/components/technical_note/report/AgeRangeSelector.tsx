@@ -1,4 +1,4 @@
-// components/report/AgeRangeSelector.tsx - ✅ VERSIÓN ULTRA COMPACTADA
+// components/report/AgeRangeSelector.tsx - VERSIÓN ULTRA COMPACTADA
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -57,7 +57,7 @@ export const AgeRangeSelector: React.FC<AgeRangeSelectorProps> = ({
       console.log(`📊 Cargando rangos de edades para ${filename} con fecha ${fecha}`);
       const response = await TechnicalNoteService.getAgeRanges(filename, fecha);
       setAgeRanges(response);
-      console.log('✅ Rangos cargados exitosamente:', response);
+      console.log('Rangos cargados exitosamente:', response);
     } catch (err: any) {
       const errorMsg = err.response?.data?.detail || 'Error cargando rangos de edades';
       setError(errorMsg);
@@ -521,7 +521,7 @@ export const AgeRangeSelector: React.FC<AgeRangeSelectorProps> = ({
 
         {hasGenerated && lastSuccessfulSelection && !isGenerating && !error && (
           <Alert
-            message="✅ Reporte Generado Exitosamente"
+            message="Reporte Generado Exitosamente"
             description={
               <div style={{ fontSize: '10px' }}>
                 <Text style={{ fontSize: '10px' }}>El reporte de inasistentes se ha generado correctamente.</Text>

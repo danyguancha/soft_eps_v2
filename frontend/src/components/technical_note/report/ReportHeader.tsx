@@ -1,19 +1,19 @@
-// components/technical-note/report/ReportHeader.tsx - ✅ ACTUALIZADO
+// components/technical-note/report/ReportHeader.tsx - ACTUALIZADO
 import React, { memo } from 'react';
 import { Typography, Tag, Space } from 'antd';
 import { CheckCircleOutlined, BarChartOutlined } from '@ant-design/icons';
-import type { GlobalStatistics } from '../../../services/TechnicalNoteService';
+import type { GlobalStatistics } from '../../../interfaces/ITechnicalNote';
 
 const { Text } = Typography;
 
-// ✅ INTERFAZ ACTUALIZADA
+// INTERFAZ ACTUALIZADA
 export interface ReportHeaderProps {
   reportTitle: string;
   hasGeoFilters: boolean;
   geographicFilters: any;
   hasReport: boolean;
   loadingReport: boolean;
-  // ✅ NUEVOS CAMPOS
+  // NUEVOS CAMPOS
   globalStats?: GlobalStatistics | null;
   metodo?: string;
 }
@@ -24,15 +24,15 @@ export const ReportHeader: React.FC<ReportHeaderProps> = memo(({
   geographicFilters,
   hasReport,
   loadingReport,
-  globalStats,  // ✅ NUEVO
-  metodo       // ✅ NUEVO
+  globalStats,  // NUEVO
+  metodo       // NUEVO
 }) => {
   return (
     <Space direction="vertical" size={4}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <Text strong style={{ fontSize: '16px' }}>{reportTitle}</Text>
         
-        {/* ✅ NUEVO: Indicador de método */}
+        {/* NUEVO: Indicador de método */}
         {metodo?.includes('NUMERADOR_DENOMINADOR') && (
           <Tag color="green" icon={<BarChartOutlined />}>
             N/D
@@ -57,7 +57,7 @@ export const ReportHeader: React.FC<ReportHeaderProps> = memo(({
         </Text>
       )}
 
-      {/* ✅ NUEVO: Estadísticas globales resumidas */}
+      {/* NUEVO: Estadísticas globales resumidas */}
       {globalStats && (
         <Text type="secondary" style={{ fontSize: '12px' }}>
           {globalStats.total_actividades} actividades • 

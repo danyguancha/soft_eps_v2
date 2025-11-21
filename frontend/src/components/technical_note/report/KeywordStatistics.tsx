@@ -1,13 +1,13 @@
-// components/technical-note/report/KeywordStatistics.tsx - ✅ ACTUALIZADO PARA NUMERADOR/DENOMINADOR
+// components/technical-note/report/KeywordStatistics.tsx - ACTUALIZADO PARA NUMERADOR/DENOMINADOR
 import React, { memo } from 'react';
 
-// ✅ INTERFACES ACTUALIZADAS
+// INTERFACES ACTUALIZADAS
 interface KeywordStat {
   keyword: string;
   total: number;
   itemsCount: number;
   config?: any;
-  // ✅ NUEVOS CAMPOS NUMERADOR/DENOMINADOR
+  // NUEVOS CAMPOS NUMERADOR/DENOMINADOR
   numerador: number;
   denominador: number;
   actividades: number;
@@ -30,10 +30,10 @@ interface GlobalStats {
   tieneNumeradorDenominador: boolean;
 }
 
-// ✅ INTERFAZ ACTUALIZADA CON globalStats
+// INTERFAZ ACTUALIZADA CON globalStats
 interface KeywordStatisticsProps {
   stats: KeywordStat[];
-  globalStats?: GlobalStats | null;  // ✅ NUEVA PROP
+  globalStats?: GlobalStats | null;  // NUEVA PROP
 }
 
 export const KeywordStatistics: React.FC<KeywordStatisticsProps> = memo(({ 
@@ -44,7 +44,7 @@ export const KeywordStatistics: React.FC<KeywordStatisticsProps> = memo(({
 
   return (
     <div style={{ marginBottom: 24 }}>
-      {/* ✅ ESTADÍSTICAS GLOBALES NUMERADOR/DENOMINADOR */}
+      {/* ESTADÍSTICAS GLOBALES NUMERADOR/DENOMINADOR */}
       
     </div>
   );

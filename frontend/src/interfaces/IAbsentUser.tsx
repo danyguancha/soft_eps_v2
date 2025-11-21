@@ -12,8 +12,8 @@ export interface InasistenteRecord {
   fecha_nacimiento: string;
   edad_anos: number | null;
   edad_meses: number | null;
-  actividad_valor: string;           // ✅ NUEVO: Valor de la actividad específica
-  columna_evaluada: string;          // ✅ NUEVO: Nombre de la columna evaluada
+  actividad_valor: string;           // NUEVO: Valor de la actividad específica
+  columna_evaluada: string;          // NUEVO: Nombre de la columna evaluada
 }
 
 export interface InasistentesStatistics {
@@ -23,14 +23,14 @@ export interface InasistentesStatistics {
   ips_afectadas: number;
 }
 
-// ✅ NUEVA INTERFAZ: Reporte por actividad individual
+// NUEVA INTERFAZ: Reporte por actividad individual
 export interface ActivityReport {
   actividad: string;
   inasistentes: InasistenteRecord[];
   statistics: InasistentesStatistics;
 }
 
-// ✅ NUEVA INTERFAZ: Resumen general de todas las actividades
+// NUEVA INTERFAZ: Resumen general de todas las actividades
 export interface ResumenGeneral {
   total_actividades_evaluadas: number;
   total_inasistentes_global: number;
@@ -41,23 +41,23 @@ export interface ResumenGeneral {
   actividades_sin_inasistentes: number;
 }
 
-// ✅ INTERFAZ PRINCIPAL ACTUALIZADA
+// INTERFAZ PRINCIPAL ACTUALIZADA
 export interface InasistentesReportResponse {
   success: boolean;
   filename: string;
   corte_fecha: string;
-  metodo: string;                    // ✅ NUEVO: "DESCUBRIMIENTO_DINAMICO"
+  metodo: string;                    // NUEVO: "DESCUBRIMIENTO_DINAMICO"
   filtros_aplicados: {
     selected_months: number[];
     selected_years: number[];
-    selected_keywords: string[];     // ✅ ACTUALIZADO: Ahora requerido
+    selected_keywords: string[];     // ACTUALIZADO: Ahora requerido
     departamento?: string;
     municipio?: string;
     ips?: string;
   };
-  columnas_descubiertas: Record<string, string[]>;  // ✅ NUEVO: Columnas encontradas por palabra clave
-  inasistentes_por_actividad: ActivityReport[];     // ✅ NUEVO: Array de reportes por actividad
-  resumen_general: ResumenGeneral;                  // ✅ NUEVO: Resumen general de todas las actividades
+  columnas_descubiertas: Record<string, string[]>;  // NUEVO: Columnas encontradas por palabra clave
+  inasistentes_por_actividad: ActivityReport[];     // NUEVO: Array de reportes por actividad
+  resumen_general: ResumenGeneral;                  // NUEVO: Resumen general de todas las actividades
   engine: string;
   error?: string;
 }

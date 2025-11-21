@@ -1,4 +1,4 @@
-// components/report/InasistentesTable.tsx - ✅ VERSIÓN ULTRA COMPACTADA
+// components/report/InasistentesTable.tsx - VERSIÓN ULTRA COMPACTADA
 
 import React, { memo, useState } from 'react';
 import { Table, Typography, Tag, Card, Statistic, Row, Col, Empty, Badge, Tabs, Button, Space } from 'antd';
@@ -420,7 +420,7 @@ export const InasistentesTable: React.FC<InasistentesTableProps> = memo(({
             document.body.removeChild(link);
             window.URL.revokeObjectURL(url);
 
-            console.log('✅ CSV descargado exitosamente con fecha de corte:', displayCutoffDate);
+            console.log('CSV descargado exitosamente con fecha de corte:', displayCutoffDate);
         } catch (error) {
             console.error('❌ Error exportando CSV:', error);
         }

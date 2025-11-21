@@ -1,0 +1,217 @@
+/* components/technical-note/report/ReportTable.css */
+
+.ultra-compact-table .ant-table-tbody > tr > td {
+  padding: 3px 4px !important;
+  height: auto !important;
+  line-height: 1.2 !important;
+  font-size: 9px !important;
+  vertical-align: middle !important;
+}
+
+.ultra-compact-table .ant-table-thead > tr > th {
+  padding: 4px 4px !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  line-height: 1.2 !important;
+  background: #fafafa !important;
+}
+
+.ultra-compact-table .ant-table-tbody > tr:hover > td {
+  background-color: rgba(24, 144, 255, 0.05) !important;
+}
+
+.ultra-compact-table .ant-btn-sm {
+  height: 20px !important;
+  padding: 0 4px !important;
+  font-size: 10px !important;
+}
+
+.ultra-compact-table .ant-tag {
+  margin: 0 !important;
+  padding: 0 4px !important;
+  font-size: 8px !important;
+  line-height: 16px !important;
+}
+
+.ultra-compact-table .ant-empty {
+  margin: 8px 0 !important;
+}
+
+.ultra-compact-table .ant-empty-description {
+  font-size: 10px !important;
+}
+
+.ultra-compact-table .ant-pagination {
+  margin: 8px 0 !important;
+}
+
+.ultra-compact-table .ant-pagination-item,
+.ultra-compact-table .ant-pagination-prev,
+.ultra-compact-table .ant-pagination-next {
+  min-width: 24px !important;
+  height: 24px !important;
+  line-height: 22px !important;
+  font-size: 11px !important;
+}
+
+.ultra-compact-table .ant-table-cell-fix-left,
+.ultra-compact-table .ant-table-cell-fix-right {
+  background: #fff !important;
+}
+
+.ultra-compact-table .ant-table-thead .ant-table-cell-fix-left,
+.ultra-compact-table .ant-table-thead .ant-table-cell-fix-right {
+  background: #fafafa !important;
+}
+
+/* Encabezados de grupo de mes */
+.month-group-header {
+  background: linear-gradient(135deg, #e6f7ff 0%, #bae7ff 100%) !important;
+  border: 1px solid #91d5ff !important;
+  font-weight: 700 !important;
+  text-align: center !important;
+  padding: 6px 4px !important;
+}
+
+/* Encabezados de consolidados */
+.consolidado-trimestre-header {
+  background: linear-gradient(135deg, #fff7e6 0%, #ffd591 100%) !important;
+  border: 1px solid #ffa940 !important;
+  font-weight: 700 !important;
+  text-align: center !important;
+  padding: 6px 4px !important;
+  color: #d46b08 !important;
+}
+
+.consolidado-semestre-header {
+  background: linear-gradient(135deg, #f6ffed 0%, #b7eb8f 100%) !important;
+  border: 1px solid #73d13d !important;
+  font-weight: 700 !important;
+  text-align: center !important;
+  padding: 6px 4px !important;
+  color: #389e0d !important;
+}
+
+.consolidado-anual-header {
+  background: linear-gradient(135deg, #fff1f0 0%, #ffccc7 100%) !important;
+  border: 1px solid #ff7875 !important;
+  font-weight: 700 !important;
+  text-align: center !important;
+  padding: 6px 4px !important;
+  color: #cf1322 !important;
+}
+
+/* Subencabezados de programado/ejecutado */
+.month-subheader-programado {
+  background: #f0f5ff !important;
+  border-right: 1px solid #d9d9d9 !important;
+  color: #1890ff !important;
+  font-weight: 600 !important;
+  text-align: center !important;
+  font-size: 9px !important;
+  padding: 4px 2px !important;
+}
+
+.month-subheader-ejecutado {
+  background: #f6ffed !important;
+  color: #52c41a !important;
+  font-weight: 600 !important;
+  text-align: center !important;
+  font-size: 9px !important;
+  padding: 4px 2px !important;
+}
+
+.consolidado-subheader {
+  background: #fafafa !important;
+  border-right: 1px solid #d9d9d9 !important;
+  font-weight: 600 !important;
+  text-align: center !important;
+  font-size: 8px !important;
+  padding: 4px 2px !important;
+}
+
+/* Celdas de datos */
+.month-cell-programado {
+  background: #fafafa !important;
+  border-right: 1px solid #e8e8e8 !important;
+  color: #1890ff !important;
+  font-weight: 500 !important;
+  text-align: center !important;
+  font-size: 9px !important;
+}
+
+.month-cell-ejecutado {
+  background: #fafafa !important;
+  color: #52c41a !important;
+  font-weight: 500 !important;
+  text-align: center !important;
+  font-size: 9px !important;
+}
+
+.consolidado-cell {
+  background: #f5f5f5 !important;
+  font-weight: 600 !important;
+  text-align: center !important;
+  font-size: 9px !important;
+}
+
+.export-controls-wrapper {
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  padding: 8px 10px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  border: 1px solid #e8e8e8;
+}
+
+.export-controls-title {
+  margin: 0;
+  color: #1890ff;
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.export-controls-date-badge {
+  padding: 2px 6px;
+  background-color: #e6f7ff;
+  border: 1px solid #91d5ff;
+  border-radius: 3px;
+  font-size: 10px;
+}
+
+.export-controls-date-icon {
+  color: #1890ff;
+  font-size: 10px;
+}
+
+.export-controls-date-text {
+  color: #1890ff;
+  font-size: 10px;
+}
+
+.export-controls-filter-text {
+  font-size: 10px;
+}
+
+.export-controls-geo-text {
+  font-size: 9px;
+}
+
+.export-btn-csv {
+  color: #52c41a;
+  border-color: #52c41a;
+  font-size: 11px;
+  height: 26px;
+  padding: 0 8px;
+}
+
+.export-btn-pdf {
+  color: #f5222d;
+  border-color: #f5222d;
+  font-size: 11px;
+  height: 26px;
+  padding: 0 8px;
+}
+
+.export-btn-icon {
+  font-size: 11px;
+}

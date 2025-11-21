@@ -35,7 +35,7 @@ export interface PaginatedResponse<T> {
   has_previous: boolean;
 }
 
-// ✅ Nuevas interfaces para el sistema de tabs extensible
+// Nuevas interfaces para el sistema de tabs extensible
 export interface FileData {
   file_id: string;
   original_name: string;
@@ -74,7 +74,7 @@ export interface TabConfig {
   requiresFile?: boolean;
 }
 
-// ✅ Estados de UI para el componente principal
+// Estados de UI para el componente principal
 export interface UIState {
   activeTab: TabKey;
   collapsed: boolean;
@@ -90,7 +90,7 @@ export interface UIState {
   crossModalVisible: boolean;
 }
 
-// ✅ Estado específico para la tabla del cruce
+// Estado específico para la tabla del cruce
 export interface CrossTableState {
   currentPage: number;
   pageSize: number;
@@ -213,15 +213,15 @@ export interface CrossPreviewResult extends CrossResult {
   sample_data: any[];
 }
 
-// ✅ Utilidades de validación de tipos
+// Utilidades de validación de tipos
 export const isValidCurrentData = (d: any): d is { data: any[] } =>
   d && typeof d === 'object' && Array.isArray(d.data);
 
-// ✅ Tipos auxiliares para extensibilidad
+// Tipos auxiliares para extensibilidad
 export type TabComponentType = React.ComponentType<TabProps>;
 export type TabRegistryType = Record<string, TabConfig>;
 
-// ✅ Props para componentes específicos
+// Props para componentes específicos
 export interface WelcomeComponentProps {
   isMobile: boolean;
 }
@@ -235,11 +235,11 @@ export interface ErrorBoundaryState {
   error: Error | null;
 }
 
-// ✅ Props para hooks personalizados
+// Props para hooks personalizados
 export interface UseFileOperationsReturn {
   files: FileData[] | null;
   currentFile: FileData | null;
-  currentData: PaginatedResponse<Record<string, any>> | null;  // ✅ Cambio aquí
+  currentData: PaginatedResponse<Record<string, any>> | null;  // Cambio aquí
   loading: boolean;
   error: string | null;
   setCurrentFile: (file: FileData | null) => void;

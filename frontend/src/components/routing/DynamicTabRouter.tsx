@@ -49,7 +49,7 @@ export const DynamicTabRouter: React.FC<Props> = ({
     ? `${tabKey}_${params.ageGroup}` 
     : tabKey;
 
-  // ✅ Usar props recibidas si existen, sino usar del hook local
+  // Usar props recibidas si existen, sino usar del hook local
   const finalCrossResult = crossResult ?? crossData.crossResult;
   const finalProcessedCrossData = processedCrossData ?? crossData.processedCrossData;
   const finalCrossDataTotal = crossDataTotal ?? crossData.crossDataTotal;

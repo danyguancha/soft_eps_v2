@@ -4,7 +4,7 @@ import { Alert, Button } from 'antd';
 import type { TabRendererProps } from '../../types/api.types';
 import { getTabConfig } from './TabRegistry';
 
-// ✅ Renderizador extensible de tabs (Open/Closed Principle)
+// Renderizador extensible de tabs (Open/Closed Principle)
 export const TabRenderer: React.FC<TabRendererProps> = ({ 
   activeTab, 
   fileData,

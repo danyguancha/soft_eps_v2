@@ -12,7 +12,9 @@ import {
   UserDeleteOutlined,
   ExportOutlined,
   FilePdfOutlined,
-  FileExcelOutlined
+  FileExcelOutlined,
+  FolderOpenOutlined,
+  CopyOutlined
 } from '@ant-design/icons';
 
 const { Title, Paragraph, Text } = Typography;
@@ -34,43 +36,104 @@ export const HelpModal: React.FC<HelpModalProps> = ({ visible, onClose }) => {
       open={visible}
       onCancel={onClose}
       footer={null}
-      width={750}
+      width={800}
       centered
       style={{ maxHeight: '85vh' }}
       bodyStyle={{ maxHeight: '70vh', overflowY: 'auto' }}
     >
       <Space direction="vertical" size="large" style={{ width: '100%' }}>
         
-        {/* Paso 1 - Seleccionar Fecha de Corte */}
+        {/* Paso 1 - Procesar Archivos NT RPMS (NUEVO - PRIMERO) */}
+        <div>
+          <Title level={5}>
+            <FolderOpenOutlined style={{ color: '#fa8c16', marginRight: 8 }} />
+            1. Procesar Archivos NT RPMS (Paso Inicial)
+          </Title>
+          <Paragraph style={{ marginLeft: 24, marginBottom: 12 }}>
+            <Text strong>Este es el primer paso obligatorio</Text> antes de realizar 
+            cualquier análisis. Debe extraer la información de los archivos Excel NT RPMS en un único archivo para realizar
+            el análisis de acuerdo a los servicios contratados por los prestadores.
+          </Paragraph>
+          
+          <div style={{ marginLeft: 24, marginBottom: 12 }}>
+            <Text strong>📖 ¿Cómo obtener la ruta de la carpeta?</Text>
+            <ol style={{ marginLeft: 20, marginTop: 8, fontSize: 13 }}>
+              <li style={{ marginBottom: 6 }}>
+                Abra el <Text strong>Explorador de Archivos</Text> y navegue hasta la 
+                carpeta con los archivos NT RPMS
+              </li>
+              <li style={{ marginBottom: 6 }}>
+                Haga clic en la <Text strong>barra de direcciones</Text> (donde aparece la ruta)
+              </li>
+              <li style={{ marginBottom: 6 }}>
+                La ruta completa se seleccionará automáticamente
+              </li>
+              <li style={{ marginBottom: 6 }}>
+                Presione <Tag>Ctrl + C</Tag> para copiar la ruta
+              </li>
+              <li>
+                Pegue la ruta en el campo con <Tag>Ctrl + V</Tag> y haga clic en 
+                <Text strong> "Consolidar Archivos"</Text>
+              </li>
+            </ol>
+          </div>
+
+          <Alert
+            message="📝 Ejemplos de rutas válidas"
+            description={
+              <Space direction="vertical" style={{ width: '100%', marginTop: 4 }}>
+                <div>
+                  <Text strong style={{ fontSize: 12 }}>Windows:</Text>
+                  <ul style={{ marginBottom: 0, paddingLeft: 20, marginTop: 4 }}>
+                    <li style={{ fontSize: 11, fontFamily: 'Consolas, monospace' }}>
+                      C:\Users\USUARIO\archivos_a_evaluar
+                    </li>
+                    <li style={{ fontSize: 11, fontFamily: 'Consolas, monospace' }}>
+                      D:\Datos\NT_RPMS\2025
+                    </li>
+                  </ul>
+                </div>
+              </Space>
+            }
+            type="info"
+            showIcon
+            icon={<CopyOutlined />}
+            style={{ marginLeft: 24, fontSize: 11 }}
+          />
+
+          
+        </div>
+
+        <Divider style={{ margin: '8px 0' }} />
+
+        {/* Paso 2 - Seleccionar Fecha de Corte */}
         <div>
           <Title level={5}>
             <CalendarOutlined style={{ color: '#52c41a', marginRight: 8 }} />
-            1. Seleccionar Fecha de Corte
+            2. Seleccionar Fecha de Corte
           </Title>
           <Paragraph style={{ marginLeft: 24, marginBottom: 8 }}>
-            La fecha de corte es <Tag color="red">obligatoria</Tag> y determina 
-            el período de análisis de los datos.
+            Después de consolidar los archivos, la fecha de corte es <Tag color="red">obligatoria</Tag> y 
+            determina el período de análisis de los datos.
           </Paragraph>
           <Paragraph type="secondary" style={{ marginLeft: 24, fontSize: 12 }}>
-            Sin una fecha de corte seleccionada, no podrás cargar archivos ni 
-            visualizar reportes.
+            Sin una fecha de corte seleccionada, no podrás cargar archivos ni visualizar reportes.
           </Paragraph>
         </div>
 
         <Divider style={{ margin: '8px 0' }} />
 
-        {/* Paso 2 - Seleccionar Archivo */}
+        {/* Paso 3 - Seleccionar Archivo */}
         <div>
           <Title level={5}>
             <FileOutlined style={{ color: '#1890ff', marginRight: 8 }} />
-            2. Seleccionar Archivo
+            3. Seleccionar Archivo
           </Title>
           <Paragraph style={{ marginLeft: 24, marginBottom: 12 }}>
             <Text strong>Archivo Personalizado:</Text> Carga tu propio archivo 
             usando el botón "Cargar Archivo"
           </Paragraph>
           
-          {/* ALERTA LLAMATIVA SOBRE LA ESTRUCTURA */}
           <Alert
             message={
               <Space>
@@ -116,11 +179,11 @@ export const HelpModal: React.FC<HelpModalProps> = ({ visible, onClose }) => {
 
         <Divider style={{ margin: '8px 0' }} />
 
-        {/* Paso 3 - Aplicar Filtros */}
+        {/* Paso 4 - Aplicar Filtros */}
         <div>
           <Title level={5}>
             <FilterOutlined style={{ color: '#722ed1', marginRight: 8 }} />
-            3. Aplicar Filtros (Opcional)
+            4. Aplicar Filtros (Opcional)
           </Title>
           <Paragraph style={{ marginLeft: 24, marginBottom: 8 }}>
             Puedes filtrar los datos por:
@@ -138,11 +201,11 @@ export const HelpModal: React.FC<HelpModalProps> = ({ visible, onClose }) => {
 
         <Divider style={{ margin: '8px 0' }} />
 
-        {/* Paso 4 - Descarga de Reportes */}
+        {/* Paso 5 - Descarga de Reportes */}
         <div>
           <Title level={5}>
             <DownloadOutlined style={{ color: '#eb2f96', marginRight: 8 }} />
-            4. Descargar Reportes Generales
+            5. Descargar Reportes Generales
           </Title>
           <Paragraph style={{ marginLeft: 24, marginBottom: 8 }}>
             Una vez que los datos estén cargados y procesados, puedes descargar 
@@ -181,11 +244,11 @@ export const HelpModal: React.FC<HelpModalProps> = ({ visible, onClose }) => {
 
         <Divider style={{ margin: '8px 0' }} />
 
-        {/* Paso 5 - Reporte de Inasistentes */}
+        {/* Paso 6 - Reporte de Inasistentes */}
         <div>
           <Title level={5}>
             <UserDeleteOutlined style={{ color: '#f5222d', marginRight: 8 }} />
-            5. Generar Reporte de Inasistentes
+            6. Generar Reporte de Inasistentes
           </Title>
           <Paragraph style={{ marginLeft: 24, marginBottom: 8 }}>
             Esta funcionalidad te permite identificar a los beneficiarios que 
@@ -234,11 +297,11 @@ export const HelpModal: React.FC<HelpModalProps> = ({ visible, onClose }) => {
 
         <Divider style={{ margin: '8px 0' }} />
 
-        {/* Paso 6 - Exportar Reporte de Inasistentes */}
+        {/* Paso 7 - Exportar Reporte de Inasistentes */}
         <div>
           <Title level={5}>
             <ExportOutlined style={{ color: '#13c2c2', marginRight: 8 }} />
-            6. Exportar Reporte de Inasistentes
+            7. Exportar Reporte de Inasistentes
           </Title>
           <Paragraph style={{ marginLeft: 24, marginBottom: 8 }}>
             Una vez generado el reporte de inasistentes, podrás exportarlo 

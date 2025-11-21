@@ -12,7 +12,7 @@ import { DynamicTabRouter } from './components/routing/DynamicTabRouter';
 
 import { useFileOperations } from './hooks/useFileOperations';
 import { CrossDataProvider, useCrossDataContext } from './contexts/CrossDataContext';
-import { healthMonitor } from './services/HealthMonitor';
+// import { healthMonitor } from './services/HealthMonitor';
 import { TechnicalNoteService } from './services/TechnicalNoteService';
 import type { TabKey } from './types/api.types';
 
@@ -41,22 +41,18 @@ const AppContent: React.FC = () => {
   const fileOperations = useFileOperations();
   const crossData = useCrossDataContext();
 
-  // SOLUCIÓN: Inicializar collapsed en false para que esté visible por defecto
   const [ui, setUI] = useState<UIState>({
-    collapsed: false,  // Siempre visible al inicio
+    collapsed: false, 
     mobileMenuVisible: false,
     crossModalVisible: false,
     serverPort: 8000,
     serverStatus: 'online'
   });
 
-  // SOLUCIÓN: Efecto que maneja el colapso basado en el tamaño de pantalla
-  // Solo se colapsa automáticamente en móviles
   useEffect(() => {
     if (isMobile) {
       setUI(prev => ({ ...prev, collapsed: true }));
     } else {
-      // En desktop/tablet mantener visible
       setUI(prev => ({ ...prev, collapsed: false }));
     }
   }, [isMobile]);
@@ -89,49 +85,7 @@ const AppContent: React.FC = () => {
   }, []);
 
   // ========== HEALTH MONITOR SETUP ==========
-  useEffect(() => {
-    console.log('🚀 Iniciando monitoreo de servidor...');
-    
-    healthMonitor.start({
-      onPortChange: (newPort, oldPort) => {
-        console.log(`🔄 Puerto actualizado: ${oldPort} → ${newPort}`);
-        
-        setUI(prev => ({ 
-          ...prev, 
-          serverPort: newPort,
-          serverStatus: 'online'
-        }));
-        
-        message.info(`Servidor actualizado al puerto ${newPort}`, 2);
-      },
-      
-      onServerDown: () => {
-        console.log('Servidor no disponible, buscando...');
-        
-        setUI(prev => ({ 
-          ...prev, 
-          serverStatus: 'reconnecting'
-        }));
-      },
-      
-      onServerUp: (port) => {
-        console.log(`Servidor reconectado en puerto ${port}`);
-        
-        setUI(prev => ({ 
-          ...prev, 
-          serverPort: port,
-          serverStatus: 'online'
-        }));
-        
-        message.success(`Conectado al servidor en puerto ${port}`, 2);
-      }
-    }, 10000);
-    
-    return () => {
-      console.log('🛑 Deteniendo monitoreo de servidor...');
-      healthMonitor.stop();
-    };
-  }, []);
+  
 
   const getActiveKey = (): TabKey => {
     const path = location.pathname.slice(1) || 'welcome';
@@ -184,17 +138,6 @@ const AppContent: React.FC = () => {
 
             <Layout className="content-layout">
               <Content className="app-content">
-                {ui.serverStatus === 'reconnecting' && (
-                  <Alert
-                    type="warning"
-                    message="Reconectando..."
-                    description="Buscando servidor en puertos disponibles..."
-                    showIcon
-                    closable={false}
-                    style={{ marginBottom: 16 }}
-                  />
-                )}
-
                 {fileOperations.error && (
                   <Alert
                     type="error"

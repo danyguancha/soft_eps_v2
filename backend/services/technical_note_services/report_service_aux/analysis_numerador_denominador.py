@@ -11,19 +11,19 @@ class AnalysisNumeratorDenominator:
         try:
             document_field = IdentityDocument().get_document_field(data_source)
         except Exception as e:
-            print(f"anioError detectando campo documento: {e}")
+            print(f"Error detectando campo documento: {e}")
             return (None, None, None)
         
         try:
             edad_meses_field = CorrectedMonths().get_age_months_field_corrected(data_source, corte_fecha)
             edad_anios_field = CorrectedYear().get_age_years_field_corrected(data_source, corte_fecha)
             
-            print(f"anioCampo edad meses: {edad_meses_field}")
-            print(f"anioCampo edad años: {edad_anios_field}")
+            print(f"Campo edad meses: {edad_meses_field}")
+            print(f"Campo edad años: {edad_anios_field}")
             
             return (document_field, edad_meses_field, edad_anios_field)
         except Exception as e:
-            print(f"anioError detectando campos de edad: {e}")
+            print(f"Error detectando campos de edad: {e}")
             return (None, None, None)
 
 

@@ -1,4 +1,4 @@
-// components/technical-note/report/CorteFechaControl.tsx - ✅ VERSIÓN ACTUALIZADA (SOLO LECTURA)
+// components/technical-note/report/CorteFechaControl.tsx - VERSIÓN ACTUALIZADA (SOLO LECTURA)
 import React, { memo } from 'react';
 import { Alert, Typography, Space, Card } from 'antd';
 import { CalendarOutlined, InfoCircleOutlined, LockOutlined } from '@ant-design/icons';
@@ -37,7 +37,7 @@ export const CorteFechaControl: React.FC<CorteFechaControlProps> = memo(({
   const formattedDate = dayjs(corteFecha).format('DD/MM/YYYY');
   const fullDate = dayjs(corteFecha).format('dddd, D [de] MMMM [de] YYYY');
 
-  // ✅ VARIANTE COMPACT (Para formularios)
+  // VARIANTE COMPACT (Para formularios)
   if (variant === 'compact') {
     return (
       <div style={{
@@ -75,7 +75,7 @@ export const CorteFechaControl: React.FC<CorteFechaControlProps> = memo(({
     );
   }
 
-  // ✅ VARIANTE CARD (Para secciones destacadas)
+  // VARIANTE CARD (Para secciones destacadas)
   if (variant === 'card') {
     return (
       <Card
@@ -130,7 +130,7 @@ export const CorteFechaControl: React.FC<CorteFechaControlProps> = memo(({
     );
   }
 
-  // ✅ VARIANTE INLINE (Para mostrar en una línea)
+  // VARIANTE INLINE (Para mostrar en una línea)
   if (variant === 'inline') {
     return (
       <Space

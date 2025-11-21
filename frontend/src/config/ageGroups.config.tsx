@@ -134,7 +134,7 @@ export const getPredefinedGroupKey = (filename: string): string | null => {
  */
 export const convertUploadedFilesToGroups = (files: CustomUploadedFile[]): AgeGroupIcon[] => {
   return files
-    .filter(file => !isPredefinedFile(file.filename)) // ✅ Excluir archivos predefinidos
+    .filter(file => !isPredefinedFile(file.filename)) // Excluir archivos predefinidos
     .map(file => ({
       key: `custom-${file.uid}`,
       displayName: file.name.replace(/\.(csv|xlsx|xls)$/i, ''),
@@ -172,7 +172,7 @@ export const getVisibleGroups = (
   const visiblePredefinedGroups = BASE_AGE_GROUPS.filter(group => {
     const isAvailable = allAvailableFilenames.includes(group.filename!);
     if (isAvailable) {
-      console.log(`✅ Grupo predefinido visible: ${group.displayName} (${group.filename})`);
+      console.log(`Grupo predefinido visible: ${group.displayName} (${group.filename})`);
     }
     return isAvailable;
   });

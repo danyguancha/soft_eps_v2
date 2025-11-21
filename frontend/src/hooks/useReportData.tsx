@@ -1,7 +1,7 @@
 // hooks/useReportData.ts
 import { useMemo } from 'react';
 import { getKeywordConfig, getKeywordLabel } from '../config/reportKeywords.config';
-import type { GlobalStatistics, TotalsByKeyword } from '../services/TechnicalNoteService';
+import type { GlobalStatistics, TotalsByKeyword } from '../interfaces/ITechnicalNote';
 
 interface KeywordReport {
   totals_by_keyword: Record<string, TotalsByKeyword>;

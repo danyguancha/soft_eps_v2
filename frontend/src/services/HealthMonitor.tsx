@@ -10,7 +10,7 @@ interface HealthCheckResponse {
 
 class HealthMonitor {
   private intervalId: ReturnType<typeof setInterval> | null = null;
-  private currentPort: number = 8000;
+  private currentPort: number = 8001;
   private isChecking: boolean = false;
   private onPortChangeCallback?: (newPort: number, oldPort: number) => void;
   private onServerDownCallback?: () => void;
@@ -68,7 +68,7 @@ class HealthMonitor {
         
         // Reset de failures si el servidor responde
         if (this.wasServerDown) {
-          console.log('✅ Servidor recuperado');
+          console.log('Servidor recuperado');
           this.wasServerDown = false;
           this.onServerUpCallback?.(data.port);
         }
@@ -103,7 +103,7 @@ class HealthMonitor {
    * Intenta encontrar el servidor en otros puertos conocidos
    */
   private async tryFindNewPort() {
-    const ports = [8000, 8001, 8002, 8003, 8080, 8081, 3000, 5000];
+    const ports = [8001, 8002, 8003, 8080, 8081, 3000, 5000];
     
     for (const port of ports) {
       if (port === this.currentPort) continue;
@@ -117,7 +117,7 @@ class HealthMonitor {
         
         if (response.ok) {
           const data: HealthCheckResponse = await response.json();
-          console.log(`✅ Servidor encontrado en puerto ${data.port}`);
+          console.log(`Servidor encontrado en puerto ${data.port}`);
           
           if (this.wasServerDown) {
             this.wasServerDown = false;

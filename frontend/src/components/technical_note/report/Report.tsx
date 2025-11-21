@@ -1,4 +1,4 @@
-// components/technical-note/report/Report.tsx - ✅ VERSIÓN CON DEBUG
+// components/technical-note/report/Report.tsx - VERSIÓN CON DEBUG
 
 import React, { memo, useCallback, useState } from 'react';
 import { Card, Typography, Button, message } from 'antd';
@@ -33,7 +33,7 @@ import './Report.css';
 
 const { Text } = Typography;
 
-// ✅ INTERFAZ EXTENDIDA
+// INTERFAZ EXTENDIDA
 interface ReportPropsExtended extends TemporalReportProps {
   cutoffDate?: string; // Fecha de corte desde componente padre (formato YYYY-MM-DD)
 }
@@ -53,7 +53,7 @@ export const Report: React.FC<ReportPropsExtended> = memo(({
   municipiosOptions,
   ipsOptions,
   loadingGeoFilters,
-  cutoffDate, // ✅ PROP RECIBIDA
+  cutoffDate, // PROP RECIBIDA
   onToggleReportVisibility,
   onSetReportKeywords,
   onSetShowTemporalData,
@@ -63,25 +63,25 @@ export const Report: React.FC<ReportPropsExtended> = memo(({
   onIpsChange,
   resetGeographicFilters,
 }) => {
-  // ✅ DEBUG: Log inmediato al recibir props
+  // DEBUG: Log inmediato al recibir props
   console.log('🔍 Report recibió cutoffDate:', cutoffDate);
   console.log('🔍 Report recibió selectedFile:', selectedFile);
 
   const { keywordStats, reportTitle } = useReportData(keywordReport, reportKeywords);
 
-  // ✅ ESTADOS: Manejo de selección de edades
-  const [ageSelection, setAgeSelection] = useState({
+  // ESTADOS: Manejo de selección de edades
+  const [, setAgeSelection] = useState({
     selectedYears: [] as number[],
     selectedMonths: [] as number[],
     corteFecha: cutoffDate || "2025-07-31"
   });
 
-  // ✅ ESTADOS: Manejo de reporte de inasistentes DINÁMICO
+  // ESTADOS: Manejo de reporte de inasistentes DINÁMICO
   const [inasistentesReport, setInasistentesReport] = useState<InasistentesReportResponse | null>(null);
   const [loadingInasistentes, setLoadingInasistentes] = useState(false);
   const [showInasistentesReport, setShowInasistentesReport] = useState(false);
 
-  // ✅ EFECTO: Sincronizar ageSelection cuando cambia cutoffDate
+  // EFECTO: Sincronizar ageSelection cuando cambia cutoffDate
   React.useEffect(() => {
     console.log('📅 useEffect cutoffDate cambió a:', cutoffDate);
     if (cutoffDate) {
@@ -89,11 +89,11 @@ export const Report: React.FC<ReportPropsExtended> = memo(({
         ...prev,
         corteFecha: cutoffDate
       }));
-      console.log(`✅ Fecha de corte actualizada desde padre: ${cutoffDate}`);
+      console.log(`Fecha de corte actualizada desde padre: ${cutoffDate}`);
     }
   }, [cutoffDate]);
 
-  // ✅ HANDLER CORREGIDO: handleLoadReport CON VALIDACIÓN Y FECHA
+  // HANDLER CORREGIDO: handleLoadReport CON VALIDACIÓN Y FECHA
   const handleLoadReport = useCallback(() => {
     console.log('📊 handleLoadReport ejecutado');
     console.log('   - selectedFile:', selectedFile);
@@ -114,7 +114,7 @@ export const Report: React.FC<ReportPropsExtended> = memo(({
       return;
     }
 
-    console.log('✅ Todas las validaciones pasadas, generando reporte...');
+    console.log('Todas las validaciones pasadas, generando reporte...');
     console.log('📊 Generando reporte con:', {
       selectedFile,
       cutoffDate,
@@ -123,7 +123,7 @@ export const Report: React.FC<ReportPropsExtended> = memo(({
       geographicFilters
     });
 
-    // ✅ LLAMADA CON 6 PARÁMETROS EN ORDEN CORRECTO
+    // LLAMADA CON 6 PARÁMETROS EN ORDEN CORRECTO
     onLoadKeywordAgeReport(
       selectedFile,
       cutoffDate,
@@ -134,7 +134,7 @@ export const Report: React.FC<ReportPropsExtended> = memo(({
     );
   }, [selectedFile, cutoffDate, reportKeywords, reportMinCount, geographicFilters, onLoadKeywordAgeReport]);
 
-  // ✅ HANDLER CORREGIDO: handleRegenerateReport CON FECHA
+  // HANDLER CORREGIDO: handleRegenerateReport CON FECHA
   const handleRegenerateReport = useCallback(() => {
     console.log('🔄 handleRegenerateReport ejecutado');
     console.log('   - selectedFile:', selectedFile);
@@ -152,7 +152,7 @@ export const Report: React.FC<ReportPropsExtended> = memo(({
       return;
     }
 
-    console.log('✅ Regenerando reporte con:', {
+    console.log('Regenerando reporte con:', {
       selectedFile,
       cutoffDate,
       reportKeywords,
@@ -169,7 +169,7 @@ export const Report: React.FC<ReportPropsExtended> = memo(({
     );
   }, [selectedFile, cutoffDate, reportKeywords, reportMinCount, showTemporalData, geographicFilters, onLoadKeywordAgeReport]);
 
-  // ✅ HANDLER: Generación de reporte dinámico de inasistentes
+  // HANDLER: Generación de reporte dinámico de inasistentes
   const handleAgeSelectionChange = useCallback(async (selection: {
     selectedYears: number[];
     selectedMonths: number[];
@@ -206,7 +206,7 @@ export const Report: React.FC<ReportPropsExtended> = memo(({
         setInasistentesReport(response);
         
         if (response.success && response.resumen_general) {
-          console.log(`✅ Reporte dinámico generado`);
+          console.log(`Reporte dinámico generado`);
         }
 
       } catch (error) {
@@ -222,10 +222,10 @@ export const Report: React.FC<ReportPropsExtended> = memo(({
     }
   }, [selectedFile, geographicFilters, reportKeywords, cutoffDate]);
 
-  // ✅ VALIDACIÓN: No permitir generar reporte sin fecha de corte
+  // VALIDACIÓN: No permitir generar reporte sin fecha de corte
   const canGenerateReport = Boolean(cutoffDate);
 
-  // ✅ LOG DE DEBUG DETALLADO
+  // LOG DE DEBUG DETALLADO
   React.useEffect(() => {
     console.log('🔍 ====== Estado actual del componente Report ======');
     console.log('   cutoffDate:', cutoffDate);

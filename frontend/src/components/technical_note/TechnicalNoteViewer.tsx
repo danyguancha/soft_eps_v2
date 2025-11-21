@@ -1,16 +1,18 @@
 // components/technical-note/TechnicalNoteViewer.tsx
 import React, { useState, useEffect, useMemo } from 'react';
-import { Modal, message } from 'antd';
+import { Modal, message, Divider } from 'antd';
 import dayjs, { Dayjs } from 'dayjs';
 import 'dayjs/locale/es';
 import { useTechnicalNote } from '../../hooks/useTechnicalNote';
 import { useFileUpload } from '../../hooks/useFileUpload';
 import { getVisibleGroups, isPredefinedFile, getPredefinedGroupKey } from '../../config/ageGroups.config';
+import { TechnicalNoteService } from '../../services/TechnicalNoteService';
 import type { AgeGroupIcon, CustomUploadedFile } from '../../types/FileTypes';
 
 // Componentes refactorizados
 import { HeaderSection } from './HeaderSection';
 import { LoadingProgress } from './LoadingProgress';
+import { FolderPathSelector } from './FolderPathSelector';
 import { CutoffDateSelector } from './CutoffDateSelector';
 import { FileGridSection } from './FileGridSection';
 import { FileUploadModal } from './FileUploadModal';
@@ -22,6 +24,11 @@ const TechnicalNoteViewer: React.FC = () => {
   const [fileSelectionLoading, setFileSelectionLoading] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [cutoffDate, setCutoffDate] = useState<Dayjs | null>(null);
+
+  // Estados para NT RPMS (INDEPENDIENTES de cutoffDate)
+  const [folderPath, setFolderPath] = useState<string>('');
+  const [processingNTRPMS, setProcessingNTRPMS] = useState<boolean>(false);
+  const [ntRpmsProcessed, setNtRpmsProcessed] = useState<boolean>(false);
 
   // CONVERTIR cutoffDate de Dayjs a string YYYY-MM-DD
   const cutoffDateString = useMemo(() => {
@@ -92,12 +99,10 @@ const TechnicalNoteViewer: React.FC = () => {
     geographicSummary,
   } = useTechnicalNote();
 
-  // ✅ CALCULAR GRUPOS VISIBLES DINÁMICAMENTE
-  // Esta función ya filtra correctamente para que NO se dupliquen los archivos predefinidos
+  // CALCULAR GRUPOS VISIBLES DINÁMICAMENTE
   const visibleFileGroups = useMemo(() => {
     const groups = getVisibleGroups(availableFiles, uploadedFiles);
     console.log('📊 Grupos visibles calculados:', groups.length);
-    console.log('📋 Nombres de grupos:', groups.map(g => `${g.displayName} (${g.filename})`));
     return groups;
   }, [availableFiles, uploadedFiles]);
 
@@ -110,18 +115,150 @@ const TechnicalNoteViewer: React.FC = () => {
       message.success(`Fecha de corte establecida: ${date.format('DD/MM/YYYY')}`);
     } else {
       console.log('⚠️ Fecha de corte eliminada');
-      message.warning('Fecha de corte eliminada. Debe seleccionar una fecha para continuar.');
+      message.warning('Fecha de corte eliminada');
     }
   };
 
-  // DEBUG: Log cuando cambia cutoffDate
-  useEffect(() => {
-    console.log('🔍 TechnicalNoteViewer - Estado cutoffDate:', {
-      cutoffDate: cutoffDate?.format('YYYY-MM-DD'),
-      cutoffDateString,
-      hasCutoffDate: !!cutoffDate
-    });
-  }, [cutoffDate, cutoffDateString]);
+  // Handler para procesar archivos NT RPMS (SIN REQUERIR cutoffDate)
+  const handleProcessNTRPMS = async () => {
+    if (!folderPath.trim()) {
+      message.error('Debe ingresar la ruta de la carpeta con archivos NT RPMS');
+      return;
+    }
+
+    setProcessingNTRPMS(true);
+
+    try {
+      console.log('='.repeat(60));
+      console.log('PROCESANDO ARCHIVOS NT RPMS');
+      console.log('='.repeat(60));
+      console.log(`📁 Carpeta: ${folderPath}`);
+
+      const response = await TechnicalNoteService.processNTRPMSFolder(folderPath);
+
+      if (!response) {
+        throw new Error('No se recibió respuesta del servidor');
+      }
+
+      if (response.success) {
+        // VALORES CON FALLBACK
+        const filesProcessed = response.files_processed || 0;
+        const totalRows = response.total_rows || 0;
+        const totalColumns = response.total_columns || 0;
+        const processingTime = response.processing_time_seconds; // Puede ser undefined
+
+        // Calcular tiempo para el mensaje (con validación)
+        const timeMessage = (processingTime !== undefined && processingTime !== null)
+          ? `en ${processingTime.toFixed(2)}s`
+          : '';
+
+        message.success({
+          content: `¡Procesamiento exitoso! ${filesProcessed} archivos procesados con ${totalRows.toLocaleString()} registros ${timeMessage}`,
+          duration: 5,
+        });
+
+        console.log('✓ Procesamiento completado:');
+        console.log(`  - Archivos procesados: ${filesProcessed}`);
+        console.log(`  - Registros totales: ${totalRows.toLocaleString()}`);
+        console.log(`  - Columnas: ${totalColumns}`);
+
+        if (processingTime !== undefined && processingTime !== null) {
+          console.log(`  - Tiempo: ${processingTime.toFixed(2)}s`);
+        }
+
+        setNtRpmsProcessed(true);
+        await loadAvailableFiles();
+
+        // Modal con validaciones
+        Modal.success({
+          title: '✓ Información Extraida Exitosamente',
+          content: (
+            <div>
+              <p>Se han procesado correctamente los archivos NT RPMS.</p>
+              <p>Puedes continuar con la elección de la fecha de corte</p>
+            </div>
+          ),
+          width: 700,
+        });
+
+        setFolderPath('');
+      } else {
+        message.warning('El procesamiento finalizó con advertencias');
+        console.warn('⚠️ Procesamiento con advertencias:', response.errors);
+
+        Modal.warning({
+          title: 'Procesamiento con Advertencias',
+          content: (
+            <div>
+              <p>El procesamiento finalizó pero algunos archivos tuvieron problemas:</p>
+              {response.errors && response.errors.length > 0 ? (
+                <ul>
+                  {response.errors.map((error, index) => (
+                    <li key={index}>{error}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p>No se especificaron detalles del error.</p>
+              )}
+            </div>
+          ),
+        });
+      }
+    } catch (error: any) {
+      console.group('🔍 ERROR EN COMPONENTE');
+      console.error('error completo:', error);
+      console.error('error.message:', error.message);
+      console.groupEnd();
+
+      let errorMessage = 'Error desconocido al procesar archivos';
+
+      if (error.message) {
+        errorMessage = error.message;
+        console.log('✅ Mensaje extraído de error.message:', errorMessage);
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+        console.log('✅ Error como string:', errorMessage);
+      }
+
+      console.log('📌 Mostrando en UI:', errorMessage);
+
+      message.error({
+        content: errorMessage,
+        duration: 5
+      });
+
+      Modal.error({
+        title: 'Error al Consolidar Archivos',
+        width: 600,
+        content: (
+          <div>
+            <p style={{ color: '#ff4d4f', fontWeight: 600, fontSize: 14, marginBottom: 12 }}>
+              {errorMessage}
+            </p>
+            <Divider style={{ margin: '12px 0' }} />
+            <p style={{ fontSize: 13, color: '#666', marginBottom: 8 }}>
+              <strong>Verifique que:</strong>
+            </p>
+            <ul style={{ fontSize: 13, color: '#666', marginBottom: 12 }}>
+              <li>La ruta de la carpeta sea correcta</li>
+              <li>La carpeta contiene archivos Excel (.xlsx o .xls)</li>
+              <li>Los archivos no están corruptos o protegidos con contraseña</li>
+              <li>Tiene permisos de lectura en la carpeta</li>
+            </ul>
+            <Divider style={{ margin: '12px 0' }} />
+            <div style={{ background: '#f5f5f5', padding: 8, borderRadius: 4 }}>
+              <p style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 0 }}>
+                <strong>Ruta ingresada:</strong>
+              </p>
+              <code style={{ fontSize: 11 }}>{folderPath}</code>
+            </div>
+          </div>
+        ),
+      });
+    } finally {
+      setProcessingNTRPMS(false);
+    }
+  };
 
   // Cargar archivos disponibles al iniciar
   useEffect(() => {
@@ -135,7 +272,7 @@ const TechnicalNoteViewer: React.FC = () => {
     loadFiles();
   }, [loadAvailableFiles]);
 
-  // Handler unificado para selección de archivos
+  // Handler unificado para selección de archivos (AHORA SÍ REQUIERE cutoffDate)
   const handleFileGroupClick = async (group: AgeGroupIcon) => {
     if (!cutoffDate) {
       message.error('Debe seleccionar una fecha de corte antes de cargar archivos');
@@ -149,14 +286,14 @@ const TechnicalNoteViewer: React.FC = () => {
 
       console.log(`🔍 Cargando archivo: ${group.filename}`);
       console.log(`📅 Con fecha de corte: ${cutoffDate.format('YYYY-MM-DD')}`);
-      
+
       await loadFileData(group.filename, cutoffDate.format('YYYY-MM-DD'));
-      
+
       if (showUploadModal) {
         setShowUploadModal(false);
       }
 
-      console.log(`✅ Archivo cargado exitosamente: ${group.displayName}`);
+      console.log(`Archivo cargado exitosamente: ${group.displayName}`);
     } catch (error) {
       console.error(`❌ Error cargando ${group.displayName}:`, error);
       message.error(`Error cargando ${group.displayName}`);
@@ -167,7 +304,6 @@ const TechnicalNoteViewer: React.FC = () => {
 
   // Handler para eliminar archivo personalizado
   const handleRemoveUploadedFileWithConfirm = (fileToRemove: CustomUploadedFile) => {
-    // No permitir eliminar archivos predefinidos
     if (isPredefinedFile(fileToRemove.filename)) {
       message.warning('No se pueden eliminar archivos del sistema predefinidos');
       return;
@@ -199,8 +335,7 @@ const TechnicalNoteViewer: React.FC = () => {
     try {
       await handleCustomUpload(options);
       await loadAvailableFiles();
-      
-      // Verificar si el archivo subido es predefinido
+
       const uploadedFilename = options.file.name;
       if (isPredefinedFile(uploadedFilename)) {
         const groupKey = getPredefinedGroupKey(uploadedFilename);
@@ -228,8 +363,7 @@ const TechnicalNoteViewer: React.FC = () => {
       message.error('Debe seleccionar una fecha de corte antes de regenerar el reporte');
       return;
     }
-    console.log(`🔄 Regenerando reporte con filtros geográficos:`, geographicFilters);
-    console.log(`📅 Con fecha de corte: ${cutoffDateString}`);
+    console.log(`🔄 Regenerando reporte con fecha: ${cutoffDateString}`);
     regenerateReport(cutoffDateString);
   };
 
@@ -260,7 +394,16 @@ const TechnicalNoteViewer: React.FC = () => {
         onResetGeographicFilters={resetGeographicFilters}
       />
 
-      {/* Selector de Fecha de Corte */}
+      {/* PASO 1: Procesar Archivos NT RPMS (PRIMERO, SIN cutoffDate) */}
+      <FolderPathSelector
+        selectedPath={folderPath}
+        onPathChange={setFolderPath}
+        onProcess={handleProcessNTRPMS}
+        disabled={false}
+        processing={processingNTRPMS}
+      />
+
+      {/* PASO 2: Selector de Fecha de Corte (DESPUÉS de procesar) */}
       <CutoffDateSelector
         selectedDate={cutoffDate}
         onDateChange={handleCutoffDateChange}
@@ -268,11 +411,11 @@ const TechnicalNoteViewer: React.FC = () => {
 
       {/* Loading Progress */}
       <LoadingProgress
-        isVisible={loadingFiles}
+        isVisible={loadingFiles || processingNTRPMS}
         isLoadingFiles={true}
       />
 
-      {/* File Grid Section - USANDO GRUPOS VISIBLES FILTRADOS */}
+      {/* File Grid Section */}
       <FileGridSection
         allFileGroups={visibleFileGroups}
         selectedFile={selectedFile}
@@ -313,7 +456,7 @@ const TechnicalNoteViewer: React.FC = () => {
         isLoadingFiles={false}
       />
 
-      {/* Main Content CON cutoffDate */}
+      {/* Main Content */}
       <MainContent
         loading={loading}
         hasData={hasData}
@@ -323,14 +466,12 @@ const TechnicalNoteViewer: React.FC = () => {
         currentPageInfo={currentPageInfo}
         hasGeographicFilters={hasGeographicFilters}
         geographicSummary={geographicSummary}
-        
-        // DataTable props
+
         filteredData={filteredData}
         columns={columns}
         selectedFile={selectedFile}
         pagination={pagination}
-        
-        // Report props
+
         keywordReport={keywordReport}
         loadingReport={loadingReport}
         showReport={showReport}
@@ -345,8 +486,7 @@ const TechnicalNoteViewer: React.FC = () => {
         ipsOptions={ipsOptions}
         loadingGeoFilters={loadingGeoFilters}
         cutoffDate={cutoffDateString}
-        
-        // Event handlers
+
         onPaginationChange={handlePaginationChange}
         onFiltersChange={handleFiltersChange}
         onSortChange={handleSortChange}

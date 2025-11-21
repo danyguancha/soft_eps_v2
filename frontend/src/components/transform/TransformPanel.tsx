@@ -35,7 +35,7 @@ export const TransformPanel: React.FC<Props> = ({
       console.log('🔄 Llamando onRefreshFiles...');
       try {
         await onRefreshFiles();
-        console.log('✅ onRefreshFiles completado');
+        console.log('onRefreshFiles completado');
       } catch (error) {
         console.error('❌ Error en onRefreshFiles:', error);
       }
@@ -50,7 +50,7 @@ export const TransformPanel: React.FC<Props> = ({
     
     try {
       const result = await FileService.uploadFile(file);
-      console.log('✅ Archivo subido exitosamente:', result);
+      console.log('Archivo subido exitosamente:', result);
       
       messageApi.success(`Archivo "${file.name}" subido exitosamente`);
       
@@ -98,7 +98,7 @@ export const TransformPanel: React.FC<Props> = ({
       console.log('🗑️ Eliminando archivo:', fileName, fileId);
       
       await FileService.deleteFile(fileId);
-      console.log('✅ Archivo eliminado exitosamente');
+      console.log('Archivo eliminado exitosamente');
       
       messageApi.success(`Archivo "${fileName}" eliminado exitosamente`);
       await safeRefreshFiles();
@@ -174,7 +174,7 @@ export const TransformPanel: React.FC<Props> = ({
                   </div>
                   <div style={{ fontSize: '10px', marginTop: '2px' }}>
                     {availableFiles.length >= 2 
-                      ? '✅ Listo para cruzar' 
+                      ? 'Listo para cruzar' 
                       : `⚠️ Necesitas ${2 - availableFiles.length} más`
                     }
                   </div>

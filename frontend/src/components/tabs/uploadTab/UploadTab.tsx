@@ -31,7 +31,7 @@ export const UploadTab: React.FC<TabProps> = ({ isMobile, isTablet }) => {
     searchTerm: '',
   });
 
-  // ✅ Validación mejorada
+  // Validación mejorada
   const showTable = !!(
     currentFile &&
     currentData &&
