@@ -1,6 +1,8 @@
 // components/technical-note/report/interfaces/ReportInterfaz.ts - ✅ ACTUALIZAR
 
-import type { GeographicFilters } from '../../../../services/TechnicalNoteService';
+import type { GeographicFilters } from "../../../../interfaces/ITechnicalNote";
+
+
 
 export interface TemporalReportProps {
   keywordReport: any;

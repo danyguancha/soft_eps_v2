@@ -65,7 +65,7 @@ class ReportExporter:
         try:
             start_time = datetime.now()
             
-            print("\========== EXPORTACIÓN EN MEMORIA ==========")
+            print("========== EXPORTACIÓN EN MEMORIA ==========")
             print(f"Archivo: {base_filename}")
             print(f"CSV: {export_csv}, PDF: {export_pdf}")
             print(f"Temporal: {include_temporal}")

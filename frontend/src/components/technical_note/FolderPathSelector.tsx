@@ -28,7 +28,7 @@ export const FolderPathSelector: React.FC<FolderPathSelectorProps> = ({
   processing = false
 }) => {
   const [isValidPath, setIsValidPath] = useState<boolean>(false);
-  const [validationMessage, setValidationMessage] = useState<string>('');
+  const [, setValidationMessage] = useState<string>('');
 
   useEffect(() => {
     if (!selectedPath.trim()) {

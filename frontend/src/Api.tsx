@@ -2,7 +2,8 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios';
 
 const api = axios.create({
-  baseURL:'http://localhost:8000/api/v1',
+  baseURL:'http://172.17.17.199:8000/api/v1',
+  //baseURL:'https://soft-eps-v2.onrender.com/api/v1',
   timeout: 300000,
   headers: {
     'Content-Type': 'application/json',

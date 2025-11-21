@@ -28,7 +28,7 @@ const TechnicalNoteViewer: React.FC = () => {
   // Estados para NT RPMS (INDEPENDIENTES de cutoffDate)
   const [folderPath, setFolderPath] = useState<string>('');
   const [processingNTRPMS, setProcessingNTRPMS] = useState<boolean>(false);
-  const [ntRpmsProcessed, setNtRpmsProcessed] = useState<boolean>(false);
+  const [, setNtRpmsProcessed] = useState<boolean>(false);
 
   // CONVERTIR cutoffDate de Dayjs a string YYYY-MM-DD
   const cutoffDateString = useMemo(() => {

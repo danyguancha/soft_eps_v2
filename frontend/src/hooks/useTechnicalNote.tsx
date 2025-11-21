@@ -388,7 +388,7 @@ export const useTechnicalNote = () => {
   // Cargar primera página
   const loadFileData = useCallback(async (
     filename: string, 
-    cutoffDate?: string,
+    _cutoffDate?: string,
     sheetName?: string
   ) => {
     try {

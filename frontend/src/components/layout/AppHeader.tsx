@@ -22,7 +22,6 @@ interface Props {
 
 export const AppHeader: React.FC<Props> = ({
   isMobile,
-  isTablet,
   collapsed,
   currentFile,
   onToggleSidebar,
