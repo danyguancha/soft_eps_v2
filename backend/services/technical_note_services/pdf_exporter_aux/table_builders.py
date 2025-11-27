@@ -4,10 +4,8 @@ from reportlab.lib import colors
 from reportlab.lib.units import inch
 from reportlab.platypus import Table, TableStyle
 
-from services.technical_note_services.pdf_exporter_aux.pdf_config import (
-    COLOR_MAP,
-    SEMAFORO_NA,
-)
+from services.technical_note_services.pdf_exporter_aux.pdf_config import COLOR_MAP, SEMAFORO_NA
+
 
 
 class TableBuilder:
@@ -59,81 +57,73 @@ class TableBuilder:
         return style
 
     @staticmethod
-    def build_statistics_table(global_stats: Dict[str, Any]) -> Table:
+    def build_statistics_table(items: List[Dict[str, Any]]) -> Table:
         """Construye tabla de estadísticas globales"""
+        # Calcular estadísticas
+        total_items = len(items)
+        
+        total_numerador = sum(item.get('anual', {}).get('numerador', 0) for item in items)
+        total_denominador = sum(item.get('anual', {}).get('denominador', 0) for item in items)
+        cobertura_global = (total_numerador / total_denominador * 100) if total_denominador > 0 else 0
+        
+        coberturas = [item.get('anual', {}).get('cobertura', 0) for item in items]
+        mejor_cobertura = max(coberturas) if coberturas else 0
+        peor_cobertura = min(coberturas) if coberturas else 0
+        
+        optimas = sum(1 for c in coberturas if c >= 95)
+        deficientes = sum(1 for c in coberturas if c < 60)
+        
         stats_data = [
             ["Métrica", "Valor"],
-            ["Total Actividades", str(global_stats.get("total_actividades", 0))],
-            [
-                "Denominador Global",
-                f"{global_stats.get('total_denominador_global', 0):,}",
-            ],
-            ["Numerador Global", f"{global_stats.get('total_numerador_global', 0):,}"],
-            [
-                "Cobertura Global",
-                f"{global_stats.get('cobertura_global_porcentaje', 0):.1f}%",
-            ],
-            ["Mejor Cobertura", f"{global_stats.get('mejor_cobertura', 0):.1f}%"],
-            ["Peor Cobertura", f"{global_stats.get('peor_cobertura', 0):.1f}%"],
-            [
-                "Actividades Óptimas (≥90%)",
-                str(global_stats.get("actividades_100_pct_cobertura", 0)),
-            ],
-            [
-                "Actividades Deficientes (<60%)",
-                str(global_stats.get("actividades_menos_50_pct_cobertura", 0)),
-            ],
+            ["Total Consultas/Procedimientos", str(total_items)],
+            ["Denominador Total", f"{total_denominador:,}"],
+            ["Numerador Total", f"{total_numerador:,}"],
+            ["Cobertura Global", f"{cobertura_global:.1f}%"],
+            ["Mejor Cobertura", f"{mejor_cobertura:.1f}%"],
+            ["Peor Cobertura", f"{peor_cobertura:.1f}%"],
+            ["Consultas Óptimas (≥95%)", str(optimas)],
+            ["Consultas Deficientes (<60%)", str(deficientes)],
         ]
 
         table = Table(stats_data, colWidths=[3.8 * inch, 2.2 * inch])
         table.setStyle(
-            TableStyle(
-                [
-                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1890ff")),
-                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
-                    ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                    ("FONTSIZE", (0, 0), (-1, 0), 10),
-                    ("FONTSIZE", (0, 1), (-1, -1), 9),
-                    ("BOTTOMPADDING", (0, 0), (-1, 0), 10),
-                    ("TOPPADDING", (0, 1), (-1, -1), 6),
-                    ("BOTTOMPADDING", (0, 1), (-1, -1), 6),
-                    ("BACKGROUND", (0, 1), (-1, -1), colors.beige),
-                    ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
-                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ]
-            )
+            TableStyle([
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1890ff")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, 0), 10),
+                ("FONTSIZE", (0, 1), (-1, -1), 9),
+                ("BOTTOMPADDING", (0, 0), (-1, 0), 10),
+                ("TOPPADDING", (0, 1), (-1, -1), 6),
+                ("BOTTOMPADDING", (0, 1), (-1, -1), 6),
+                ("BACKGROUND", (0, 1), (-1, -1), colors.beige),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ])
         )
 
         return table
 
     @staticmethod
     def build_activities_table(items: List[Dict[str, Any]]) -> Table:
-        """Construye tabla de actividades"""
-        table_data = [["Procedimiento", "Palabra", "Den", "Num", "% Cump", "Estado"]]
+        """Construye tabla de consultas/procedimientos"""
+        table_data = [["Consulta/Procedimiento", "Rango Edad", "Den", "Num", "% Cob", "Estado"]]
 
         for item in items:
-            table_data.append(
-                [
-                    str(item.get("column", ""))[:45],
-                    str(item.get("keyword", "")).upper(),
-                    f"{item.get('denominador', 0):,}",
-                    f"{item.get('numerador', 0):,}",
-                    f"{item.get('cobertura_porcentaje', 0):.1f}%",
-                    item.get("semaforizacion", SEMAFORO_NA),
-                ]
-            )
+            anual = item.get('anual', {})
+            table_data.append([
+                str(item.get("consulta_procedimiento", ""))[:35],
+                str(item.get("rango_edad", ""))[:15],
+                f"{anual.get('denominador', 0):,}",
+                f"{anual.get('numerador', 0):,}",
+                f"{anual.get('cobertura', 0):.1f}%",
+                anual.get("semaforizacion", SEMAFORO_NA),
+            ])
 
         table = Table(
             table_data,
-            colWidths=[
-                3.2 * inch,
-                0.9 * inch,
-                0.9 * inch,
-                0.9 * inch,
-                0.9 * inch,
-                1.3 * inch,
-            ],
+            colWidths=[2.5 * inch, 1 * inch, 0.9 * inch, 0.9 * inch, 0.9 * inch, 1.3 * inch]
         )
 
         style = TableBuilder._get_activities_table_style(items)
@@ -159,7 +149,7 @@ class TableBuilder:
         ]
 
         for i, item in enumerate(items, start=1):
-            estado = item.get("semaforizacion", SEMAFORO_NA)
+            estado = item.get('anual', {}).get("semaforizacion", SEMAFORO_NA)
             color_hex = COLOR_MAP.get(estado, COLOR_MAP[SEMAFORO_NA])
 
             try:
@@ -174,74 +164,68 @@ class TableBuilder:
         return style
 
     @staticmethod
-    def build_temporal_table(years_dict: Dict[str, Any]) -> Table:
-        """Construye tabla temporal"""
-        table_data = [["Periodo", "Tipo", "Den", "Num", "% Cump", "Estado"]]
+    def build_detailed_activity_table(item: Dict[str, Any]) -> Table:
+        """Construye tabla detallada de una consulta/procedimiento"""
+        table_data = [["Periodo", "Tipo", "Pob. Obj", "Den", "Num", "% Cob", "Estado"]]
 
-        for year_str in sorted(years_dict.keys(), key=lambda y: int(y), reverse=True):
-            year_info = years_dict[year_str]
-            TableBuilder._add_year_and_months(table_data, year_str, year_info)
+        # Datos básicos
+        pob_obj = item.get('poblacion_objeto', 0)
+        
+        # Trimestres
+        for trim in ['T1', 'T2', 'T3', 'T4']:
+            trim_data = item.get(trim, {})
+            if trim_data.get('denominador', 0) > 0:
+                table_data.append([
+                    trim,
+                    "Trimestre",
+                    f"{trim_data.get('poblacion_objeto', 0):,}",
+                    f"{trim_data.get('denominador', 0):,}",
+                    f"{trim_data.get('numerador', 0):,}",
+                    f"{trim_data.get('cobertura', 0):.1f}%",
+                    trim_data.get('semaforizacion', SEMAFORO_NA),
+                ])
+
+        # Semestres
+        for sem in ['S1', 'S2']:
+            sem_data = item.get(sem, {})
+            if sem_data.get('denominador', 0) > 0:
+                table_data.append([
+                    sem,
+                    "Semestre",
+                    f"{sem_data.get('poblacion_objeto', 0):,}",
+                    f"{sem_data.get('denominador', 0):,}",
+                    f"{sem_data.get('numerador', 0):,}",
+                    f"{sem_data.get('cobertura', 0):.1f}%",
+                    sem_data.get('semaforizacion', SEMAFORO_NA),
+                ])
+
+        # Anual
+        anual = item.get('anual', {})
+        if anual.get('denominador', 0) > 0:
+            table_data.append([
+                "Anual",
+                "Año",
+                f"{pob_obj:,}",
+                f"{anual.get('denominador', 0):,}",
+                f"{anual.get('numerador', 0):,}",
+                f"{anual.get('cobertura', 0):.1f}%",
+                anual.get('semaforizacion', SEMAFORO_NA),
+            ])
 
         table = Table(
             table_data,
-            colWidths=[
-                1.6 * inch,
-                0.7 * inch,
-                1 * inch,
-                1 * inch,
-                1 * inch,
-                1.2 * inch,
-            ],
+            colWidths=[0.9 * inch, 1 * inch, 1 * inch, 1 * inch, 1 * inch, 0.9 * inch, 1.3 * inch]
         )
 
-        style = TableBuilder._get_temporal_table_style(years_dict)
+        style = TableBuilder._get_detailed_table_style()
         table.setStyle(TableStyle(style))
 
         return table
 
     @staticmethod
-    def _add_year_and_months(
-        table_data: List, year_str: str, year_info: Dict[str, Any]
-    ):
-        """Agrega filas de año y meses"""
-        year_den = year_info.get("total_den") or year_info.get("denominador") or 0
-        year_num = year_info.get("total_num") or year_info.get("numerador") or 0
-        year_pct = year_info.get("pct") or 0.0
-
-        table_data.append(
-            [
-                year_str,
-                "AÑO",
-                f"{year_den:,}",
-                f"{year_num:,}",
-                f"{year_pct:.1f}%",
-                year_info.get("semaforizacion", SEMAFORO_NA),
-            ]
-        )
-
-        months_dict = year_info.get("months", {})
-        sorted_months = sorted(months_dict.items(), key=lambda m: m[1].get("month", 0))
-
-        for month_name, month_info in sorted_months:
-            month_den = month_info.get("denominador") or month_info.get("den") or 0
-            month_num = month_info.get("numerador") or month_info.get("num") or 0
-            month_pct = month_info.get("pct") or 0.0
-
-            table_data.append(
-                [
-                    month_name,
-                    "MES",
-                    f"{month_den:,}",
-                    f"{month_num:,}",
-                    f"{month_pct:.1f}%",
-                    month_info.get("semaforizacion", SEMAFORO_NA),
-                ]
-            )
-
-    @staticmethod
-    def _get_temporal_table_style(years_dict: Dict[str, Any]) -> List:
-        """Genera estilo para tabla temporal"""
-        style = [
+    def _get_detailed_table_style() -> List:
+        """Genera estilo para tabla detallada"""
+        return [
             ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#52c41a")),
             ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
             ("ALIGN", (0, 0), (-1, -1), "CENTER"),
@@ -253,16 +237,3 @@ class TableBuilder:
             ("TOPPADDING", (0, 1), (-1, -1), 4),
             ("BOTTOMPADDING", (0, 1), (-1, -1), 4),
         ]
-
-        row_idx = 1
-        for year_str in sorted(years_dict.keys(), key=lambda y: int(y), reverse=True):
-            style.append(
-                ("BACKGROUND", (0, row_idx), (-1, row_idx), colors.HexColor("#e6f7ff"))
-            )
-            style.append(("FONTNAME", (0, row_idx), (1, row_idx), "Helvetica-Bold"))
-            row_idx += 1
-
-            months_count = len(years_dict[year_str].get("months", {}))
-            row_idx += months_count
-
-        return style

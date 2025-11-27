@@ -1,0 +1,132 @@
+{
+  "curso_vida": "adolescencia",
+  "rango_edad": "12 a 17 años",
+  "mappings": [
+    {
+      "columna_usuario": "Consulta por Medicina 12 años",
+      "keyword": "medicina",
+      "consolidado": {
+        "consulta_procedimiento": "Atencion en salud por medicina General - Adolescencia",
+        "edad_aplicable": "12 Años",
+        "edad_NT_RPMS": "12, 14 y 16 Años"
+      }
+    },
+    {
+      "columna_usuario": "Consulta por Medicina 14 años",
+      "keyword": "medicina",
+      "consolidado": {
+        "consulta_procedimiento": "Atencion en salud por medicina General - Adolescencia",
+        "edad_aplicable": "14 Años",
+        "edad_NT_RPMS": "12, 14 y 16 Años"
+      }
+    },
+    {
+      "columna_usuario": "Consulta por Medicina 16 años",
+      "keyword": "medicina",
+      "consolidado": {
+        "consulta_procedimiento": "Atencion en salud por medicina General - Adolescencia",
+        "edad_aplicable": "16 Años",
+        "edad_NT_RPMS": "12, 14 y 16 Años"
+      }
+    },
+    {
+      "columna_usuario": "Consulta por Enfermería 13 años",
+      "keyword": "enfermería",
+      "consolidado": {
+        "consulta_procedimiento": "Atencion en salud por profesional de enfermeria - Adolescencia",
+        "edad_aplicable": "13 Años",
+        "edad_NT_RPMS": "13 15 y 17 años"
+      }
+    },
+    {
+      "columna_usuario": "Consulta por Enfermería 15 años",
+      "keyword": "enfermería",
+      "consolidado": {
+        "consulta_procedimiento": "Atencion en salud por profesional de enfermeria - Adolescencia",
+        "edad_aplicable": "15 Años",
+        "edad_NT_RPMS": "13 15 y 17 años"
+      }
+    },
+    {
+      "columna_usuario": "Consulta por Enfermería 17 años",
+      "keyword": "enfermería",
+      "consolidado": {
+        "consulta_procedimiento": "Atencion en salud por profesional de enfermeria - Adolescencia",
+        "edad_aplicable": "17 Años",
+        "edad_NT_RPMS": "13 15 y 17 años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha más reciente de Consulta Odontológica",
+      "keyword": "odontologica",
+      "consolidado": {
+        "consulta_procedimiento": "Atención en salud bucal por profesional de odontología - Adolescencia",
+        "edad_aplicable": "12 a 17 Años",
+        "edad_NT_RPMS": "12 a 17 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha de diagnostico de Anemia nutricional",
+      "keyword": "anemia",
+      "consolidado": {
+        "consulta_procedimiento": "Tamizaje para Anemia(Hemotocrito)- Adolescencia",
+        "edad_aplicable": "12 a 13 Años",
+        "edad_NT_RPMS": "12 a 13 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha de diagnostico de Anemia nutricional",
+      "keyword": "anemia",
+      "consolidado": {
+        "consulta_procedimiento": "Tamizaje para Anemia(Hemotocrito)- Adolescencia",
+        "edad_aplicable": "14 a 17 Años",
+        "edad_NT_RPMS": "14 a 17 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha Hemoglobina",
+      "keyword": "anemia",
+      "consolidado": {
+        "consulta_procedimiento": "Tamizaje para Anemia(Hemoglobina)- Adolescencia",
+        "edad_aplicable": "12 a 13 Años",
+        "edad_NT_RPMS": "12 a 13 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha Hemoglobina",
+      "keyword": "anemia",
+      "consolidado": {
+        "consulta_procedimiento": "Tamizaje para Anemia(Hemoglobina)- Adolescencia",
+        "edad_aplicable": "14 a 17 Años",
+        "edad_NT_RPMS": "14 a 17 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha más reciente de aplicación flúor",
+      "keyword": "fluor",
+      "consolidado": {
+        "consulta_procedimiento": "Aplicación de Barniz de Flúor - Adolescencia",
+        "edad_aplicable": "12 a 17 Años",
+        "edad_NT_RPMS": "12 a 17 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha más reciente de aplicación de sellantes",
+      "keyword": "sellantes",
+      "consolidado": {
+        "consulta_procedimiento": "Aplicación de Sellantes - Adolescencia",
+        "edad_aplicable": "12 a 17 Años",
+        "edad_NT_RPMS": "12 a 17 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha más reciente de remoción placa bacteriana",
+      "keyword": "placa",
+      "consolidado": {
+        "consulta_procedimiento": "Profilaxis y Remoción de Placa Bacterina - Adolescencia",
+        "edad_aplicable": "12 a 17 Años",
+        "edad_NT_RPMS": "12 a 17 Años"
+      }
+    }
+  ]
+}

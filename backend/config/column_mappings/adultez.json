@@ -1,0 +1,150 @@
+{
+  "curso_vida": "adultez",
+  "rango_edad": "29 a 59 años",
+  "mappings": [
+    {
+      "columna_usuario": "Consulta por Medicina 29 a 34 años",
+      "keyword": "medicina",
+      "consolidado": {
+        "consulta_procedimiento": "Atencion en salud por medicina General - Adultez",
+        "edad_aplicable": "29 a 34 Años",
+        "edad_NT_RPMS": "29 a 34 Años"
+      }
+    },
+    {
+      "columna_usuario": "Consulta por Medicina 35 a 39 años",
+      "keyword": "medicina",
+      "consolidado": {
+        "consulta_procedimiento": "Atencion en salud por medicina General - Adultez",
+        "edad_aplicable": "35 a 39 Años",
+        "edad_NT_RPMS": "35 a 39 Años"
+      }
+    },
+    {
+      "columna_usuario": "Consulta por Medicina 40 a 44 años",
+      "keyword": "medicina",
+      "consolidado": {
+        "consulta_procedimiento": "Atencion en salud por medicina General - Adultez",
+        "edad_aplicable": "40 a 44 Años",
+        "edad_NT_RPMS": "40 a 44 Años"
+      }
+    },
+    {
+      "columna_usuario": "Consulta por Medicina 45 a 49 años",
+      "keyword": "medicina",
+      "consolidado": {
+        "consulta_procedimiento": "Atencion en salud por medicina General - Adultez",
+        "edad_aplicable": "45 a 49 Años",
+        "edad_NT_RPMS": "45 a 49 Años"
+      }
+    },
+    {
+      "columna_usuario": "Consulta por Medicina 50 a 52 años",
+      "keyword": "medicina",
+      "consolidado": {
+        "consulta_procedimiento": "Atencion en salud por medicina General - Adultez",
+        "edad_aplicable": "50 a 52 Años",
+        "edad_NT_RPMS": "50 a 52 Años"
+      }
+    },
+    {
+      "columna_usuario": "Consulta por Medicina 53 a 55 años",
+      "keyword": "medicina",
+      "consolidado": {
+        "consulta_procedimiento": "Atencion en salud por medicina General - Adultez",
+        "edad_aplicable": "53 a 55 Años",
+        "edad_NT_RPMS": "53 a 55 Años"
+      }
+    },
+    {
+      "columna_usuario": "Consulta por Medicina 56 a 59 años",
+      "keyword": "medicina",
+      "consolidado": {
+        "consulta_procedimiento": "Atencion en salud por medicina General - Adultez",
+        "edad_aplicable": "56 a 59 Años",
+        "edad_NT_RPMS": "56 a 59 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha más reciente de Consulta Odontológica",
+      "keyword": "odontológica",
+      "consolidado": {
+        "consulta_procedimiento": "Atención en salud bucal por profesional de odontología - Adultez",
+        "edad_aplicable": "29 a 59 Años",
+        "edad_NT_RPMS": "29 a 59 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha más reciente de remoción placa bacteriana",
+      "keyword": "placa",
+      "consolidado": {
+        "consulta_procedimiento": "Profilaxis y Remoción de Placa Bacterina - Adultez",
+        "edad_aplicable": "29 a 59 Años",
+        "edad_NT_RPMS": "29 a 59 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha más reciente de Detartraje",
+      "keyword": "detartraje",
+      "consolidado": {
+        "consulta_procedimiento": "Detartraje supragingival - Adultez",
+        "edad_aplicable": "29 a 59 Años",
+        "edad_NT_RPMS": "29 a 59 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha más reciente de asesoría en planificación familiar",
+      "keyword": "planificación",
+      "consolidado": {
+        "consulta_procedimiento": "Consulta primera vez de Atencion en salud por medicina general para la asesoria en anticoncepcion - Adultez",
+        "edad_aplicable": "29 a 59 Años",
+        "edad_NT_RPMS": "29 a 59 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha de tamizaje para sífilis",
+      "keyword": "sífilis",
+      "consolidado": {
+        "consulta_procedimiento": "Prueba rápida treponémica para sífilis - Adultez",
+        "edad_aplicable": "29 a 59 Años",
+        "edad_NT_RPMS": "29 a 59 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha de tamizaje para VIH",
+      "keyword": "vih",
+      "consolidado": {
+        "consulta_procedimiento": "Prueba rápida para VIH - Adultez",
+        "edad_aplicable": "29 a 59 Años",
+        "edad_NT_RPMS": "29 a 59 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha asesoría pre test VIH",
+      "keyword": "vih",
+      "consolidado": {
+        "consulta_procedimiento": "Asesoria Pre y Pos Test VIH - Adultez",
+        "edad_aplicable": "29 a 59 Años",
+        "edad_NT_RPMS": "29 a 59 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha asesoría post test VIH",
+      "keyword": "vih",
+      "consolidado": {
+        "consulta_procedimiento": "Asesoria Pre y Pos Test VIH - Adultez",
+        "edad_aplicable": "29 a 59 Años",
+        "edad_NT_RPMS": "29 a 59 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha prueba embarazo",
+      "keyword": "embarazo",
+      "consolidado": {
+        "consulta_procedimiento": "Prueba de embarazo - Adultez",
+        "edad_aplicable": "29 a 59 Años",
+        "edad_NT_RPMS": "29 a 59 Años"
+      }
+    }
+  ]
+}

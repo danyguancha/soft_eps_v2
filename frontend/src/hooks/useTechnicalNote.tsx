@@ -73,30 +73,38 @@ export const useTechnicalNote = () => {
 
   // FUNCIÓN AUXILIAR PARA CÁLCULOS SEGUROS
   const calculateReportTotals = useCallback(() => {
-    if (!keywordReport) {
-      return {
-        totalRecords: 0,
-        totalDenominador: 0,
-        totalNumerador: 0,
-        coberturaGlobal: 0,
-        actividades100Pct: 0,
-        actividadesMenos50Pct: 0
-      };
-    }
-
-    const globalStats = getGlobalStatistics();
-    const totalRecords = Object.values(keywordReport.totals_by_keyword)
-      .reduce((sum, item) => sum + (item.count || 0), 0);
-
+  if (!keywordReport) {
     return {
-      totalRecords,
-      totalDenominador: globalStats?.total_denominador_global || 0,
-      totalNumerador: globalStats?.total_numerador_global || 0,
-      coberturaGlobal: globalStats?.cobertura_global_porcentaje || 0,
-      actividades100Pct: globalStats?.actividades_100_pct_cobertura || 0,
-      actividadesMenos50Pct: globalStats?.actividades_menos_50_pct_cobertura || 0
+      totalRecords: 0,
+      totalDenominador: 0,
+      totalNumerador: 0,
+      coberturaGlobal: 0,
+      actividades100Pct: 0,
+      actividadesMenos50Pct: 0
     };
-  }, [keywordReport, getGlobalStatistics]);
+  }
+
+  const globalStats = getGlobalStatistics();
+  
+  // ✓ FIX: Validar que totals_by_keyword exista antes de usarlo
+  let totalRecords = 0;
+  if (keywordReport.totals_by_keyword && typeof keywordReport.totals_by_keyword === 'object') {
+    totalRecords = Object.values(keywordReport.totals_by_keyword)
+      .reduce((sum, item: any) => sum + (item.count || 0), 0);
+  } else {
+    // Alternativa: usar el total_items directamente
+    totalRecords = keywordReport.total_items || keywordReport.items?.length || 0;
+  }
+
+  return {
+    totalRecords,
+    totalDenominador: globalStats?.total_denominador_global || 0,
+    totalNumerador: globalStats?.total_numerador_global || 0,
+    coberturaGlobal: globalStats?.cobertura_global_porcentaje || 0,
+    actividades100Pct: globalStats?.actividades_100_pct_cobertura || 0,
+    actividadesMenos50Pct: globalStats?.actividades_menos_50_pct_cobertura || 0
+  };
+}, [keywordReport, getGlobalStatistics]);
 
   // MÉTODOS PARA FILTROS GEOGRÁFICOS
   const loadDepartamentos = useCallback(async (filename: string) => {
@@ -104,10 +112,10 @@ export const useTechnicalNote = () => {
 
     try {
       setLoadingGeoFilters(prev => ({ ...prev, departamentos: true }));
-      
+
       const departamentos = await TechnicalNoteService.getDepartamentos(filename);
       setDepartamentosOptions(departamentos);
-      
+
       console.log(`Departamentos cargados: ${departamentos.length}`);
     } catch (error) {
       console.error('Error cargando departamentos:', error);
@@ -122,10 +130,10 @@ export const useTechnicalNote = () => {
 
     try {
       setLoadingGeoFilters(prev => ({ ...prev, municipios: true }));
-      
+
       const municipios = await TechnicalNoteService.getMunicipios(filename, departamento);
       setMunicipiosOptions(municipios);
-      
+
       console.log(`Municipios cargados para ${departamento}: ${municipios.length}`);
     } catch (error) {
       console.error('Error cargando municipios:', error);
@@ -140,10 +148,10 @@ export const useTechnicalNote = () => {
 
     try {
       setLoadingGeoFilters(prev => ({ ...prev, ips: true }));
-      
+
       const ips = await TechnicalNoteService.getIps(filename, departamento, municipio);
       setIpsOptions(ips);
-      
+
       console.log(`IPS cargadas para ${municipio}: ${ips.length}`);
     } catch (error) {
       console.error('Error cargando IPS:', error);
@@ -160,10 +168,10 @@ export const useTechnicalNote = () => {
       municipio: null,
       ips: null
     }));
-    
+
     setMunicipiosOptions([]);
     setIpsOptions([]);
-    
+
     if (departamento && selectedFile) {
       loadMunicipios(selectedFile, departamento);
     }
@@ -175,9 +183,9 @@ export const useTechnicalNote = () => {
       municipio: municipio,
       ips: null
     }));
-    
+
     setIpsOptions([]);
-    
+
     if (municipio && geographicFilters.departamento && selectedFile) {
       loadIps(selectedFile, geographicFilters.departamento, municipio);
     }
@@ -269,25 +277,11 @@ export const useTechnicalNote = () => {
     // VALIDACIÓN ADICIONAL: Verificar formato básico YYYY-MM-DD
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(cutoffDate.trim())) {
-      const errorMsg = `❌ Formato de fecha inválido: ${cutoffDate}. Debe ser YYYY-MM-DD`;
-      console.error(errorMsg);
       throw new Error('Formato de fecha de corte inválido. Use YYYY-MM-DD');
     }
 
     try {
       setLoadingReport(true);
-
-      console.log('📊 Cargando reporte numerador/denominador con:', {
-        filename,
-        cutoffDate: cutoffDate.trim(), // Usar fecha limpia
-        keywords,
-        minCount,
-        includeTemporal,
-        geoFilters
-      });
-
-      // CORRECCIÓN: Orden correcto de parámetros según TechnicalNoteService
-      // getKeywordAgeReport(filename, cutoffDate, keywords, minCount, includeTemporal, geoFilters)
       const report = await TechnicalNoteService.getKeywordAgeReport(
         filename,
         cutoffDate.trim(),  // Limpiar espacios antes de enviar
@@ -296,7 +290,21 @@ export const useTechnicalNote = () => {
         includeTemporal,
         geoFilters
       );
-      
+
+      if (!report) {
+        throw new Error('El backend retornó una respuesta vacía');
+      }
+
+      if (!report.items) {
+        console.error('❌ report.items es undefined. Respuesta completa:', report);
+        throw new Error('La respuesta del backend no contiene el campo "items"');
+      }
+
+      if (!Array.isArray(report.items)) {
+        console.error('❌ report.items no es un array:', report.items);
+        throw new Error('El campo "items" debe ser un array');
+      }
+
       setKeywordReport(report);
       setShowReport(true);
 
@@ -387,7 +395,7 @@ export const useTechnicalNote = () => {
 
   // Cargar primera página
   const loadFileData = useCallback(async (
-    filename: string, 
+    filename: string,
     _cutoffDate?: string,
     sheetName?: string
   ) => {
@@ -414,7 +422,7 @@ export const useTechnicalNote = () => {
       setDepartamentosOptions([]);
       setMunicipiosOptions([]);
       setIpsOptions([]);
-      
+
       throw error;
     }
   }, [pageSize, loadFileMetadata, loadFileDataWithServerFilters, loadDepartamentos]);
@@ -518,18 +526,18 @@ export const useTechnicalNote = () => {
       console.error('❌ No hay archivo seleccionado');
       return;
     }
-    
+
     if (!cutoffDate || cutoffDate.trim() === '') {
       console.error('❌ No hay fecha de corte seleccionada');
       return;
     }
-    
+
     console.log('🔄 Regenerando reporte con:', {
       archivo: selectedFile,
       filtrosGeo: geographicFilters,
       fechaCorte: cutoffDate
     });
-    
+
     return loadKeywordAgeReport(
       selectedFile,
       cutoffDate,
@@ -564,7 +572,7 @@ export const useTechnicalNote = () => {
     geoFiltersOverride?: GeographicFilters
   ) => {
     const filtersToUse = geoFiltersOverride || geographicFilters;
-    
+
     console.log('🎯 handleLoadKeywordAgeReport llamado:', {
       filename,
       cutoffDate,
@@ -575,7 +583,7 @@ export const useTechnicalNote = () => {
       includeTemporal,
       geographicFilters: filtersToUse
     });
-    
+
     return loadKeywordAgeReport(
       filename,
       cutoffDate,

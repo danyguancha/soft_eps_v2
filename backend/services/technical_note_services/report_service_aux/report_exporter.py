@@ -3,11 +3,13 @@ import io
 import uuid
 from datetime import datetime, timedelta
 from typing import Any, Dict, Optional
+
 try:
     from reportlab.lib.units import inch
 except ImportError:
     inch = 72  # 1 pulgada = 72 puntos
-from services.technical_note_services.report_service_aux.csv_exporter import CSVExporter
+
+from services.technical_note_services.report_service_aux.excel_exporter import ExcelExporter
 from services.technical_note_services.report_service_aux.pdf_exporter import PDFExporter
 
 
@@ -31,7 +33,7 @@ class ReportExporter:
         self.temp_files_registry: Dict[str, Dict[str, Any]] = {}
         
         # Inyección de dependencias
-        self.csv_exporter = CSVExporter(separator=';', encoding='latin1')
+        self.excel_exporter  = ExcelExporter()
         self.pdf_exporter = PDFExporter(
             watermark_image="assets/mallamas.png",
             watermark_opacity=0.1,
@@ -47,7 +49,7 @@ class ReportExporter:
         base_filename: str = "reporte",
         export_csv: bool = True,
         export_pdf: bool = False,
-        include_temporal: bool = True
+        include_detailed: bool = True
     ) -> Dict[str, Any]:
         """
         Orquesta la exportación de reportes EN MEMORIA
@@ -57,7 +59,7 @@ class ReportExporter:
             base_filename: Nombre base del archivo (sin extensión)
             export_csv: Exportar en formato CSV
             export_pdf: Exportar en formato PDF
-            include_temporal: Incluir análisis temporal en PDF
+            include_detailed: Incluir análisis detallado en PDF
             
         Returns:
             Diccionario con información de archivos generados y enlaces de descarga
@@ -68,7 +70,7 @@ class ReportExporter:
             print("========== EXPORTACIÓN EN MEMORIA ==========")
             print(f"Archivo: {base_filename}")
             print(f"CSV: {export_csv}, PDF: {export_pdf}")
-            print(f"Temporal: {include_temporal}")
+            print(f"Análisis detallado: {include_detailed}")
             
             files = {}
             download_links = {}
@@ -82,12 +84,17 @@ class ReportExporter:
             
             # Exportar PDF
             if export_pdf:
-                pdf_result = self._export_pdf(report_data, base_filename, include_temporal)
+                pdf_result = self._export_pdf(report_data, base_filename, include_detailed)
                 if pdf_result:
                     files.update(pdf_result['files'])
                     download_links.update(pdf_result['links'])
             
-            elapsed = (datetime.now() - start_time).total_seconds()            
+            elapsed = (datetime.now() - start_time).total_seconds()
+            
+            print(f"✅ Exportación completada en {elapsed:.2f}s")
+            print(f"Archivos generados: {len(files)}")
+            print("=" * 44)
+            
             return {
                 'success': True,
                 'message': f'Exportación completada: {len(files)} archivo(s)',
@@ -97,7 +104,7 @@ class ReportExporter:
             }
             
         except Exception as e:
-            print(f"Error en exportación: {e}")
+            print(f"❌ Error en exportación: {e}")
             import traceback
             traceback.print_exc()
             return {
@@ -107,60 +114,68 @@ class ReportExporter:
                 'download_links': {}
             }
     
-    def _export_csv(
-        self,
-        report_data: Dict[str, Any],
-        base_filename: str
-    ) -> Optional[Dict[str, Any]]:
-        """Exporta CSV en memoria y registra"""
-        csv_buffer = self.csv_exporter.export_temporal_report(report_data)
-        
-        if csv_buffer:
-            file_id = str(uuid.uuid4())
-            self.temp_files_registry[file_id] = {
-                'content': csv_buffer,
-                'filename': f"{base_filename}_temporal.csv",
-                'content_type': 'text/csv',
-                'created_at': datetime.now()
-            }
+    def _export_csv(self, report_data, base_filename):
+        """Exporta Excel en lugar de CSV"""
+        try:
+            print("📊 Generando Excel...")
+            excel_buffer = self.excel_exporter.export_report(report_data)
             
-            print(f"CSV generado en memoria: ID={file_id}")
+            if excel_buffer:
+                file_id = str(uuid.uuid4())
+                self.temp_files_registry[file_id] = {
+                    'content': excel_buffer,
+                    'filename': f"{base_filename}.xlsx", 
+                    'content_type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    'created_at': datetime.now()
+                }
+                
+                print(f"✅ Excel generado en memoria: ID={file_id[:8]}...")
+                
+                return {
+                    'files': {'excel': file_id},
+                    'links': {'excel': f"/technical-note/reports/download/{file_id}"}
+                }
             
-            return {
-                'files': {'csv_temporal': file_id},
-                'links': {'csv_temporal': f"/technical-note/reports/download/{file_id}"}
-            }
-        
-        print("CSV Temporal no generado")
-        return None
+            print("⚠️ Excel no generado")
+            return None
+            
+        except Exception as e:
+            print(f"❌ Error generando Excel: {e}")
+            return None
     
     def _export_pdf(
         self,
         report_data: Dict[str, Any],
         base_filename: str,
-        include_temporal: bool
+        include_detailed: bool
     ) -> Optional[Dict[str, Any]]:
         """Exporta PDF en memoria y registra"""
-        pdf_buffer = self.pdf_exporter.export_report(report_data, include_temporal)
-        
-        if pdf_buffer:
-            file_id = str(uuid.uuid4())
-            self.temp_files_registry[file_id] = {
-                'content': pdf_buffer,
-                'filename': f"{base_filename}.pdf",
-                'content_type': 'application/pdf',
-                'created_at': datetime.now()
-            }
+        try:
+            print("📄 Generando PDF...")
+            pdf_buffer = self.pdf_exporter.export_report(report_data, include_detailed)
             
-            print(f"PDF generado en memoria: ID={file_id}")
+            if pdf_buffer:
+                file_id = str(uuid.uuid4())
+                self.temp_files_registry[file_id] = {
+                    'content': pdf_buffer,
+                    'filename': f"{base_filename}.pdf",
+                    'content_type': 'application/pdf',
+                    'created_at': datetime.now()
+                }
+                
+                print(f"✅ PDF generado en memoria: ID={file_id[:8]}...")
+                
+                return {
+                    'files': {'pdf': file_id},
+                    'links': {'pdf': f"/technical-note/reports/download/{file_id}"}
+                }
             
-            return {
-                'files': {'pdf': file_id},
-                'links': {'pdf': f"/technical-note/reports/download/{file_id}"}
-            }
-        
-        print("PDF no generado")
-        return None
+            print("⚠️ PDF no generado")
+            return None
+            
+        except Exception as e:
+            print(f"❌ Error generando PDF: {e}")
+            return None
     
     def get_temp_file(self, file_id: str) -> Optional[Dict[str, Any]]:
         """
@@ -172,7 +187,18 @@ class ReportExporter:
         Returns:
             Diccionario con content (BytesIO), filename y content_type
         """
-        return self.temp_files_registry.get(file_id)
+        file_info = self.temp_files_registry.get(file_id)
+        
+        if file_info:
+            # Verificar edad del archivo
+            age = datetime.now() - file_info['created_at']
+            if age > timedelta(hours=1):
+                # Archivo muy antiguo, eliminarlo
+                del self.temp_files_registry[file_id]
+                print(f"🗑️ Archivo expirado eliminado: {file_id[:8]}...")
+                return None
+        
+        return file_info
     
     def cleanup_old_temp_files(self, max_age_minutes: int = 30):
         """
@@ -195,6 +221,35 @@ class ReportExporter:
             
             if to_delete:
                 print(f"🗑️ Limpieza: {len(to_delete)} archivos en memoria eliminados")
+            else:
+                print(f"✓ Limpieza: No hay archivos antiguos (edad máx: {max_age_minutes}min)")
                 
         except Exception as e:
-            print(f"Error en limpieza: {e}")
+            print(f"❌ Error en limpieza: {e}")
+    
+    def get_registry_stats(self) -> Dict[str, Any]:
+        """Obtiene estadísticas del registro de archivos temporales"""
+        total_files = len(self.temp_files_registry)
+        
+        if total_files == 0:
+            return {
+                'total_files': 0,
+                'oldest_file_age_minutes': 0,
+                'newest_file_age_minutes': 0,
+                'total_size_bytes': 0
+            }
+        
+        now = datetime.now()
+        ages = [(now - info['created_at']).total_seconds() / 60 for info in self.temp_files_registry.values()]
+        sizes = [len(info['content'].getvalue()) for info in self.temp_files_registry.values()]
+        
+        return {
+            'total_files': total_files,
+            'oldest_file_age_minutes': max(ages),
+            'newest_file_age_minutes': min(ages),
+            'total_size_bytes': sum(sizes)
+        }
+
+
+# Instancia global del exportador
+report_exporter = ReportExporter()

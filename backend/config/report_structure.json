@@ -1,0 +1,74 @@
+{
+  "columnas_base": [
+    "consulta_procedimiento",
+    "rango_edad",
+    "poblacion_objeto",
+    "proyeccion_tiempo",
+    "frecuencia_uso",
+    "poblacion_susceptible",
+    "meta",
+    "proyeccion_tiempo",
+    "valor_mensual"
+  ],
+  "meses": ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"],
+  "trimestres": {
+    "T1": {
+      "label": "Trimestre 1",
+      "meses": ["enero", "febrero", "marzo"],
+      "col_numerador": "T1_numerador",
+      "col_denominador": "T1_denominador",
+      "col_porcentaje": "T1_porcentaje",
+      "col_semaforo": "T1_semaforo"
+    },
+    "T2": {
+      "label": "Trimestre 2",
+      "meses": ["abril", "mayo", "junio"],
+      "col_numerador": "T2_numerador",
+      "col_denominador": "T2_denominador",
+      "col_porcentaje": "T2_porcentaje",
+      "col_semaforo": "T2_semaforo"
+    },
+    "T3": {
+      "label": "Trimestre 3",
+      "meses": ["julio", "agosto", "septiembre"],
+      "col_numerador": "T3_numerador",
+      "col_denominador": "T3_denominador",
+      "col_porcentaje": "T3_porcentaje",
+      "col_semaforo": "T3_semaforo"
+    },
+    "T4": {
+      "label": "Trimestre 4",
+      "meses": ["octubre", "noviembre", "diciembre"],
+      "col_numerador": "T4_numerador",
+      "col_denominador": "T4_denominador",
+      "col_porcentaje": "T4_porcentaje",
+      "col_semaforo": "T4_semaforo"
+    }
+  },
+  "semestres": {
+    "S1": {
+      "label": "Semestre 1",
+      "trimestres": ["T1", "T2"],
+      "col_numerador": "S1_numerador",
+      "col_denominador": "S1_denominador",
+      "col_porcentaje": "S1_porcentaje",
+      "col_semaforo": "S1_semaforo"
+    },
+    "S2": {
+      "label": "Semestre 2",
+      "trimestres": ["T3", "T4"],
+      "col_numerador": "S2_numerador",
+      "col_denominador": "S2_denominador",
+      "col_porcentaje": "S2_porcentaje",
+      "col_semaforo": "S2_semaforo"
+    }
+  },
+  "anual": {
+    "label": "Anual",
+    "semestres": ["S1", "S2"],
+    "col_numerador": "anual_numerador",
+    "col_denominador": "anual_denominador",
+    "col_porcentaje": "anual_porcentaje",
+    "col_semaforo": "anual_semaforo"
+  }
+}

@@ -1,69 +1,41 @@
-# services/technical_note_services/report_service_aux/corrected_years.py - CORREGIDO
+# services/technical_note_services/report_service_aux/corrected_years.py
+
 from services.duckdb_service.duckdb_service import duckdb_service
 
 class CorrectedYear:
-    def get_age_years_field_corrected(self, data_source: str, corte_fecha: str) -> str:
+    """Usa columna Edad existente en el dataset"""
+    
+    def get_age_years_field_corrected(self, data_source: str) -> str:
         """
-        SOLUCIÓN DEFINITIVA: Usar date_diff() para años (igual que Excel)
+        Retorna el nombre de la columna de edad en años
         
-        Excel: =SIFECHA(fecha_nacimiento; fecha_corte; "y")
-        DuckDB: date_diff('year', fecha_nacimiento, fecha_corte)
+        Args:
+            data_source: Nombre de la tabla
+            corte_fecha: No se usa, pero se mantiene por compatibilidad
+        
+        Returns:
+            String con el nombre de la columna
         """
+        # Buscar la columna "Edad" en el dataset
         try:
-            print("\n===== DEBUG get_age_years_field_corrected =====")
-            print(f"   corte_fecha RECIBIDA: {corte_fecha}")
+            describe_query = f"DESCRIBE SELECT * FROM {data_source}"
+            columns_result = duckdb_service.conn.execute(describe_query).fetchall()
+            all_columns = [row[0] for row in columns_result]
             
-            describe_sql = f"DESCRIBE SELECT * FROM {data_source}"
-            columns_result = duckdb_service.conn.execute(describe_sql).fetchall()
-            column_names = [row[0] for row in columns_result]
+            # Buscar columna "Edad"
+            if "Edad" in all_columns:
+                print(f"      ✓ Columna 'Edad' encontrada en el dataset")
+                return '"Edad"'
             
-            # Buscar columnas existentes
-            edad_candidates = ['edad', 'Edad', 'edad_años', 'age', 'Age']
+            # Alternativas
+            for col in all_columns:
+                if col.lower() == 'edad' or 'edad' in col.lower():
+                    print(f"      ✓ Columna de edad encontrada: {col}")
+                    return f'"{col}"'
             
-            for candidate in edad_candidates:
-                if candidate in column_names:
-                    print(f"   Campo edad años detectado: {candidate}")
-                    return f'TRY_CAST("{candidate}" AS INTEGER)'
-            
-            # Buscar fecha de nacimiento
-            fecha_candidates = ['Fecha Nacimiento', 'fecha_nacimiento', 'FechaNacimiento']
-            
-            fecha_field = None
-            for candidate in fecha_candidates:
-                if candidate in column_names:
-                    fecha_field = candidate
-                    break
-            
-            if fecha_field:
-                # CAMBIO CRÍTICO: Usar date_diff() para años completos
-                calc_field = f"date_diff('year', strptime(\"{fecha_field}\", '%d/%m/%Y'), DATE '{corte_fecha}')"                
-                # Validación
-                try:
-                    test_sql = f"""
-                    SELECT 
-                        "{fecha_field}" as fecha_nac,
-                        {calc_field} as edad_años_calculada,
-                        DATE '{corte_fecha}' as fecha_corte
-                    FROM {data_source}
-                    WHERE "{fecha_field}" IS NOT NULL 
-                    AND TRY_CAST(strptime("{fecha_field}", '%d/%m/%Y') AS DATE) IS NOT NULL
-                    LIMIT 5
-                    """
-                    test_result = duckdb_service.conn.execute(test_sql).fetchall()
-                    
-                    print("Validación OK - Ejemplos:")
-                    for row in test_result:
-                        print(f"      Nac: {row[0]} → Edad: {row[1]} años (corte: {row[2]})")
-                        
-                except Exception as test_error:
-                    print(f"   Error en validación: {test_error}")
-                    raise
-                
-                print("===== FIN DEBUG =====\n")
-                return calc_field
-            
-            raise ValueError("No se encontró campo de edad en años ni fecha de nacimiento")
+            print(f"      ⚠️ No se encontró columna de edad, usando cálculo dinámico")
+            return None
             
         except Exception as e:
-            print(f"   Error: {e}")
-            raise
+            print(f"      ⚠️ Error detectando columna edad: {e}")
+            return None

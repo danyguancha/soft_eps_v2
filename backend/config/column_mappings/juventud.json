@@ -1,0 +1,105 @@
+{
+  "curso_vida": "juventud",
+  "rango_edad": "18 a 28 años",
+  "mappings": [
+    {
+      "columna_usuario": "Consulta por Medicina 18 a 23 años",
+      "keyword": "medicina",
+      "consolidado": {
+        "consulta_procedimiento": "Atencion en salud por medicina General - Juventud",
+        "edad_aplicable": "18 a 23 Años",
+        "edad_NT_RPMS": "18 a 23 Años"
+      }
+    },
+    {
+      "columna_usuario": "Consulta por Medicina 24 a 28 años",
+      "keyword": "medicina",
+      "consolidado": {
+        "consulta_procedimiento": "Atencion en salud por medicina General - Juventud",
+        "edad_aplicable": "24 a 28 Años",
+        "edad_NT_RPMS": "24 a 28 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha más reciente de Consulta Odontológica",
+      "keyword": "odontológica",
+      "consolidado": {
+        "consulta_procedimiento": "Atención en salud bucal por profesional de odontología - Juventud",
+        "edad_aplicable": "18 a 28 Años",
+        "edad_NT_RPMS": "18 a 28 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha más reciente de remoción placa bacteriana",
+      "keyword": "placa",
+      "consolidado": {
+        "consulta_procedimiento": "Profilaxis y Remoción de Placa Bacterina - Juventud",
+        "edad_aplicable": "18 a 28 Años",
+        "edad_NT_RPMS": "18 a 28 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha más reciente de Detartraje",
+      "keyword": "detartraje",
+      "consolidado": {
+        "consulta_procedimiento": "Detartraje supragingival - Juventud",
+        "edad_aplicable": "18 a 28 Años",
+        "edad_NT_RPMS": "18 a 28 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha más reciente de asesoría en planificación familiar",
+      "keyword": "planificación",
+      "consolidado": {
+        "consulta_procedimiento": "Consulta primera vez de Atencion en salud por medicina general en la asesoria en anticoncepcion - Juventud",
+        "edad_aplicable": "18 a 28 Años",
+        "edad_NT_RPMS": "18 a 28 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha de tamizaje para sífilis",
+      "keyword": "sífilis",
+      "consolidado": {
+        "consulta_procedimiento": "Prueba rápida treponémica para sífilis - Juventud",
+        "edad_aplicable": "18 a 28 Años",
+        "edad_NT_RPMS": "18 a 28 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha de tamizaje para VIH",
+      "keyword": "vih",
+      "consolidado": {
+        "consulta_procedimiento": "Prueba rápida para VIH - Juventud",
+        "edad_aplicable": "18 a 28 Años",
+        "edad_NT_RPMS": "18 a 28 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha asesoría pre test VIH",
+      "keyword": "vih",
+      "consolidado": {
+        "consulta_procedimiento": "Asesoria Pre y Pos Test VIH - Juventud",
+        "edad_aplicable": "18 a 28 Años",
+        "edad_NT_RPMS": "18 a 28 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha asesoría post test VIH",
+      "keyword": "vih",
+      "consolidado": {
+        "consulta_procedimiento": "Asesoria Pre y Pos Test VIH - Juventud",
+        "edad_aplicable": "18 a 28 Años",
+        "edad_NT_RPMS": "18 a 28 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha prueba embarazo",
+      "keyword": "embarazo",
+      "consolidado": {
+        "consulta_procedimiento": "Prueba de embarazo - Juventud",
+        "edad_aplicable": "18 a 28 Años",
+        "edad_NT_RPMS": "18 a 28 Años"
+      }
+    }
+  ]
+}

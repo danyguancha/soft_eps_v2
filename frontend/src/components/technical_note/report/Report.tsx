@@ -29,7 +29,6 @@ import type { TemporalReportProps } from './interfaces/ReportInterfaz';
 import { TechnicalNoteService } from '../../../services/TechnicalNoteService';
 import type { InasistentesReportResponse } from '../../../interfaces/IAbsentUser';
 
-import './Report.css';
 
 const { Text } = Typography;
 

@@ -180,6 +180,7 @@ export interface GlobalStatistics {
 
 
 export interface KeywordAgeReport {
+  total_items: number;
   success: boolean;
   filename: string;
   corte_fecha: string;

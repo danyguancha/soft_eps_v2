@@ -1,11 +1,45 @@
-# nt_rpms_extractor.py - Versión simplificada y optimizada
+# extract_nt_rpms_controller.py
 import pandas as pd
 import os
 import re
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional
 from difflib import SequenceMatcher
+from functools import lru_cache
 
+# ========== CACHÉ GLOBAL PARA DATOS GEOGRÁFICOS ==========
+_GEOGRAPHIC_CACHE = {}
 
+@lru_cache(maxsize=1)
+def load_geographic_data_cached(file_path: str) -> pd.DataFrame:
+    """Carga datos geográficos con caché en memoria (se ejecuta solo una vez)"""
+    if file_path in _GEOGRAPHIC_CACHE:
+        print(f"Usando datos geográficos desde caché")
+        return _GEOGRAPHIC_CACHE[file_path].copy()
+    
+    if not os.path.exists(file_path):
+        print(f"Archivo geográfico no encontrado: {file_path}")
+        return pd.DataFrame()
+    
+    try:
+        print(f"📍 Cargando datos geográficos: {file_path}")
+        
+        # OPTIMIZACIÓN: Usar read_only=True y especificar dtype
+        df = pd.read_excel(
+            file_path,
+            engine='openpyxl',
+            dtype=str,
+            na_filter=False  # Desactiva detección de NA (más rápido)
+        )
+        
+        df.columns = df.columns.str.strip()
+        _GEOGRAPHIC_CACHE[file_path] = df
+        print(f"✓ Datos geográficos cargados y almacenados en caché")
+        
+        return df.copy()
+        
+    except Exception as e:
+        print(f"Error cargando datos geográficos: {e}")
+        return pd.DataFrame()
 
 # ========== UTILIDADES BÁSICAS ==========
 def find_target_sheet(sheet_names: List[str]) -> Optional[str]:
@@ -19,16 +53,42 @@ def similarity_score(text1: str, text2: str) -> float:
     """Calcula similitud entre dos textos (0-1)."""
     if not text1 or not text2:
         return 0.0
-    
     text1, text2 = str(text1).lower().strip(), str(text2).lower().strip()
-    
     if text1 == text2:
         return 1.0
     if text1 in text2 or text2 in text1:
         return 0.95
-    
     return SequenceMatcher(None, text1, text2).ratio()
 
+# ========== NORMALIZADOR DE TEXTO ==========
+class TextNormalizer:
+    """Normaliza texto eliminando espacios múltiples y caracteres extraños."""
+    
+    @staticmethod
+    def normalize(text: Optional[str]) -> Optional[str]:
+        """Normaliza texto: elimina espacios múltiples dejando solo uno."""
+        if pd.isna(text) or text is None:
+            return None
+        text_str = str(text).strip()
+        if not text_str or text_str.lower() == 'nan':
+            return None
+        text_str = re.sub(r'\s+', ' ', text_str)
+        text_str = re.sub(r'\s*-\s*', ' - ', text_str)
+        text_str = re.sub(r'\s*\(\s*', '(', text_str)
+        text_str = re.sub(r'\s*\)\s*', ')', text_str)
+        text_str = re.sub(r'\s*,\s*', ', ', text_str)
+        text_str = re.sub(r'\s*\.\s*', '. ', text_str)
+        return text_str.strip()
+    
+    @classmethod
+    def normalize_dataframe(cls, df: pd.DataFrame, columns: List[str]) -> pd.DataFrame:
+        """Normaliza columnas específicas de un DataFrame."""
+        df = df.copy()
+        for col in columns:
+            if col in df.columns:
+                df[col] = df[col].apply(cls.normalize)
+                print(f"      ✓ Columna '{col}' normalizada")
+        return df
 
 # ========== MAPEO DE ENCABEZADOS ==========
 class HeaderMapper:
@@ -55,36 +115,28 @@ class HeaderMapper:
         """Encuentra índice de columna por keywords con mejor score."""
         keywords = cls.KEYWORDS.get(field, [])
         best_idx, best_score = None, 0.5
-        
         for idx, header in enumerate(headers):
             if idx in used or pd.isna(header) or not str(header).strip():
                 continue
-            
             header_str = str(header).strip()
-            
             for keyword in keywords:
                 if header_str.lower() == keyword.lower():
                     return idx
-                
                 score = similarity_score(keyword, header_str)
                 if score > best_score:
                     best_score, best_idx = score, idx
-        
         return best_idx
     
     @classmethod
     def find_all_columns(cls, headers: List[str], fields: List[str]) -> Dict[str, Optional[int]]:
         """Encuentra todas las columnas evitando duplicados."""
         result, used = {}, set()
-        
         for field in fields:
             idx = cls.find_column(headers, field, used)
             result[field] = idx
             if idx is not None:
                 used.add(idx)
-        
         return result
-
 
 # ========== FORMATEO DE DATOS ==========
 class DataFormatter:
@@ -95,8 +147,7 @@ class DataFormatter:
         """Formatea código preservando ceros iniciales."""
         if pd.isna(value):
             return ""
-        
-        str_val = str(value).strip().split('.')[0]  # Remover decimales
+        str_val = str(value).strip().split('.')[0]
         return str_val.zfill(zfill_length) if str_val.isdigit() else str_val
     
     @staticmethod
@@ -113,46 +164,34 @@ class DataFormatter:
     def format_dataframe(cls, df: pd.DataFrame) -> pd.DataFrame:
         """Aplica formateo completo al DataFrame."""
         df = df.copy()
-        
-        # Formatear códigos geográficos
         if 'codigo_departamento' in df.columns:
-            df['codigo_departamento'] = df['codigo_departamento'].apply(
-                lambda x: cls.format_codigo(x, 2)
-            )
-        
+            df['codigo_departamento'] = df['codigo_departamento'].apply(lambda x: cls.format_codigo(x, 2))
         if 'codigo_municipio' in df.columns:
-            df['codigo_municipio'] = df['codigo_municipio'].apply(
-                lambda x: cls.format_codigo(x, 3)
-            )
-        
-        # Formatear columnas numéricas
-        numeric_cols = ['frecuencia_indicada', 'frecuencia_uso', 'frecuencia_ajustada', 'meta']
-        for col in numeric_cols:
+            df['codigo_municipio'] = df['codigo_municipio'].apply(lambda x: cls.format_codigo(x, 3))
+        for col in ['frecuencia_indicada', 'frecuencia_uso', 'frecuencia_ajustada', 'meta']:
             if col in df.columns:
                 df[col] = df[col].apply(lambda x: cls.to_numeric(x, 1))
-        
+        print(f"   🔧 Normalizando campos de texto...")
+        text_cols = ['nombre_ips', 'consultas_procedimientos', 'servicios_habilitados', 
+                     'frecuencia_edad', 'periodo', 'departamento', 'municipio']
+        df = TextNormalizer.normalize_dataframe(df, text_cols)
         return df
 
-
-# ========== ENRIQUECIMIENTO GEOGRÁFICO ==========
+# ========== ENRIQUECIMIENTO GEOGRÁFICO OPTIMIZADO ==========
 class GeographicEnricher:
-    """Enriquece códigos con nombres geográficos."""
+    """Enriquece códigos con nombres geográficos (OPTIMIZADO CON CACHÉ)."""
     
     def __init__(self, departamentos_file: str):
         self.mapping = self._load_mapping(departamentos_file)
     
     def _load_mapping(self, file_path: str) -> pd.DataFrame:
-        """Carga y prepara el mapeo geográfico."""
-        if not os.path.exists(file_path):
-            print(f"Archivo geográfico no encontrado: {file_path}")
+        """Carga y prepara el mapeo geográfico usando caché."""
+        df = load_geographic_data_cached(file_path)  # USA CACHE
+        
+        if df.empty:
             return pd.DataFrame()
         
         try:
-            print(f"📍 Cargando datos geográficos: {file_path}")
-            
-            df = pd.read_excel(file_path, engine='openpyxl', dtype=str)
-            df.columns = df.columns.str.strip()
-            
             # Mapeo flexible de columnas
             col_map = {}
             for col in df.columns:
@@ -181,69 +220,40 @@ class GeographicEnricher:
             mapping['key'] = mapping['codigo_departamento'] + '_' + mapping['codigo_municipio']
             mapping = mapping.drop_duplicates(subset=['key'])
             
-            print(f"✓ Cargados {len(mapping)} registros geográficos únicos")
+            print(f"✓ Preparados {len(mapping)} registros geográficos únicos")
             return mapping
             
         except Exception as e:
-            print(f"Error cargando datos geográficos: {e}")
+            print(f"Error procesando datos geográficos: {e}")
             return pd.DataFrame()
     
     def enrich(self, df: pd.DataFrame) -> pd.DataFrame:
         """Enriquece DataFrame con nombres geográficos."""
         if self.mapping.empty:
-            return df        
+            return df
+        
         df = df.copy()
-        
-        # **MODIFICACIÓN: Convertir 91000 a 91001 antes de la búsqueda**
-        def normalize_municipio_code(codigo_dpto, codigo_mpio):
-            """Normaliza código de municipio: convierte 91000 a 91001"""
-            codigo_dpto_str = str(codigo_dpto).strip().zfill(2)
-            codigo_mpio_str = str(codigo_mpio).strip().zfill(3)
-            
-            # Si el código completo es 91000, cambiarlo a 91001
-            if codigo_dpto_str == '91' and codigo_mpio_str == '000':
-                return '001'
-            
-            return codigo_mpio_str
-        
-        # Aplicar normalización antes de crear la clave
         df['codigo_municipio_normalizado'] = df.apply(
-            lambda row: normalize_municipio_code(
-                row.get('codigo_departamento', ''),
-                row.get('codigo_municipio', '')
-            ),
+            lambda row: '001' if str(row.get('codigo_departamento', '')).strip().zfill(2) == '91' 
+                        and str(row.get('codigo_municipio', '')).strip().zfill(3) == '000'
+                        else str(row.get('codigo_municipio', '')).strip().zfill(3),
             axis=1
         )
         
-        # Crear claves de búsqueda con código normalizado
-        df['key'] = (
-            df['codigo_departamento'].astype(str).str.zfill(2) + '_' +
-            df['codigo_municipio_normalizado'].astype(str).str.zfill(3)
-        )
-        
-        # Actualizar codigo_municipio con el valor normalizado
+        df['key'] = (df['codigo_departamento'].astype(str).str.zfill(2) + '_' +
+                     df['codigo_municipio_normalizado'].astype(str).str.zfill(3))
         df['codigo_municipio'] = df['codigo_municipio_normalizado']
         
-        # Merge con mapping
-        df = df.merge(
-            self.mapping[['key', 'departamento', 'municipio']],
-            on='key',
-            how='left',
-            suffixes=('_codigo', '_nombre')
-        )
+        df = df.merge(self.mapping[['key', 'departamento', 'municipio']], on='key', 
+                      how='left', suffixes=('_codigo', '_nombre'))
         
-        # Renombrar columnas resultantes
         if 'departamento_nombre' in df.columns:
-            df = df.rename(columns={
-                'departamento_codigo': 'codigo_departamento',
-                'departamento_nombre': 'departamento',
-                'municipio_codigo': 'codigo_municipio',
-                'municipio_nombre': 'municipio'
-            })
+            df = df.rename(columns={'departamento_codigo': 'codigo_departamento',
+                                    'departamento_nombre': 'departamento',
+                                    'municipio_codigo': 'codigo_municipio',
+                                    'municipio_nombre': 'municipio'})
         
-        # Limpiar columnas temporales
         df = df.drop(columns=['key', 'codigo_municipio_normalizado'], errors='ignore')
-        
         enriched = df['departamento'].notna().sum()
         print(f"✓ Enriquecidos: {enriched}/{len(df)} registros ({enriched/len(df)*100:.1f}%)")
         
@@ -253,9 +263,7 @@ class GeographicEnricher:
 class SheetExtractor:
     """Extrae datos de hoja Excel con estructura específica."""
     
-    HEADER_ROW_GENERAL = 3  # Fila 3 (índice 2)
-    HEADER_ROW_DATA = 10     # Fila 10 (índice 9)
-    DATA_START_ROW = 11      # Fila 11 (índice 10)
+    HEADER_ROW_GENERAL, HEADER_ROW_DATA, DATA_START_ROW = 3, 10, 11
     
     def __init__(self, file_path: str):
         self.file_path = file_path
@@ -268,18 +276,10 @@ class SheetExtractor:
         if not sheet_name:
             raise ValueError(f"No se encontró hoja válida en {self.file_path}")
         
-        df_raw = pd.read_excel(
-            self.file_path,
-            sheet_name=sheet_name,
-            header=None,
-            engine='openpyxl',
-            dtype=str
-        )
+        df_raw = pd.read_excel(self.file_path, sheet_name=sheet_name, header=None, 
+                               engine='openpyxl', dtype=str)
         
-        # Extraer campos generales (fila 3)
         general_data = self._extract_general_fields(df_raw)
-        
-        # Extraer datos tabulares (desde fila 10)
         data_rows = self._extract_data_rows(df_raw, general_data)
         
         if not data_rows:
@@ -291,10 +291,8 @@ class SheetExtractor:
         """Extrae campos generales de fila 3."""
         row_idx = self.HEADER_ROW_GENERAL - 1
         headers = df.iloc[row_idx].tolist()
-        
         fields = ['departamento', 'municipio', 'nombre_ips', 'proyeccion_tiempo']
         columns = HeaderMapper.find_all_columns(headers, fields)
-        
         value_row_idx = row_idx + 1
         
         return {
@@ -308,20 +306,14 @@ class SheetExtractor:
         """Extrae filas de datos desde fila 10."""
         row_idx = self.HEADER_ROW_DATA - 1
         headers = df.iloc[row_idx].tolist()
-        
-        fields = [
-            'consultas_procedimientos', 'servicios_habilitados', 'frecuencia_edad',
-            'cups', 'frecuencia_indicada', 'periodo', 'frecuencia_uso',
-            'frecuencia_ajustada', 'meta'
-        ]
+        fields = ['consultas_procedimientos', 'servicios_habilitados', 'frecuencia_edad', 'cups',
+                  'frecuencia_indicada', 'periodo', 'frecuencia_uso', 'frecuencia_ajustada', 'meta']
         columns = HeaderMapper.find_all_columns(headers, fields)
         
         data_rows = []
-        start_idx = self.DATA_START_ROW - 1
-        
-        for row_idx in range(start_idx, len(df)):
+        for row_idx in range(self.DATA_START_ROW - 1, len(df)):
             row = {
-                **general,  # Agregar campos generales
+                **general,
                 'consultas_procedimientos': self._get_value(df, row_idx, columns.get('consultas_procedimientos')),
                 'servicios_habilitados': self._get_value(df, row_idx, columns.get('servicios_habilitados')),
                 'frecuencia_edad': self._get_value(df, row_idx, columns.get('frecuencia_edad')),
@@ -332,31 +324,22 @@ class SheetExtractor:
                 'frecuencia_ajustada': self._get_numeric(df, row_idx, columns.get('frecuencia_ajustada')),
                 'meta': self._get_numeric(df, row_idx, columns.get('meta'))
             }
-            
-            # Solo agregar si tiene datos relevantes
             if pd.notna(row['consultas_procedimientos']) or pd.notna(row['cups']):
                 data_rows.append(row)
-        
         return data_rows
     
     def _get_value(self, df: pd.DataFrame, row: int, col: Optional[int]) -> Optional[str]:
         """Obtiene valor como texto."""
         if col is None or row >= len(df) or col >= len(df.columns):
             return None
-        
         value = df.iloc[row, col]
-        
-        if pd.isna(value) or str(value).lower() == 'nan':
-            return None
-        
-        return str(value).strip()
+        return None if pd.isna(value) or str(value).lower() == 'nan' else str(value).strip()
     
     def _get_numeric(self, df: pd.DataFrame, row: int, col: Optional[int]):
         """Obtiene valor numérico."""
         value = self._get_value(df, row, col)
         if value is None:
             return None
-        
         try:
             return float(value)
         except (ValueError, TypeError):
@@ -366,32 +349,14 @@ class SheetExtractor:
 class ExcelProcessor:
     """Orquesta el procesamiento de múltiples archivos."""
     
-    # Orden final de columnas
-    COLUMN_ORDER = [
-        'nombre_archivo',
-        'codigo_departamento',
-        'departamento',
-        'codigo_municipio',
-        'municipio',
-        'nombre_ips',
-        'proyeccion_tiempo',
-        'consultas_procedimientos',
-        'servicios_habilitados',
-        'frecuencia_edad',
-        'cups',
-        'frecuencia_indicada',
-        'periodo',
-        'frecuencia_uso',
-        'frecuencia_ajustada',
-        'meta'
-    ]
+    COLUMN_ORDER = ['nombre_archivo', 'codigo_departamento', 'departamento', 'codigo_municipio',
+                    'municipio', 'nombre_ips', 'proyeccion_tiempo', 'consultas_procedimientos',
+                    'servicios_habilitados', 'frecuencia_edad', 'cups', 'frecuencia_indicada',
+                    'periodo', 'frecuencia_uso', 'frecuencia_ajustada', 'meta']
     
     def __init__(self, folder_path: str, departamentos_file: Optional[str] = None):
         self.folder_path = folder_path
-        self.results = []
-        self.errors = []
-        
-        # Inicializar enriquecedor si hay archivo
+        self.results, self.errors = [], []
         self.enricher = None
         if departamentos_file and os.path.exists(departamentos_file):
             self.enricher = GeographicEnricher(departamentos_file)
@@ -401,26 +366,19 @@ class ExcelProcessor:
         if not os.path.isdir(self.folder_path):
             raise FileNotFoundError(f"Carpeta no existe: {self.folder_path}")
         
-        # Filtrar archivos Excel válidos
-        excel_files = [
-            f for f in os.listdir(self.folder_path)
-            if f.lower().endswith(('.xlsx', '.xls')) and not f.startswith('~$')
-        ]
+        excel_files = [f for f in os.listdir(self.folder_path)
+                       if f.lower().endswith(('.xlsx', '.xls')) and not f.startswith('~$')]
         
         if not excel_files:
             raise ValueError(f"No hay archivos Excel en: {self.folder_path}")
         
-        # Procesar cada archivo
         for filename in sorted(excel_files):
             file_path = os.path.join(self.folder_path, filename)
-            
             try:
                 df = SheetExtractor(file_path).extract()
                 df.insert(0, 'nombre_archivo', filename)
-                
                 self.results.append(df)
                 print(f"✓ {filename} - OK ({len(df)} registros)")
-                
             except Exception as e:
                 self.errors.append((filename, str(e)))
                 print(f"✗ {filename} - Error: {str(e)}")
@@ -428,17 +386,12 @@ class ExcelProcessor:
         if not self.results:
             raise ValueError("No se procesó ningún archivo correctamente")
         
-        # Combinar resultados
         combined = pd.concat(self.results, ignore_index=True)
         
-        # Enriquecer con datos geográficos
         if self.enricher:
             combined = self.enricher.enrich(combined)
         
-        # Formatear datos
         combined = DataFormatter.format_dataframe(combined)
-        
-        # Ordenar columnas según especificación
         combined = self._order_columns(combined)
         
         return combined
@@ -451,55 +404,29 @@ class ExcelProcessor:
     
     def get_summary(self) -> Dict:
         """Retorna resumen del procesamiento."""
-        total_records = sum(len(df) for df in self.results)
-        
         return {
             "archivos_procesados": len(self.results),
             "archivos_con_errores": len(self.errors),
-            "total_registros": total_records,
+            "total_registros": sum(len(df) for df in self.results),
             "errores": self.errors
         }
 
 # ========== FUNCIÓN PRINCIPAL ==========
-def extract_nt_rpms_to_csv(
-    folder_path: str,
-    output_csv_path: str,
-    separator: str = ';',
-    departamentos_file: Optional[str] = None
-) -> Dict:
-    """
-    Extrae información de archivos Excel NT RPMS y genera CSV.
-    
-    Args:
-        folder_path: Carpeta con archivos Excel
-        output_csv_path: Ruta del CSV de salida
-        separator: Separador CSV (default: ';')
-        departamentos_file: Archivo opcional para enriquecimiento geográfico
-    
-    Returns:
-        Diccionario con resultado del procesamiento
-    """
-    # Procesar archivos
+def extract_nt_rpms_to_csv(folder_path: str, output_csv_path: str, separator: str = ';',
+                           departamentos_file: Optional[str] = None) -> Dict:
+    """Extrae información de archivos Excel NT RPMS y genera CSV normalizado."""
     processor = ExcelProcessor(folder_path, departamentos_file)
     combined_df = processor.process_folder()
     
-    # Escribir CSV
     output_dir = os.path.dirname(output_csv_path)
     if output_dir and not os.path.exists(output_dir):
         os.makedirs(output_dir)
     
-    combined_df.to_csv(
-        output_csv_path,
-        index=False,
-        sep=separator,
-        encoding='utf-8-sig',
-        quoting=1
-    )
+    combined_df.to_csv(output_csv_path, index=False, sep=separator, 
+                       encoding='utf-8-sig', quoting=1)
     
     summary = processor.get_summary()
-    if departamentos_file and 'departamento' in combined_df.columns:
-        if combined_df['departamento'].str.len().max() > 2:
-            print(f"   - Enriquecimiento geográfico: ✓ ACTIVO")
+    print(f"   ✓ CSV generado con texto normalizado")
     print(f"{'='*60}\n")
     
     return {

@@ -5,8 +5,9 @@ from typing import Any, Dict, List, Optional
 import json
 import os
 import shutil
+from fastapi.encoders import jsonable_encoder
 import pandas as pd
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from controllers.nt_rpms_controller import nt_rpms_controller
 from controllers.technical_note_controller.technical_note import technical_note_controller
 from models.schemas import NTRPMSProcessRequest
@@ -534,10 +535,11 @@ def get_keyword_age_report(
     ips: Optional[str] = Query(None),
     corte_fecha: str = Query(..., description=mandatory_date)
 ):
-    """Genera reporte con numerador/denominador y fecha de corte dinámica"""
     try:
-        print(f"\n========== GET /report/{filename} ==========")
+        print(f"\n{'='*60}")
+        print(f"GET /report/{filename}")
         print(f"Fecha corte: {corte_fecha}")
+        print(f"{'='*60}")
         
         # Validar formato de fecha
         try:
@@ -564,18 +566,76 @@ def get_keyword_age_report(
             corte_fecha=corte_fecha
         )
         
-        items_count = len(result.get('items', []))
-        global_stats = result.get('global_statistics', {})
+        # 🔍 DEBUGGING CRÍTICO
+        print(f"\n📦 RESULTADO DEL CONTROLLER:")
+        print(f"   Tipo: {type(result)}")
+        print(f"   Es dict: {isinstance(result, dict)}")
         
-        print(f"Reporte completado: {items_count} items")
-        print(f"Cobertura global: {global_stats.get('cobertura_global_porcentaje', 0)}%")
+        if isinstance(result, dict):
+            print(f"   Keys: {list(result.keys())}")
+            print(f"   Tiene 'items': {'items' in result}")
+            print(f"   Tiene 'success': {'success' in result}")
+            
+            if 'items' in result:
+                items = result.get('items', [])
+                print(f"   Items es lista: {isinstance(items, list)}")
+                print(f"   Cantidad items: {len(items) if isinstance(items, list) else 'N/A'}")
+                
+                # Verificar si items se puede serializar
+                try:
+                    json.dumps(items, default=str)
+                    print(f"   ✓ Items es serializable")
+                except Exception as e:
+                    print(f"   ✗ Items NO es serializable: {e}")
         
-        return result
+        # ✓ SOLUCIÓN: Usar jsonable_encoder + JSONResponse
+        try:
+            # Convertir todo a formato JSON-serializable
+            encoded_result = jsonable_encoder(result)
+            
+            print(f"\n📤 ENVIANDO RESPUESTA:")
+            print(f"   Tipo después de encode: {type(encoded_result)}")
+            print(f"   Items en respuesta: {len(encoded_result.get('items', [])) if isinstance(encoded_result, dict) else 'N/A'}")
+            
+            # Retornar con JSONResponse explícito
+            return JSONResponse(
+                content=encoded_result,
+                status_code=200,
+                headers={
+                    "Content-Type": "application/json; charset=utf-8",
+                    "Cache-Control": "no-cache, no-store, must-revalidate"
+                }
+            )
+            
+        except Exception as encode_error:
+            print(f"✗ Error codificando respuesta: {encode_error}")
+            import traceback
+            traceback.print_exc()
+            
+            # Intento alternativo: serializar manualmente
+            try:
+                json_str = json.dumps(result, default=str, ensure_ascii=False)
+                json_data = json.loads(json_str)
+                
+                return JSONResponse(
+                    content=json_data,
+                    status_code=200
+                )
+            except Exception as fallback_error:
+                print(f"✗ Error en fallback: {fallback_error}")
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Error serializando respuesta: {str(fallback_error)}"
+                )
         
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Error en /report/{filename}: {e}")
+        print(f"\n✗ ERROR EN ENDPOINT:")
+        print(f"   Tipo: {type(e)}")
+        print(f"   Mensaje: {str(e)}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 
@@ -796,7 +856,7 @@ async def export_current_report(
             base_filename=filename,
             export_csv=export_options.get('export_csv', True),
             export_pdf=export_options.get('export_pdf', False),
-            include_temporal=export_options.get('include_temporal', True)
+            include_detailed=export_options.get('include_detailed', True)
         )
         
         background_tasks.add_task(report_exporter.cleanup_old_temp_files, 30)

@@ -5,10 +5,13 @@ import json
 from typing import Any, Dict, Optional
 from datetime import datetime
 
+
 from services.technical_note_services.pdf_exporter_aux.canvas_utils import NumberedCanvas
 from services.technical_note_services.pdf_exporter_aux.pdf_config import DEFAULT_CONFIG, DEFAULT_IMAGE_HEIGHT, DEFAULT_IMAGE_WIDTH, DEFAULT_WATERMARK_OPACITY
 from services.technical_note_services.pdf_exporter_aux.pdf_styles import PDFStyleManager
 from services.technical_note_services.pdf_exporter_aux.section_builders import SectionBuilder
+
+
 
 try:
     from reportlab.lib.pagesizes import A4, landscape
@@ -17,8 +20,6 @@ try:
 except ImportError:
     REPORTLAB_AVAILABLE = False
     print("ReportLab no disponible. Instalar con: pip install reportlab")
-
-
 
 
 class PDFExporter:
@@ -70,36 +71,45 @@ class PDFExporter:
     def export_report(
         self,
         report_data: Dict[str, Any],
-        include_temporal: bool = True
+        include_detailed: bool = True
     ) -> Optional[io.BytesIO]:
-        """Exporta reporte completo a PDF"""
+        """
+        Exporta reporte completo a PDF
+        
+        Args:
+            report_data: Datos del reporte con 'items'
+            include_detailed: Incluir análisis detallado por consulta/procedimiento
+            
+        Returns:
+            BytesIO con contenido PDF
+        """
         if not REPORTLAB_AVAILABLE:
             print("ReportLab no disponible")
             return None
         
         try:
             items = report_data.get('items', [])
-            print(f"📄 Generando PDF con análisis: {len(items)} actividades")
+            print(f"📄 Generando PDF: {len(items)} consultas/procedimientos")
             
             pdf_buffer = io.BytesIO()
             doc = self._create_document(pdf_buffer)
-            elements = self._build_report_elements(report_data, include_temporal)
+            elements = self._build_report_elements(report_data, include_detailed)
             
             footer_text = self._get_footer_text()
             doc.build(elements, canvasmaker=self._get_canvas_maker(footer_text))
             
             pdf_buffer.seek(0)
-            print("PDF generado con análisis automático")
+            print("✅ PDF generado correctamente")
             return pdf_buffer
             
         except Exception as e:
-            print(f"Error generando PDF: {e}")
+            print(f"❌ Error generando PDF: {e}")
             import traceback
             traceback.print_exc()
             return None
     
     def _create_document(self, pdf_buffer: io.BytesIO) -> SimpleDocTemplate:
-        """Crea documento PDF"""
+        """Crea documento PDF con configuración landscape"""
         return SimpleDocTemplate(
             pdf_buffer,
             pagesize=landscape(A4),
@@ -109,34 +119,36 @@ class PDFExporter:
             bottomMargin=30
         )
     
-    def _build_report_elements(self, report_data: Dict[str, Any], include_temporal: bool) -> list:
+    def _build_report_elements(
+        self,
+        report_data: Dict[str, Any],
+        include_detailed: bool
+    ) -> list:
         """Construye todos los elementos del reporte"""
         elements = []
+        items = report_data.get('items', [])
         
-        # Secciones principales
+        # Encabezado y metadata
         self.section_builder.build_header(elements, self.pdf_config)
         self.section_builder.build_metadata(elements, self.pdf_config, report_data)
+        
+        # Metodología e interpretación
         self.section_builder.build_methodology(elements, self.pdf_config)
         self.section_builder.build_interpretation_guide(elements, self.pdf_config)
         
-        # Estadísticas y análisis
-        global_stats = report_data.get('global_statistics', {})
-        self.section_builder.build_global_statistics(elements, global_stats)
-        self.section_builder.build_global_analysis(elements, global_stats)
+        # Estadísticas globales y análisis
+        self.section_builder.build_global_statistics(elements, items)
+        self.section_builder.build_global_analysis(elements, items)
         
-        # Actividades
-        items = report_data.get('items', [])
+        # Tabla resumen de consultas/procedimientos
         self.section_builder.build_activities_section(elements, items)
         self.section_builder.build_activities_analysis(elements, items)
         
-        # Análisis temporal
-        if include_temporal:
-            temporal_data = report_data.get('temporal_data', {})
-            if temporal_data:
-                elements.append(PageBreak())
-                self.section_builder.build_temporal_section(elements, temporal_data)
+        # Análisis detallado por consulta/procedimiento
+        if include_detailed and items:
+            self.section_builder.build_detailed_activities(elements, items)
         
-        # Footer
+        # Footer con información de contacto
         if self.pdf_config.get('contact_info'):
             self.section_builder.build_footer_info(elements, self.pdf_config)
         

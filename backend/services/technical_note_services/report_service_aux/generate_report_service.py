@@ -1,361 +1,69 @@
-from datetime import datetime
+# services/technical_note_services/report_service_aux/generate_report_service.py
 from typing import Dict, Any, List, Optional
+import pandas as pd
 from services.duckdb_service.duckdb_service import duckdb_service
 from services.keyword_age_report import ColumnKeywordReportService, KeywordRule
-from services.technical_note_services.report_service_aux.analysis_breakdown_temporal import AnalysisBreakdownTemporal
-from services.technical_note_services.report_service_aux.analysis_numerador_denominador import AnalysisNumeratorDenominator
-from services.technical_note_services.report_service_aux.identity_document import IdentityDocument
-from services.technical_note_services.report_service_aux.report_empty import ReportEmpty
-from services.technical_note_services.report_service_aux.report_exporter import ReportExporter
+from utils.config_loader import config_loader
+from services.technical_note_services.date_range_calculator import date_range_calculator
+from services.technical_note_services.nt_rpms_integration import NTRPMSIntegration
 from services.technical_note_services.report_service_aux.semaforization import Semaforization
-from services.technical_note_services.report_service_aux.statistics import Statistics
-from utils.keywords_NT import KeywordRule
-from .analysis_temporal import AnalysisTemporal
-from .analysis_vaccination import AnalysisVaccination
-
-
-def log(msg):
-    with open('generate_report.txt', 'a', encoding='utf-8') as f:
-        f.write(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - {msg}\n")
 
 
 class GenerateReport:
     def __init__(self):
-        self.exporter = ReportExporter()
+        self.config = config_loader
+        self.semaforo = Semaforization()
+        self.nt_rpms_integration = None
     
-    def _build_age_filter(self, age_range_obj, corte_fecha: str) -> str:
-        """Construye filtro de edad unificado para meses o años"""
-        min_age = getattr(age_range_obj, 'min_age', 1)
-        max_age = getattr(age_range_obj, 'max_age', min_age)
-        unit = getattr(age_range_obj, 'unit', 'months')
-        
-        base_calc = f"""(
-            (date_part('year', DATE '{corte_fecha}') - date_part('year', strptime("Fecha Nacimiento", '%d/%m/%Y'))) * 12
-            + (date_part('month', DATE '{corte_fecha}') - date_part('month', strptime("Fecha Nacimiento", '%d/%m/%Y')))
-            + CASE 
-                WHEN date_part('day', strptime("Fecha Nacimiento", '%d/%m/%Y')) <= date_part('day', DATE '{corte_fecha}')
-                THEN 0 ELSE -1
-            END
-        )"""
-        
-        if unit.lower() == 'months':
-            return f"{base_calc} BETWEEN {min_age} AND {max_age}"
-        else:
-            min_months = min_age * 12
-            max_months = (max_age + 1) * 12 - 1
-            return f"{base_calc} BETWEEN {min_months} AND {max_months}"
+    def set_nt_rpms_path(self, parquet_path: str):
+        """Configura integración con NT RPMS"""
+        if parquet_path:
+            self.nt_rpms_integration = NTRPMSIntegration(parquet_path)
     
-    def _build_geo_filter(self, departamento: str, municipio: str, ips: str) -> str:
-        """Construye filtro geográfico SQL"""
-        conditions = []
-        filters = [
-            (departamento, '"Departamento"'),
-            (municipio, '"Municipio"'),
-            (ips, '"Nombre IPS"')
-        ]
-        
-        for value, field in filters:
-            if value and value != 'Todos':
-                conditions.append(f"{field} = '{value}'")
-        
-        return " AND ".join(conditions) if conditions else "1=1"
-    
-    def _parse_date_flexible(self, date_field: str) -> str:
-        """Parseo flexible de fechas en múltiples formatos"""
-        return f"""
-        CASE
-            WHEN {date_field} ~ '^[0-9]{{1,2}}/[0-9]{{1,2}}/[0-9]{{4}}$' 
-                THEN TRY_CAST(strptime({date_field}, '%d/%m/%Y') AS DATE)
-            WHEN {date_field} ~ '^[0-9]{{4}}-[0-9]{{1,2}}-[0-9]{{1,2}}$'
-                THEN TRY_CAST(strptime({date_field}, '%Y-%m-%d') AS DATE)
-            WHEN {date_field} ~ '^[0-9]{{1,2}}-[0-9]{{1,2}}-[0-9]{{4}}$'
-                THEN TRY_CAST(strptime({date_field}, '%d-%m-%Y') AS DATE)
-            WHEN {date_field} ~ '^[0-9]{{1,2}}/[0-9]{{1,2}}/[0-9]{{4}}$' AND 
-                 CAST(split_part({date_field}, '/', 1) AS INTEGER) > 12
-                THEN TRY_CAST(strptime({date_field}, '%m/%d/%Y') AS DATE)
-            ELSE NULL
-        END
-        """
-    
-    def _calculate_denominator_unified(
-        self, data_source: str, age_range_obj, document_field: str, geo_filter: str,
-        corte_fecha: str, column_name: str, anio: int, mes: int = None
-    ) -> int:
-        """Calcula denominador unificado para mensual o anual según parámetros"""
-        try:
-            period = f"{anio}/{mes:02d}" if mes else f"anio {anio}"
-            log(f"\n   Calculando DENOMINADOR {period}")
-            log(f"      Rango edad: {age_range_obj.min_age}-{age_range_obj.max_age} {age_range_obj.unit}")
-            log(f"      Fecha corte: {corte_fecha}")
-            
-            edad_filter = self._build_age_filter(age_range_obj, corte_fecha)
-            column_safe = f'"{column_name}"' if not column_name.startswith('"') else column_name
-            date_parser = self._parse_date_flexible(column_safe)
-            
-            # Condición temporal: si mes existe, filtrar por mes; si no, filtrar por año
-            temporal_condition = f"""
-                date_part('year', {date_parser}) = {anio}
-                {f"AND date_part('month', {date_parser}) = {mes}" if mes else ""}
-            """
-            
-            log(f"      Filtro: Consultas en {period} O vacías")
-            
-            sql = f"""
-            SELECT COUNT({document_field}) as denominador
-            FROM {data_source}
-            WHERE 
-                ({edad_filter})
-                AND "Fecha Nacimiento" IS NOT NULL 
-                AND TRIM("Fecha Nacimiento") != ''
-                AND TRY_CAST(strptime("Fecha Nacimiento", '%d/%m/%Y') AS DATE) IS NOT NULL
-                AND strptime("Fecha Nacimiento", '%d/%m/%Y') <= DATE '{corte_fecha}'
-                AND {document_field} IS NOT NULL
-                AND TRIM({document_field}) != ''
-                AND {geo_filter}
-                AND (
-                    (
-                        {column_safe} IS NOT NULL 
-                        AND TRIM(CAST({column_safe} AS VARCHAR)) != ''
-                        AND TRIM(CAST({column_safe} AS VARCHAR)) NOT IN ('NULL', 'null', 'None', 'none', 'NaN', 'nan', 'N/A', 'n/a', '-', 'No')
-                        AND ({date_parser}) IS NOT NULL
-                        AND {temporal_condition}
-                    )
-                    OR
-                    (
-                        {column_safe} IS NULL 
-                        OR TRIM(CAST({column_safe} AS VARCHAR)) = ''
-                        OR TRIM(CAST({column_safe} AS VARCHAR)) IN ('NULL', 'null', 'None', 'none', 'NaN', 'nan', 'N/A', 'n/a', '-', 'No')
-                    )
-                )
-            """
-            
-            log(f"      SQL (primeros 300 chars): {sql[:300]}...")
-            
-            result = duckdb_service.conn.execute(sql).fetchone()
-            denominador = int(result[0]) if result and result[0] else 0
-            
-            log(f"      DENOMINADOR {period}: {denominador:,}")
-            
-            if denominador > 0:
-                self._log_debug_breakdown(data_source, edad_filter, document_field, geo_filter, 
-                                         column_safe, date_parser, temporal_condition, mes, anio)
-            
-            if denominador == 0:
-                log("Denominador = 0, usando fallback")
-                denominador = self._calculate_fallback_denominator(
-                    data_source, age_range_obj, document_field, geo_filter, corte_fecha
-                )
-            
-            return denominador
-            
-        except Exception as e:
-            log(f"         Error calculando denominador: {e}")
-            import traceback
-            traceback.print_exc()
-            return 0
-    
-    def _log_debug_breakdown(self, data_source: str, edad_filter: str, document_field: str,
-                            geo_filter: str, column_safe: str, date_parser: str, 
-                            temporal_condition: str, mes: int = None, anio: int = None):
-        """Log debug del desglose con/sin consulta"""
-        debug_sql = f"""
-        SELECT 
-            COUNT(CASE 
-                WHEN {column_safe} IS NOT NULL 
-                    AND TRIM(CAST({column_safe} AS VARCHAR)) != ''
-                    AND TRIM(CAST({column_safe} AS VARCHAR)) NOT IN ('NULL', 'null', 'None', 'none', 'NaN', 'nan', 'N/A', 'n/a', '-', 'No')
-                    AND ({date_parser}) IS NOT NULL
-                    AND {temporal_condition}
-                THEN 1 END) as con_consulta,
-            COUNT(CASE 
-                WHEN {column_safe} IS NULL 
-                    OR TRIM(CAST({column_safe} AS VARCHAR)) = ''
-                    OR TRIM(CAST({column_safe} AS VARCHAR)) IN ('NULL', 'null', 'None', 'none', 'NaN', 'nan', 'N/A', 'n/a', '-', 'No')
-                THEN 1 END) as sin_consulta
-        FROM {data_source}
-        WHERE 
-            ({edad_filter})
-            AND "Fecha Nacimiento" IS NOT NULL 
-            AND {document_field} IS NOT NULL
-            AND {geo_filter}
-            AND (
-                (
-                    {column_safe} IS NOT NULL 
-                    AND TRIM(CAST({column_safe} AS VARCHAR)) != ''
-                    AND TRIM(CAST({column_safe} AS VARCHAR)) NOT IN ('NULL', 'null', 'None', 'none', 'NaN', 'nan', 'N/A', 'n/a', '-', 'No')
-                    AND ({date_parser}) IS NOT NULL
-                    AND {temporal_condition}
-                )
-                OR
-                (
-                    {column_safe} IS NULL 
-                    OR TRIM(CAST({column_safe} AS VARCHAR)) = ''
-                    OR TRIM(CAST({column_safe} AS VARCHAR)) IN ('NULL', 'null', 'None', 'none', 'NaN', 'nan', 'N/A', 'n/a', '-', 'No')
-                )
-            )
-        """
-        
-        try:
-            debug_result = duckdb_service.conn.execute(debug_sql).fetchone()
-            con_consulta = debug_result[0] if debug_result else 0
-            sin_consulta = debug_result[1] if debug_result else 0
-            period = f"{mes}/{anio}" if mes else str(anio)
-            log(f"Con consulta en {period}: {con_consulta:,}")
-            log(f"Sin consulta: {sin_consulta:,}")
-            log(f"TOTAL: {con_consulta + sin_consulta:,}")
-        except Exception as debug_error:
-            log(f"         Error en debug: {debug_error}")
-    
-    def _calculate_fallback_denominator(
-        self, data_source: str, age_range_obj, document_field: str, geo_filter: str, corte_fecha: str
-    ) -> int:
-        """Calcula denominador fallback basado en población total en rango"""
-        try:
-            min_age = getattr(age_range_obj, 'min_age', 1)
-            max_age = getattr(age_range_obj, 'max_age', min_age)
-            unit = getattr(age_range_obj, 'unit', 'months')
-            
-            edad_meses_field = f"date_diff('month', strptime(\"Fecha Nacimiento\", '%d/%m/%Y'), DATE '{corte_fecha}')"
-            
-            if unit.lower() == 'months':
-                edad_filter = f"{edad_meses_field} >= {min_age} AND {edad_meses_field} <= {max_age}"
-            else:
-                min_months = min_age * 12
-                max_months = max_age * 12 + 11
-                edad_filter = f"{edad_meses_field} >= {min_months} AND {edad_meses_field} <= {max_months}"
-            
-            sql = f"""
-            SELECT COUNT(DISTINCT {document_field}) 
-            FROM {data_source}
-            WHERE 
-                "Fecha Nacimiento" IS NOT NULL 
-                AND TRY_CAST(strptime("Fecha Nacimiento", '%d/%m/%Y') AS DATE) IS NOT NULL
-                AND strptime("Fecha Nacimiento", '%d/%m/%Y') <= DATE '{corte_fecha}'
-                AND {document_field} IS NOT NULL
-                AND {document_field} != ''
-                AND {geo_filter}
-                AND ({edad_filter})
-            """
-            
-            result = duckdb_service.conn.execute(sql).fetchone()
-            total_poblacion = int(result[0]) if result and result[0] else 0
-            
-            log(f"         Fallback: {total_poblacion:,} personas en el rango")
-            return total_poblacion if total_poblacion > 0 else 1
-            
-        except Exception as e:
-            log(f"         Error en fallback: {e}")
-            return 1
-    
-    def _process_semaforizacion_data(self, data: dict, numerador: int, denominador: int) -> int:
-        """Procesa semaforización para cualquier tipo de dato (mes/año/item)"""
-        porcentaje = round((numerador / denominador) * 100, 2) if denominador > 0 else 0.0
-        semaforizacion = Semaforization().calculate_semaforizacion(numerador, porcentaje)
-        
-        data['denominador'] = denominador
-        data['den'] = denominador
-        data['num'] = numerador
-        data['pct'] = porcentaje
-        data['cobertura_porcentaje'] = porcentaje
-        data['semaforizacion'] = semaforizacion['estado']
-        data['color'] = semaforizacion['color']
-        data['color_name'] = semaforizacion['color_name']
-        data['descripcion'] = semaforizacion['descripcion']
-        
-        return numerador
-    
-    def _merge_temporal_breakdown_into_combined(self, temporal_breakdown_data: dict, 
-                                                combined_temporal_data: dict):
-        """Merge temporal breakdown data into combined temporal data"""
-        combined_temporal_data.clear()
-        
-        for key, breakdown_data in temporal_breakdown_data.items():
-            combined_temporal_data[key] = {
-                "column": breakdown_data.get('column'),
-                "keyword": breakdown_data.get('keyword'),
-                "age_range": breakdown_data.get('age_range'),
-                "years": {}
-            }
-            
-            for year_str, year_data in breakdown_data.get('temporal_breakdown', {}).items():
-                combined_temporal_data[key]["years"][year_str] = {
-                    "year": int(year_str),
-                    "total": year_data.get("total_numerador", 0),
-                    "months": {
-                        month_name: {
-                            "month": month_data.get("month"),
-                            "month_name": month_name,
-                            "count": month_data.get("numerador", 0),
-                            "numerador": month_data.get("numerador", 0),
-                            "denominador": month_data.get("denominador", 0),
-                            "cobertura_porcentaje": month_data.get("cobertura_porcentaje", 0.0)
-                        }
-                        for month_name, month_data in year_data.get("months", {}).items()
-                    }
-                }
-    
-    def _calculate_temporal_denominators_for_data(self, combined_temporal_data: dict, data_source: str,
-                                                age_extractor, document_field: str, geo_filter: str,
-                                                corte_fecha: str):
-        """Calcula denominadores y semaforización para datos temporales"""
-        for data in combined_temporal_data.values():
-            if 'years' not in data:
-                continue
-            
-            age_range_obj = age_extractor.extract_age_range(data.get('column', ''))
-            if not age_range_obj:
-                continue
-            
-            for year_str, year_data in data['years'].items():
-                total_numerador_anual = 0
-                
-                # Procesar cada mes
-                for month_data in year_data.get('months', {}).values():
-                    mes_num = month_data.get('month')
-                    if not mes_num:
-                        continue
-                    
-                    denominador_mensual = self._calculate_denominator_unified(
-                        data_source, age_range_obj, document_field, geo_filter,
-                        corte_fecha, data.get('column', ''), int(year_str), mes_num
-                    )
-                    
-                    total_numerador_anual += self._process_semaforizacion_data(
-                        month_data, month_data.get('numerador', 0), denominador_mensual
-                    )
-                
-                # Calcular denominador anual
-                denominador_anual = self._calculate_denominator_unified(
-                    data_source, age_range_obj, document_field, geo_filter,
-                    corte_fecha, data.get('column', ''), int(year_str)
-                )
-                
-                self._process_semaforizacion_data(year_data, total_numerador_anual, denominador_anual)
-                year_data['total'] = total_numerador_anual
-                year_data['total_num'] = total_numerador_anual
-                year_data['total_den'] = denominador_anual
-    
-    def generate_keyword_age_report(
+    def generate_keyword_age_report_extended(
         self,
         age_extractor,
         data_source: str,
         filename: str,
         keywords: Optional[List[str]] = None,
-        min_count: int = 0,
-        include_temporal: bool = True,
         geographic_filters: Optional[Dict[str, Optional[str]]] = None,
         corte_fecha: str = None,
+        nt_rpms_parquet_path: Optional[str] = None
     ) -> Dict[str, Any]:
-        """Genera reporte de keywords y edad con análisis completo"""
+        """
+        Genera reporte extendido con análisis mensual, trimestral, semestral y anual
+        
+        Args:
+            age_extractor: Extractor de rangos de edad
+            data_source: Fuente de datos del usuario
+            filename: Nombre del archivo
+            keywords: Palabras clave para búsqueda
+            geographic_filters: Filtros geográficos
+            corte_fecha: Fecha de corte (YYYY-MM-DD)
+            nt_rpms_parquet_path: Ruta al Parquet NT RPMS consolidado
+        
+        Returns:
+            Reporte completo con análisis extendido
+        """
         try:
             # Validar fecha de corte
             if not corte_fecha:
-                raise ValueError("El parámetro 'corte_fecha' es obligatorio y debe venir desde el frontend")
+                raise ValueError("El parámetro 'corte_fecha' es obligatorio")
             
-            log(f"\n{'='*60}")
-            log("GENERANDO REPORTE CON FECHA DINÁMICA")
-            log(f"{'='*60}")
-            log(f"Fecha de corte RECIBIDA: {corte_fecha}")
+            # Validar data_source
+            if not data_source or data_source is None or data_source == Ellipsis:
+                raise ValueError("data_source inválido: debe ser cadena con nombre o expresión válida")
+            
+            print(f"\n{'='*80}")
+            print("GENERANDO REPORTE EXTENDIDO CON ANÁLISIS MENSUAL/TRIMESTRAL/SEMESTRAL/ANUAL")
+            print(f"{'='*80}")
+            print(f"Filename: {filename}")  # 🔥 AGREGADO
+            print(f"Fecha de corte: {corte_fecha}")
+            
+            # Configurar NT RPMS si se proporciona
+            if nt_rpms_parquet_path:
+                self.set_nt_rpms_path(nt_rpms_parquet_path)
+                print(f"✓ NT RPMS configurado: {nt_rpms_parquet_path}")
             
             # Extraer filtros geográficos
             geographic_filters = geographic_filters or {}
@@ -363,85 +71,516 @@ class GenerateReport:
             municipio = geographic_filters.get('municipio')
             ips = geographic_filters.get('ips')
             
-            # Ejecutar matching
+            # Validar filtros geográficos
+            if not departamento and not municipio and not ips:
+                print("⚠️ Sin filtros geográficos - valores en 0")
+                return self._build_empty_report(filename, keywords, geographic_filters, corte_fecha)
+            
+            # Obtener meses hasta fecha de corte
+            meses_reporte = date_range_calculator.get_months_until_cutoff(corte_fecha)
+            print(f"✓ Meses a reportar: {len(meses_reporte)}")
+            
+            # Matching de columnas
             columns = self._get_table_columns(data_source)
             rules = [KeywordRule(name=k, synonyms=(k.lower(),)) for k in keywords] if keywords else None
             service = ColumnKeywordReportService(keywords=rules)
             matches = service.match_columns(columns)
             
             if not matches:
-                return ReportEmpty().build_empty_report(filename, keywords, geographic_filters)
+                print("✗ No se encontraron columnas coincidentes")
+                return self._build_empty_report(filename, keywords, geographic_filters, corte_fecha)
             
-            # Análisis numerador/denominador
-            items_with_numerator_denominator = AnalysisNumeratorDenominator().execute_numerator_denominator_analysis(
-                data_source, matches, departamento, municipio, ips, min_count, corte_fecha, age_extractor
-            )
+            print(f"✓ {len(matches)} columnas encontradas")
             
-            # Análisis temporales
-            temporal_breakdown_data = {}
-            combined_temporal_data = {}
+            # Generar reporte por cada match
+            report_rows = []
             
-            if include_temporal and items_with_numerator_denominator:
-                temporal_breakdown_data = AnalysisBreakdownTemporal().execute_temporal_breakdown_analysis(
-                    data_source, matches, departamento, municipio, ips, corte_fecha, age_extractor
-                )
+            for match in matches:
+                column_name = match['column']
+                keyword = match['keyword']
                 
-                temporal_data = AnalysisTemporal().execute_temporal_analysis(
-                    service, data_source, matches, departamento, municipio, ips
-                )
+                print(f"\n--- Procesando: {column_name} ---")
                 
-                vaccination_states_data = AnalysisVaccination().execute_vaccination_states_analysis(
-                    data_source, matches, departamento, municipio, ips
-                )
+                # Extraer rango de edad
+                age_range_obj = age_extractor.extract_age_range(column_name)
                 
-                combined_temporal_data.update(temporal_data)
-                combined_temporal_data.update(vaccination_states_data)
+                if not age_range_obj:
+                    print(f"⚠️ No se pudo extraer rango de edad")
+                    continue
+                
+                # 🔥 MODIFICADO: Buscar mapping con filename para carga dinámica
+                mapping = self.config.find_mapping(column_name, filename=filename)
+                
+                # Procesar según tipo de edad
+                if age_range_obj.unit == 'months':
+                    row_data = self._process_month_age_range(
+                        data_source, column_name, age_range_obj, meses_reporte,
+                        departamento, municipio, ips, mapping, filename  # 🔥 AGREGADO filename
+                    )
+                elif age_range_obj.unit == 'years':
+                    row_data = self._process_year_age_range(
+                        data_source, column_name, age_range_obj, meses_reporte,
+                        departamento, municipio, ips, mapping, filename  # 🔥 AGREGADO filename
+                    )
+                else:
+                    continue
+                
+                if row_data:
+                    report_rows.append(row_data)
             
-            # Calcular totales y estadísticas
-            totals_by_keyword = AnalysisNumeratorDenominator().calculate_totals_with_numerator_denominator(
-                items_with_numerator_denominator
-            )
-            global_statistics = Statistics().calculate_global_statistics(items_with_numerator_denominator)
+            # Convertir a DataFrame
+            if not report_rows:
+                return self._build_empty_report(filename, keywords, geographic_filters, corte_fecha)
             
-            # Merge temporal breakdown
-            self._merge_temporal_breakdown_into_combined(temporal_breakdown_data, combined_temporal_data)
+            df = pd.DataFrame(report_rows)
             
-            # Setup campos de documento y edad
-            try:
-                document_field = IdentityDocument().get_document_field(data_source)
-            except Exception as e:
-                log(f"⚠️ Usando campo documento por defecto: {e}")
-                document_field = '"Nro Identificación"'
+            # Calcular agregados trimestrales, semestrales y anuales
+            df = self._calculate_aggregates(df, meses_reporte)
             
-            # Construir filtro geográfico
-            geo_filter = self._build_geo_filter(departamento, municipio, ips)
-            
-            # Calcular denominadores temporales y semaforización
-            self._calculate_temporal_denominators_for_data(
-                combined_temporal_data, data_source, age_extractor, document_field,
-                geo_filter, corte_fecha
-            )
-            
-            # Aplicar semaforización a items
-            for item in items_with_numerator_denominator:
-                self._process_semaforizacion_data(
-                    item, item.get('numerador', 0), item.get('denominador', 0)
-                )
-            
-            log(f"Reporte generado exitosamente con fecha: {corte_fecha}")
-            
-            # Construir reporte final
-            return AnalysisNumeratorDenominator().build_success_report_with_numerator_denominator(
-                filename, keywords, geographic_filters, items_with_numerator_denominator,
-                totals_by_keyword, combined_temporal_data, data_source, global_statistics,
-                corte_fecha, temporal_breakdown_data
-            )
+            # Construir resultado final
+            return {
+                "success": True,
+                "filename": filename,
+                "corte_fecha": corte_fecha,
+                "keywords": keywords or [],
+                "geographic_filters": geographic_filters,
+                "meses_reportados": len(meses_reporte),
+                "data": df.to_dict('records'),
+                "columns": df.columns.tolist(),
+                "total_rows": len(df),
+                "metodo": "EXTENDED_MONTHLY_QUARTERLY_SEMESTER_ANNUAL_DYNAMIC",  # 🔥 MODIFICADO
+                "engine": "DuckDB_JSON_Config_Dynamic_v8"  # 🔥 MODIFICADO
+            }
             
         except Exception as e:
-            log(f"Error generando reporte: {e}")
+            print(f"✗ Error generando reporte extendido: {e}")
             import traceback
             traceback.print_exc()
             raise ValueError(f"Error en generación de reporte: {e}")
+    
+    def _process_month_age_range(
+        self,
+        data_source: str,
+        column_name: str,
+        age_range_obj,
+        meses_reporte: List[tuple],
+        departamento: str,
+        municipio: str,
+        ips: str,
+        mapping: Dict[str, Any],
+        filename: str  # 🔥 NUEVO PARÁMETRO
+    ) -> Dict[str, Any]:
+        """Procesa rango de edad en meses"""
+        try:
+            min_meses = age_range_obj.min_age
+            max_meses = age_range_obj.max_age
+            
+            # Inicializar fila de resultado
+            row = {
+                "consulta_procedimiento": column_name,
+                "rango_edad": age_range_obj.get_description(),
+                "tipo_edad": "meses"
+            }
+            
+            # Calcular población objetivo (primer mes del reporte)
+            mes_ref, anio_ref, _ = meses_reporte[0]
+            fecha_inicio, fecha_fin = date_range_calculator.calculate_birth_range_for_month_age(
+                mes_ref, anio_ref, min_meses, max_meses
+            )
+            
+            poblacion_objeto = self._count_population(
+                data_source, fecha_inicio, fecha_fin, departamento, municipio, ips
+            )
+            
+            row["poblacion_objeto"] = poblacion_objeto
+            
+            # Obtener datos de NT RPMS usando edad_NT_RPMS
+            if self.nt_rpms_integration and mapping:
+                consolidado_info = mapping.get("consolidado", {})
+                consulta_ntrpms = consolidado_info.get("consulta_procedimiento")
+                edad_NT_RPMS = consolidado_info.get("edad_NT_RPMS")
+                
+                print(f"🔍 Buscando en NT_RPMS:")
+                print(f"   Consulta: {consulta_ntrpms}")
+                print(f"   Edad NT_RPMS: {edad_NT_RPMS}")
+                print(f"   Filename: {filename}")  # 🔥 AGREGADO
+                
+                # Pasar edad_NT_RPMS al buscar
+                nt_data = self.nt_rpms_integration.find_matching_row(
+                    consulta_ntrpms, 
+                    edad_NT_RPMS,
+                    departamento, 
+                    municipio, 
+                    ips
+                )
+                
+                if nt_data:
+                    print(f"✅ Datos encontrados en NT_RPMS")
+                    metrics = self.nt_rpms_integration.calculate_extended_metrics(
+                        poblacion_objeto, nt_data
+                    )
+                    row.update(metrics)
+                    denominador_mensual = metrics["valor_mensual"]
+                else:
+                    print(f"⚠️ No se encontraron datos en NT_RPMS")
+                    denominador_mensual = 0
+                    row.update({
+                        "poblacion_susceptible": 0,
+                        "valor_mensual": 0,
+                        "meta": 0,
+                        "frecuencia_uso": 0,
+                        "proyeccion_tiempo": 12
+                    })
+            else:
+                denominador_mensual = 0
+                row.update({
+                    "poblacion_susceptible": 0,
+                    "valor_mensual": 0,
+                    "meta": 0,
+                    "frecuencia_uso": 0,
+                    "proyeccion_tiempo": 12
+                })
+            
+            # Calcular numerador por cada mes
+            for mes_num, anio_num, nombre_mes in meses_reporte:
+                fecha_inicio, fecha_fin = date_range_calculator.calculate_birth_range_for_month_age(
+                    mes_num, anio_num, min_meses, max_meses
+                )
+                
+                numerador = self._count_with_activity(
+                    data_source, column_name, fecha_inicio, fecha_fin,
+                    departamento, municipio, ips, mes_num, anio_num
+                )
+                
+                row[f"{nombre_mes}_numerador"] = numerador
+                row[f"{nombre_mes}_denominador"] = denominador_mensual
+                
+                # Calcular porcentaje y semáforo
+                if denominador_mensual > 0:
+                    porcentaje = (numerador / denominador_mensual) * 100
+                else:
+                    porcentaje = 0
+                
+                semaforo = self.semaforo.calculate_semaforizacion(numerador, porcentaje)
+                
+                row[f"{nombre_mes}_porcentaje"] = round(porcentaje, 2)
+                row[f"{nombre_mes}_semaforo"] = semaforo["estado"]
+            
+            return row
+            
+        except Exception as e:
+            print(f"Error procesando meses: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
+    
+    def _process_year_age_range(
+        self,
+        data_source: str,
+        column_name: str,
+        age_range_obj,
+        meses_reporte: List[tuple],
+        departamento: str,
+        municipio: str,
+        ips: str,
+        mapping: Dict[str, Any],
+        filename: str  # 🔥 NUEVO PARÁMETRO
+    ) -> Dict[str, Any]:
+        """Procesa rango de edad en años"""
+        try:
+            edad_anios = age_range_obj.min_age
+            
+            # Inicializar fila
+            row = {
+                "consulta_procedimiento": column_name,
+                "rango_edad": age_range_obj.get_description(),
+                "tipo_edad": "anios"
+            }
+            
+            # Calcular población objetivo (suma de todos los meses con esa edad)
+            poblacion_objetivo_total = 0
+            
+            for mes_num, anio_num, _ in meses_reporte:
+                fecha_inicio, fecha_fin = date_range_calculator.calculate_birth_range_for_year_age(
+                    mes_num, anio_num, edad_anios
+                )
+                poblacion = self._count_population(
+                    data_source, fecha_inicio, fecha_fin, departamento, municipio, ips
+                )
+                poblacion_objetivo_total += poblacion
+            
+            row["poblacion_objeto"] = poblacion_objetivo_total
+            
+            # Obtener datos NT RPMS usando edad_NT_RPMS
+            if self.nt_rpms_integration and mapping:
+                consolidado_info = mapping.get("consolidado", {})
+                consulta_ntrpms = consolidado_info.get("consulta_procedimiento")
+                edad_NT_RPMS = consolidado_info.get("edad_NT_RPMS")
+                
+                print(f"🔍 Buscando en NT_RPMS:")
+                print(f"   Consulta: {consulta_ntrpms}")
+                print(f"   Edad NT_RPMS: {edad_NT_RPMS}")
+                print(f"   Filename: {filename}")  # 🔥 AGREGADO
+                
+                # Pasar edad_NT_RPMS al buscar
+                nt_data = self.nt_rpms_integration.find_matching_row(
+                    consulta_ntrpms,
+                    edad_NT_RPMS,
+                    departamento,
+                    municipio,
+                    ips
+                )
+                
+                if nt_data:
+                    print(f"✅ Datos encontrados en NT_RPMS")
+                    metrics = self.nt_rpms_integration.calculate_extended_metrics(
+                        poblacion_objetivo_total, nt_data
+                    )
+                    row.update(metrics)
+                    denominador_mensual = metrics["valor_mensual"]
+                else:
+                    print(f"⚠️ No se encontraron datos en NT_RPMS")
+                    denominador_mensual = 0
+                    row.update({
+                        "poblacion_susceptible": 0,
+                        "valor_mensual": 0,
+                        "meta": 0,
+                        "frecuencia_uso": 0,
+                        "proyeccion_tiempo": 12
+                    })
+            else:
+                denominador_mensual = 0
+                row.update({
+                    "poblacion_susceptible": 0,
+                    "valor_mensual": 0,
+                    "meta": 0,
+                    "frecuencia_uso": 0,
+                    "proyeccion_tiempo": 12
+                })
+            
+            # Calcular por mes
+            for mes_num, anio_num, nombre_mes in meses_reporte:
+                fecha_inicio, fecha_fin = date_range_calculator.calculate_birth_range_for_year_age(
+                    mes_num, anio_num, edad_anios
+                )
+                
+                numerador = self._count_with_activity(
+                    data_source, column_name, fecha_inicio, fecha_fin,
+                    departamento, municipio, ips, mes_num, anio_num
+                )
+                
+                row[f"{nombre_mes}_numerador"] = numerador
+                row[f"{nombre_mes}_denominador"] = denominador_mensual
+                
+                if denominador_mensual > 0:
+                    porcentaje = (numerador / denominador_mensual) * 100
+                else:
+                    porcentaje = 0
+                
+                semaforo = self.semaforo.calculate_semaforizacion(numerador, porcentaje)
+                
+                row[f"{nombre_mes}_porcentaje"] = round(porcentaje, 2)
+                row[f"{nombre_mes}_semaforo"] = semaforo["estado"]
+            
+            return row
+            
+        except Exception as e:
+            print(f"Error procesando años: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
+
+        
+    def _count_population(
+        self,
+        data_source: str,
+        fecha_inicio: str,
+        fecha_fin: str,
+        departamento: str,
+        municipio: str,
+        ips: str
+    ) -> int:
+        """Cuenta población en rango de fechas de nacimiento"""
+        try:
+            geo_filters = []
+            if departamento:
+                geo_filters.append(f'"Departamento" = \'{departamento}\'')
+            if municipio:
+                geo_filters.append(f'"Municipio" = \'{municipio}\'')
+            if ips:
+                geo_filters.append(f'"Nombre IPS" = \'{ips}\'')
+            
+            geo_filter = " AND ".join(geo_filters) if geo_filters else "1=1"
+            
+            sql = f"""
+            SELECT COUNT(DISTINCT "Nro Identificación")
+            FROM {data_source}
+            WHERE {date_range_calculator.generate_sql_date_filter(fecha_inicio, fecha_fin)}
+            AND "Fecha Nacimiento" IS NOT NULL
+            AND "Nro Identificación" IS NOT NULL
+            AND {geo_filter}
+            """
+            
+            result = duckdb_service.conn.execute(sql).fetchone()
+            return int(result[0]) if result[0] else 0
+            
+        except Exception as e:
+            print(f"Error contando población: {e}")
+            return 0
+    
+    def _count_with_activity(
+        self,
+        data_source: str,
+        column_name: str,
+        fecha_inicio: str,
+        fecha_fin: str,
+        departamento: str,
+        municipio: str,
+        ips: str,
+        mes: int,
+        anio: int
+    ) -> int:
+        """Cuenta registros con actividad en período"""
+        try:
+            column_safe = f'"{column_name}"' if not column_name.startswith('"') else column_name
+            
+            geo_filters = []
+            if departamento:
+                geo_filters.append(f'"Departamento" = \'{departamento}\'')
+            if municipio:
+                geo_filters.append(f'"Municipio" = \'{municipio}\'')
+            if ips:
+                geo_filters.append(f'"Nombre IPS" = \'{ips}\'')
+            
+            geo_filter = " AND ".join(geo_filters) if geo_filters else "1=1"
+            
+            sql = f"""
+            SELECT COUNT(DISTINCT "Nro Identificación")
+            FROM {data_source}
+            WHERE {date_range_calculator.generate_sql_date_filter(fecha_inicio, fecha_fin)}
+            AND "Fecha Nacimiento" IS NOT NULL
+            AND "Nro Identificación" IS NOT NULL
+            AND {column_safe} IS NOT NULL
+            AND TRIM(CAST({column_safe} AS VARCHAR)) != ''
+            AND TRIM(CAST({column_safe} AS VARCHAR)) NOT IN ('NULL', 'null', 'None', 'none', 'NaN', 'nan', 'N/A', 'n/a', '-', 'No')
+            AND {geo_filter}
+            """
+            
+            result = duckdb_service.conn.execute(sql).fetchone()
+            return int(result[0]) if result[0] else 0
+            
+        except Exception as e:
+            print(f"Error contando con actividad: {e}")
+            return 0
+    
+    def _calculate_aggregates(self, df: pd.DataFrame, meses_reporte: List[tuple]) -> pd.DataFrame:
+        """Calcula agregados trimestrales, semestrales y anuales"""
+        try:
+            structure = self.config.get_report_structure()
+            
+            # Trimestres
+            for trim_key, trim_config in structure["trimestres"].items():
+                meses = trim_config["meses"]
+                
+                # Filtrar solo meses que están en el reporte
+                meses_disponibles = [m for m in meses if any(nombre == m for _, _, nombre in meses_reporte)]
+                
+                if meses_disponibles:
+                    # Sumar numeradores
+                    num_cols = [f"{m}_numerador" for m in meses_disponibles if f"{m}_numerador" in df.columns]
+                    if num_cols:
+                        df[trim_config["col_numerador"]] = df[num_cols].sum(axis=1)
+                    
+                    # Sumar denominadores
+                    den_cols = [f"{m}_denominador" for m in meses_disponibles if f"{m}_denominador" in df.columns]
+                    if den_cols:
+                        df[trim_config["col_denominador"]] = df[den_cols].sum(axis=1)
+                    
+                    # Calcular porcentaje
+                    if trim_config["col_numerador"] in df.columns and trim_config["col_denominador"] in df.columns:
+                        df[trim_config["col_porcentaje"]] = df.apply(
+                            lambda row: round((row[trim_config["col_numerador"]] / row[trim_config["col_denominador"]] * 100), 2)
+                            if row[trim_config["col_denominador"]] > 0 else 0,
+                            axis=1
+                        )
+                        
+                        # Semaforización
+                        df[trim_config["col_semaforo"]] = df.apply(
+                            lambda row: self.semaforo.calculate_semaforizacion(
+                                row[trim_config["col_numerador"]],
+                                row[trim_config["col_porcentaje"]]
+                            )["estado"],
+                            axis=1
+                        )
+            
+            # Semestres
+            for sem_key, sem_config in structure["semestres"].items():
+                trimestres = sem_config["trimestres"]
+                
+                # Sumar numeradores de trimestres
+                num_cols = [structure["trimestres"][t]["col_numerador"] for t in trimestres 
+                           if structure["trimestres"][t]["col_numerador"] in df.columns]
+                if num_cols:
+                    df[sem_config["col_numerador"]] = df[num_cols].sum(axis=1)
+                
+                # Sumar denominadores
+                den_cols = [structure["trimestres"][t]["col_denominador"] for t in trimestres 
+                           if structure["trimestres"][t]["col_denominador"] in df.columns]
+                if den_cols:
+                    df[sem_config["col_denominador"]] = df[den_cols].sum(axis=1)
+                
+                # Calcular porcentaje y semáforo
+                if sem_config["col_numerador"] in df.columns and sem_config["col_denominador"] in df.columns:
+                    df[sem_config["col_porcentaje"]] = df.apply(
+                        lambda row: round((row[sem_config["col_numerador"]] / row[sem_config["col_denominador"]] * 100), 2)
+                        if row[sem_config["col_denominador"]] > 0 else 0,
+                        axis=1
+                    )
+                    
+                    df[sem_config["col_semaforo"]] = df.apply(
+                        lambda row: self.semaforo.calculate_semaforizacion(
+                            row[sem_config["col_numerador"]],
+                            row[sem_config["col_porcentaje"]]
+                        )["estado"],
+                        axis=1
+                    )
+            
+            # Anual
+            anual_config = structure["anual"]
+            semestres = anual_config["semestres"]
+            
+            # Sumar semestres
+            num_cols = [structure["semestres"][s]["col_numerador"] for s in semestres 
+                       if structure["semestres"][s]["col_numerador"] in df.columns]
+            if num_cols:
+                df[anual_config["col_numerador"]] = df[num_cols].sum(axis=1)
+            
+            den_cols = [structure["semestres"][s]["col_denominador"] for s in semestres 
+                       if structure["semestres"][s]["col_denominador"] in df.columns]
+            if den_cols:
+                df[anual_config["col_denominador"]] = df[den_cols].sum(axis=1)
+            
+            # Calcular porcentaje y semáforo anual
+            if anual_config["col_numerador"] in df.columns and anual_config["col_denominador"] in df.columns:
+                df[anual_config["col_porcentaje"]] = df.apply(
+                    lambda row: round((row[anual_config["col_numerador"]] / row[anual_config["col_denominador"]] * 100), 2)
+                    if row[anual_config["col_denominador"]] > 0 else 0,
+                    axis=1
+                )
+                
+                df[anual_config["col_semaforo"]] = df.apply(
+                    lambda row: self.semaforo.calculate_semaforizacion(
+                        row[anual_config["col_numerador"]],
+                        row[anual_config["col_porcentaje"]]
+                    )["estado"],
+                    axis=1
+                )
+            
+            return df
+            
+        except Exception as e:
+            print(f"Error calculando agregados: {e}")
+            return df
     
     def _get_table_columns(self, data_source: str) -> List[str]:
         """Obtiene columnas de la tabla"""
@@ -450,74 +589,26 @@ class GenerateReport:
             columns_result = duckdb_service.conn.execute(describe_sql).fetchall()
             return [row[0] for row in columns_result]
         except Exception as e:
-            log(f"Error obteniendo columnas: {e}")
+            print(f"Error obteniendo columnas: {e}")
             raise ValueError("Error analizando estructura de datos")
     
-    def export_report_csv(self, report_data: Dict[str, Any], output_path: str, include_temporal: bool = True) -> str:
-        """Exporta reporte a CSV"""
-        try:
-            return self.exporter.export_to_csv(report_data, output_path, include_temporal)
-        except Exception as e:
-            log(f"Error exportando CSV: {e}")
-            raise ValueError(f"Error en exportación CSV: {e}")
-    
-    def export_report_pdf(self, report_data: Dict[str, Any], output_path: str, include_temporal: bool = True) -> str:
-        """Exporta reporte a PDF"""
-        try:
-            return self.exporter.export_to_pdf(report_data, output_path, include_temporal)
-        except Exception as e:
-            log(f"Error exportando PDF: {e}")
-            raise ValueError(f"Error en exportación PDF: {e}")
-    
-    def export_report_all_formats(self, report_data: Dict[str, Any], base_filename: str, 
-                                 export_csv: bool = True, export_pdf: bool = True, 
-                                 include_temporal: bool = True) -> Dict[str, str]:
-        """Exporta reporte en todos los formatos"""
-        try:
-            return self.exporter.export_report(report_data, base_filename, export_csv, export_pdf, include_temporal)
-        except Exception as e:
-            log(f"Error exportando reporte: {e}")
-            raise ValueError(f"Error en exportación: {e}")
-    
-    def generate_and_export_report(
+    def _build_empty_report(
         self,
-        age_extractor, data_source: str, filename: str,
-        keywords: Optional[List[str]] = None, min_count: int = 0,
-        include_temporal: bool = True, geographic_filters: Optional[Dict[str, Optional[str]]] = None,
-        corte_fecha: str = None,
-        export_csv: bool = True,
-        export_pdf: bool = True, base_export_path: str = "exports/reporte"
+        filename: str,
+        keywords: List[str],
+        geographic_filters: Dict[str, Optional[str]],
+        corte_fecha: str
     ) -> Dict[str, Any]:
-        """Genera y exporta reporte completo"""
-        try:
-            if not corte_fecha:
-                raise ValueError("El parámetro 'corte_fecha' es obligatorio")
-            
-            log(f"Generando reporte con fecha: {corte_fecha}")
-            report_data = self.generate_keyword_age_report(
-                age_extractor, data_source, filename, keywords, min_count,
-                include_temporal, geographic_filters, corte_fecha
-            )
-            
-            exported_files = {}
-            if export_csv or export_pdf:
-                log("Exportando archivos...")
-                exported_files = self.export_report_all_formats(
-                    report_data, base_export_path, export_csv, export_pdf, include_temporal
-                )
-            
-            log(f"Proceso completado con fecha: {corte_fecha}")
-            
-            return {
-                "report": report_data,
-                "exported_files": exported_files,
-                "success": True,
-                "message": "Reporte generado y exportado exitosamente",
-                "corte_fecha_usado": corte_fecha
-            }
-            
-        except Exception as e:
-            log(f"Error en proceso completo: {e}")
-            import traceback
-            traceback.print_exc()
-            raise ValueError(f"Error en generación y exportación: {e}")
+        """Construye reporte vacío"""
+        return {
+            "success": True,
+            "filename": filename,
+            "corte_fecha": corte_fecha,
+            "keywords": keywords or [],
+            "geographic_filters": geographic_filters,
+            "data": [],
+            "columns": [],
+            "total_rows": 0,
+            "message": "Sin filtros geográficos o sin datos coincidentes",
+            "metodo": "EMPTY_REPORT"
+        }

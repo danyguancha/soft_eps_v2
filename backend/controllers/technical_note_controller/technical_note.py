@@ -4,18 +4,19 @@ import shutil
 from typing import Dict, Any, List, Optional
 from fastapi import HTTPException
 
-
 from controllers.technical_note_controller.absent_user_controller import AbsentUserController
 from controllers.technical_note_controller.age_controller import AgeController
 from services.duckdb_service.duckdb_service import duckdb_service
 from services.aux_duckdb_services.query_pagination import QueryPagination
-
 
 from services.technical_note_services.data_source_service import DataSourceService
 from services.technical_note_services.geographic_service import GeographicService
 from services.technical_note_services.report_service import ReportService
 from utils.technical_note_utils.file_utils import generate_file_key, is_supported_file
 from utils.technical_note_utils.display_utils import generate_display_name, generate_description
+
+# 🔥 IMPORTAR CONFIG LOADER
+from utils.config_loader import config_loader
 
 
 class TechnicalNoteController:
@@ -25,6 +26,15 @@ class TechnicalNoteController:
         self.storage_manager = storage_manager
         self.static_files_dir = "technical_note"
         self.loaded_technical_files = {}
+        
+        # 🔥 DEFINIR EXTRACT_INFO_DIR
+        self.base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+        self.extract_info_dir = os.path.join(self.base_dir, 'extract_info_nt')
+        
+        print(f"✓ TechnicalNoteController inicializado")
+        print(f"  - Base dir: {self.base_dir}")
+        print(f"  - Static files dir: {self.static_files_dir}")
+        print(f"  - Extract info dir: {self.extract_info_dir}")
         
         # NUEVO: Limpiar archivos precargados al iniciar
         self._clear_technical_note_directory()
@@ -148,50 +158,221 @@ class TechnicalNoteController:
         departamento: Optional[str] = None,
         municipio: Optional[str] = None,
         ips: Optional[str] = None,
-        corte_fecha: str = None  # SIN VALOR POR DEFECTO - DEBE VENIR DEL FRONTEND
+        corte_fecha: str = None,
     ) -> Dict[str, Any]:
-        """Genera reporte CON NUMERADOR/DENOMINADOR usando FECHA DINÁMICA"""
         try:
-            # VALIDAR QUE VENGA LA FECHA
             if not corte_fecha:
                 raise HTTPException(
                     status_code=400,
-                    detail="El parámetro 'corte_fecha' es obligatorio y debe venir desde el frontend"
-                )            
-            file_key = generate_file_key(filename)
-            
-            try:
-                data_source = self.data_source_service.ensure_data_source_available(filename, file_key)
-            except Exception as data_error:
-                raise HTTPException(
-                    status_code=500, 
-                    detail=f"No se pudo acceder a los datos de {filename}: {str(data_error)}"
+                    detail="El parámetro 'corte_fecha' es obligatorio"
                 )
             
+            print(f"\n{'='*60}")
+            print(f"CONTROLLER: get_keyword_age_report")
+            print(f"{'='*60}")
+            print(f"Filename: {filename}")
+            print(f"Fecha corte: {corte_fecha}")
+            
+            # Obtener data_source del archivo principal
+            file_key = generate_file_key(filename)
+            data_source = self.data_source_service.ensure_data_source_available(filename, file_key)
+            print(f"✓ Data source principal obtenido")
+            
+            # 🔥 BUSCAR PARQUET DE NT_RPMS EN parquet_cache/
+            nt_rpms_data_source = self._find_nt_rpms_parquet()
+            
+            # Construir filtros geográficos
             geographic_filters = {
                 'departamento': departamento,
                 'municipio': municipio,
                 'ips': ips
             }
             
-            # PASAR FECHA DINÁMICA AL SERVICIO
-            return self.report_service.generate_keyword_age_report(
+            print(f"Filtros geográficos:")
+            print(f"  - Departamento: {departamento}")
+            print(f"  - Municipio: {municipio}")
+            print(f"  - IPS: {ips}")
+            
+            # 🔥 MODIFICADO: Obtener mapeo dinámico según filename
+            column_mappings = config_loader.get_column_mappings(filename=filename)
+            print(f"✓ Mapeo de columnas cargado: {len(column_mappings.get('mappings', []))} mapeos")
+            
+            # Generar reporte
+            report_result = self.report_service.generate_keyword_age_report(
                 data_source=data_source,
                 filename=filename,
                 keywords=keywords,
-                min_count=min_count,
-                include_temporal=include_temporal,
                 geographic_filters=geographic_filters,
-                corte_fecha=corte_fecha  # FECHA DINÁMICA
+                corte_fecha=corte_fecha,
+                nt_rpms_data_source=nt_rpms_data_source,
+                column_mappings=column_mappings
             )
+            
+            # ADAPTER: Convertir 'data' → 'items'
+            if isinstance(report_result, dict):
+                print(f"\n🔍 ADAPTER - Resultado del servicio:")
+                print(f"   Keys originales: {list(report_result.keys())}")
+                
+                if 'data' in report_result and 'items' not in report_result:
+                    report_result['items'] = report_result.pop('data')
+                    print(f"   🔧 Renombrado: 'data' → 'items'")
+                
+                if 'items' in report_result:
+                    items_list = report_result['items']
+                    items_count = len(items_list) if isinstance(items_list, list) else 0
+                    
+                    if 'total_items' not in report_result:
+                        report_result['total_items'] = items_count
+                    
+                    if 'total_rows' not in report_result:
+                        report_result['total_rows'] = items_count
+                    
+                    print(f"   ✓ Items count: {items_count}")
+                    
+                    # Calcular estadísticas globales
+                    if items_count > 0:
+                        try:
+                            if 'global_statistics' not in report_result:
+                                total_numerador = 0
+                                total_denominador = 0
+                                
+                                for item in items_list:
+                                    if isinstance(item, dict):
+                                        total_numerador += item.get('numerador', 0)
+                                        total_denominador += item.get('denominador', 0)
+                                
+                                cobertura_global = 0
+                                if total_denominador > 0:
+                                    cobertura_global = (total_numerador / total_denominador) * 100
+                                
+                                report_result['global_statistics'] = {
+                                    'total_numerador_global': total_numerador,
+                                    'total_denominador_global': total_denominador,
+                                    'cobertura_global_porcentaje': round(cobertura_global, 2),
+                                    'poblacion_total': total_denominador
+                                }
+                                
+                                print(f"   ✓ Estadísticas globales calculadas:")
+                                print(f"      - Numerador: {total_numerador}")
+                                print(f"      - Denominador: {total_denominador}")
+                                print(f"      - Cobertura: {cobertura_global:.2f}%")
+                        
+                        except Exception as stats_error:
+                            print(f"   ⚠️ No se pudieron calcular estadísticas: {stats_error}")
+                
+                print(f"\n   📦 Keys finales: {list(report_result.keys())}")
+            
+            # Agregar metadatos
+            report_result['metodo'] = 'numerador_denominador_rpms_dinamico'  # 🔥 MODIFICADO
+            report_result['version'] = '3.1'  # 🔥 MODIFICADO
+            
+            # Logging final
+            total_items = report_result.get('total_items', 0)
+            global_stats = report_result.get('global_statistics', {})
+            
+            print(f"{'='*60}")
+            print(f"REPORTE GENERADO:")
+            print(f"  - Items totales: {total_items}")
+            print(f"  - Cobertura global: {global_stats.get('cobertura_global_porcentaje', 0):.2f}%")
+            print(f"  - Fecha corte: {corte_fecha}")
+            print(f"  - Usa datos RPMS: {'Sí' if nt_rpms_data_source else 'No'}")
+            print(f"  - Mappings: Dinámicos por curso de vida")  # 🔥 NUEVO
+            print(f"{'='*60}\n")
+            
+            return report_result
             
         except HTTPException:
             raise
         except Exception as e:
-            print(f"Error completo en reporte: {e}")
+            print(f"\n✗ ERROR CRÍTICO EN CONTROLLER:")
+            print(f"   Tipo: {type(e)}")
+            print(f"   Mensaje: {str(e)}")
             import traceback
             traceback.print_exc()
             raise HTTPException(status_code=500, detail=f"Error generando reporte: {str(e)}")
+
+
+    def _find_nt_rpms_parquet(self) -> Optional[str]:
+        """
+        Busca el archivo Parquet de NT_RPMS en parquet_cache/
+        
+        Returns:
+            Data source en formato read_parquet('path') o None si no se encuentra
+        """
+        try:
+            parquet_cache_dir = os.path.join(self.base_dir, 'parquet_cache')
+            
+            print(f"🔍 Buscando NT_RPMS Parquet en: {parquet_cache_dir}")
+            
+            if not os.path.exists(parquet_cache_dir):
+                print(f"⚠️ Directorio parquet_cache no existe")
+                return None
+            
+            # Buscar archivos Parquet
+            parquet_files = [
+                f for f in os.listdir(parquet_cache_dir)
+                if f.lower().endswith('.parquet')
+            ]
+            
+            print(f"📂 Archivos Parquet encontrados: {len(parquet_files)}")
+            
+            # Buscar el archivo que contenga las columnas de NT_RPMS
+            nt_rpms_candidates = []
+            
+            for pq_file in parquet_files:
+                full_path = os.path.join(parquet_cache_dir, pq_file)
+                
+                try:
+                    # Verificar columnas del parquet
+                    columns_query = f"SELECT column_name FROM (DESCRIBE SELECT * FROM read_parquet('{full_path}'))"
+                    columns = [row[0] for row in duckdb_service.conn.execute(columns_query).fetchall()]
+                    
+                    # Verificar si tiene las columnas características de NT_RPMS
+                    required_cols = ['consultas_procedimientos', 'frecuencia_edad', 'proyeccion_tiempo', 'meta']
+                    if all(col in columns for col in required_cols):
+                        file_stat = os.stat(full_path)
+                        nt_rpms_candidates.append({
+                            'path': full_path,
+                            'name': pq_file,
+                            'modified': file_stat.st_mtime,
+                            'size': file_stat.st_size
+                        })
+                        print(f"   ✓ Candidato NT_RPMS: {pq_file}")
+                        
+                except Exception as e:
+                    # Si falla, no es un Parquet válido o no es el que buscamos
+                    continue
+            
+            if not nt_rpms_candidates:
+                print(f"⚠️ No se encontró Parquet de NT_RPMS")
+                print(f"   Ejecuta primero el proceso de extracción NT_RPMS")
+                return None
+            
+            # Usar el más reciente
+            most_recent = max(nt_rpms_candidates, key=lambda x: x['modified'])
+            parquet_path = most_recent['path']
+            
+            print(f"✅ NT_RPMS Parquet encontrado: {most_recent['name']}")
+            print(f"   Tamaño: {most_recent['size'] / (1024*1024):.2f} MB")
+            
+            # Verificar que sea legible
+            try:
+                count_query = f"SELECT COUNT(*) FROM read_parquet('{parquet_path}')"
+                row_count = duckdb_service.conn.execute(count_query).fetchone()[0]
+                print(f"   Registros: {row_count:,}")
+                
+                return f"read_parquet('{parquet_path}')"
+                
+            except Exception as e:
+                print(f"✗ Error verificando Parquet: {e}")
+                return None
+                
+        except Exception as e:
+            print(f"✗ Error buscando NT_RPMS Parquet: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
+
     
     def get_technical_file_metadata(self, filename: str) -> Dict[str, Any]:
         """Obtiene metadatos usando servicios especializados"""
@@ -417,7 +598,7 @@ class TechnicalNoteController:
     def get_inasistentes_report(
         self, filename: str, selected_months: List[int],
         selected_years: List[int] = None, selected_keywords: List[str] = None,
-        corte_fecha: str = None,  # SIN VALOR POR DEFECTO
+        corte_fecha: str = None,
         departamento: Optional[str] = None, municipio: Optional[str] = None,
         ips: Optional[str] = None
     ):
@@ -430,7 +611,7 @@ class TechnicalNoteController:
     def export_inasistentes_csv(
         self, filename: str, selected_months: List[int],
         selected_years: List[int] = None, selected_keywords: List[str] = None,
-        corte_fecha: str = None,  # SIN VALOR POR DEFECTO
+        corte_fecha: str = None,
         departamento: Optional[str] = None,
         municipio: Optional[str] = None, ips: Optional[str] = None
     ):

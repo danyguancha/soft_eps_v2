@@ -1,12 +1,13 @@
 # services/technical_note_services/report_service_aux/section_builders.py
 from typing import List, Dict, Any
 from datetime import datetime
-from reportlab.platypus import Paragraph, Spacer
+from reportlab.platypus import Paragraph, Spacer, PageBreak
 from reportlab.lib.units import inch
 
 from services.technical_note_services.pdf_exporter_aux.analysis_generator import AnalysisGenerator
 from services.technical_note_services.pdf_exporter_aux.pdf_styles import PDFStyleManager
 from services.technical_note_services.pdf_exporter_aux.table_builders import TableBuilder
+
 
 
 
@@ -21,7 +22,7 @@ class SectionBuilder:
     def build_header(self, elements: List, pdf_config: Dict[str, Any]):
         """Construye encabezado del reporte"""
         elements.append(Paragraph(
-            "Reporte de Evaluación de Nota Técnica",
+            "Reporte de Evaluación - Nota Técnica",
             self.style_manager.get_main_title_style()
         ))
         
@@ -43,10 +44,12 @@ class SectionBuilder:
         """Construye sección de metadatos"""
         filename = report_data.get('filename', 'Reporte')
         corte_fecha = report_data.get('corte_fecha', 'No especificada')
+        meses_reportados = report_data.get('meses_reportados', 12)
         
         metadata_text = (
             f"<b>Archivo:</b> {filename} | "
             f"<b>Fecha corte:</b> {corte_fecha} | "
+            f"<b>Meses reportados:</b> {meses_reportados} | "
             f"<b>Generado:</b> {datetime.now().strftime('%d/%m/%Y %H:%M')}"
         )
         
@@ -74,13 +77,16 @@ class SectionBuilder:
             pdf_config['methodology'],
             self.style_manager.get_section_text_style()
         ))
+        elements.append(Spacer(1, 0.15 * inch))
     
     def build_interpretation_guide(self, elements: List, pdf_config: Dict[str, Any]):
         """Construye guía de interpretación"""
-        interpretation = pdf_config.get('interpretation', {})
-        
-        if not interpretation:
-            return
+        interpretation = pdf_config.get('interpretation', {
+            'Óptimo': 'Cobertura ≥ 95%',
+            'Aceptable': 'Cobertura 80% - 94%',
+            'Deficiente': 'Cobertura 60% - 79%',
+            'Muy Deficiente': 'Cobertura < 60%'
+        })
         
         elements.append(Paragraph(
             "🚦 Guía de Interpretación - Semaforización",
@@ -92,9 +98,9 @@ class SectionBuilder:
         elements.append(table)
         elements.append(Spacer(1, 0.2 * inch))
     
-    def build_global_statistics(self, elements: List, global_stats: Dict[str, Any]):
+    def build_global_statistics(self, elements: List, items: List[Dict[str, Any]]):
         """Construye sección de estadísticas globales"""
-        if not global_stats:
+        if not items:
             return
         
         elements.append(Paragraph(
@@ -102,13 +108,13 @@ class SectionBuilder:
             self.style_manager.get_header_style()
         ))
         
-        table = self.table_builder.build_statistics_table(global_stats)
+        table = self.table_builder.build_statistics_table(items)
         elements.append(table)
         elements.append(Spacer(1, 0.15 * inch))
     
-    def build_global_analysis(self, elements: List, global_stats: Dict[str, Any]):
+    def build_global_analysis(self, elements: List, items: List[Dict[str, Any]]):
         """Construye análisis global"""
-        if not global_stats:
+        if not items:
             return
         
         elements.append(Paragraph(
@@ -116,7 +122,7 @@ class SectionBuilder:
             self.style_manager.get_analysis_title_style()
         ))
         
-        analysis_texts = self.analysis_generator.generate_global_analysis(global_stats)
+        analysis_texts = self.analysis_generator.generate_global_analysis(items)
         
         for text in analysis_texts:
             elements.append(Paragraph(text, self.style_manager.get_analysis_text_style()))
@@ -124,9 +130,12 @@ class SectionBuilder:
         elements.append(Spacer(1, 0.2 * inch))
     
     def build_activities_section(self, elements: List, items: List[Dict[str, Any]]):
-        """Construye sección de actividades"""
+        """Construye sección de consultas/procedimientos"""
+        if not items:
+            return
+            
         elements.append(Paragraph(
-            "📋 Detalle de Actividades Evaluadas",
+            "📋 Detalle de Consultas/Procedimientos",
             self.style_manager.get_header_style()
         ))
         
@@ -135,12 +144,12 @@ class SectionBuilder:
         elements.append(Spacer(1, 0.15 * inch))
     
     def build_activities_analysis(self, elements: List, items: List[Dict[str, Any]]):
-        """Construye análisis de actividades"""
+        """Construye análisis de consultas/procedimientos"""
         if not items:
             return
         
         elements.append(Paragraph(
-            "💡 Análisis de Actividades",
+            "💡 Análisis de Consultas/Procedimientos",
             self.style_manager.get_analysis_title_style()
         ))
         
@@ -151,37 +160,40 @@ class SectionBuilder:
         
         elements.append(Spacer(1, 0.2 * inch))
     
-    def build_temporal_section(self, elements: List, temporal_data: Dict[str, Any]):
-        """Construye sección temporal"""
-        if not temporal_data:
+    def build_detailed_activities(self, elements: List, items: List[Dict[str, Any]]):
+        """Construye detalle de cada consulta/procedimiento con análisis temporal"""
+        if not items:
             return
         
+        elements.append(PageBreak())
         elements.append(Paragraph(
-            "📅 Análisis Temporal por Actividad",
+            "📅 Análisis Detallado por Consulta/Procedimiento",
             self.style_manager.get_header_style()
         ))
+        elements.append(Spacer(1, 0.1 * inch))
         
-        for key, temporal_info in temporal_data.items():
-            self._build_temporal_activity(elements, temporal_info)
+        for item in items:
+            self._build_detailed_activity(elements, item)
     
-    def _build_temporal_activity(self, elements: List, temporal_info: Dict[str, Any]):
-        """Construye actividad temporal individual"""
-        column = str(temporal_info.get('column', ''))
-        keyword = str(temporal_info.get('keyword', ''))
-        years_dict = temporal_info.get('years', {})
+    def _build_detailed_activity(self, elements: List, item: Dict[str, Any]):
+        """Construye detalle de una consulta/procedimiento individual"""
+        consulta = item.get('consulta_procedimiento', '')
+        rango_edad = item.get('rango_edad', '')
         
-        if not years_dict:
-            return
+        activity_title = f"🔹 {consulta}"
+        if rango_edad:
+            activity_title += f" - {rango_edad}"
         
-        activity_title = f"🔹 {column} ({keyword.upper()})"
         elements.append(Paragraph(activity_title, self.style_manager.get_activity_title_style()))
+        elements.append(Spacer(1, 0.05 * inch))
         
-        table = self.table_builder.build_temporal_table(years_dict)
+        # Tabla de resultados
+        table = self.table_builder.build_detailed_activity_table(item)
         elements.append(table)
         elements.append(Spacer(1, 0.1 * inch))
         
         # Análisis temporal
-        analysis_texts = self.analysis_generator.generate_temporal_analysis(years_dict)
+        analysis_texts = self.analysis_generator.generate_temporal_analysis(item)
         
         for text in analysis_texts:
             elements.append(Paragraph(text, self.style_manager.get_temporal_analysis_style()))

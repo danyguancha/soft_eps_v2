@@ -1,0 +1,213 @@
+{
+  "curso_vida": "primera_infancia",
+  "rango_edad": "0 a 5 años",
+  "mappings": [
+    {
+      "columna_usuario": "Consulta por Medicina 1 mes",
+      "keyword": "medicina",
+      "consolidado": {
+        "consulta_procedimiento": "Atencion en salud por medicina General - Primera Infancia",
+        "edad_aplicable": "1 Mes",
+        "edad_NT_RPMS": "1 Mes"
+      }
+    },
+    {
+      "columna_usuario": "Consulta por Medicina 4 a 5 meses",
+      "keyword": "medicina",
+      "consolidado": {
+        "consulta_procedimiento": "Atencion en salud por medicina General - Primera Infancia",
+        "edad_aplicable": "4 a 5 Meses",
+        "edad_NT_RPMS": "4 a 5 Meses"
+      }
+    },
+    {
+      "columna_usuario": "Consulta por Medicina 12 a 17 meses",
+      "keyword": "medicina",
+      "consolidado": {
+        "consulta_procedimiento": "Atencion en salud por medicina General - Primera Infancia",
+        "edad_aplicable": "12 a 17 Meses",
+        "edad_NT_RPMS": "12 a 17 Meses"
+      }
+    },
+    {
+      "columna_usuario": "Consulta por Medicina 24 a 29 meses",
+      "keyword": "medicina",
+      "consolidado": {
+        "consulta_procedimiento": "Atencion en salud por medicina General - Primera Infancia",
+        "edad_aplicable": "24 a 29 Meses",
+        "edad_NT_RPMS": "24 a 29 Meses"
+      }
+    },
+    {
+      "columna_usuario": "Consulta por Medicina 3 años",
+      "keyword": "medicina",
+      "consolidado": {
+        "consulta_procedimiento": "Atencion en salud por medicina General - Primera Infancia",
+        "edad_aplicable": "3 Años",
+        "edad_NT_RPMS": "3 Años"
+      }
+    },
+    {
+      "columna_usuario": "Consulta por Medicina 5 años",
+      "keyword": "medicina",
+      "consolidado": {
+        "consulta_procedimiento": "Atencion en salud por medicina General - Primera Infancia",
+        "edad_aplicable": "5 Años",
+        "edad_NT_RPMS": "5 Años"
+      }
+    },
+    {
+      "columna_usuario": "Consulta por Enfermería 2 a 3 meses",
+      "keyword": "enfermería",
+      "consolidado": {
+        "consulta_procedimiento": "Atencion en salud por profesional de enfermeria - Primera Infancia",
+        "edad_aplicable": "2 a 3 Meses",
+        "edad_NT_RPMS": "2 a 3 Meses"
+      }
+    },
+    {
+      "columna_usuario": "Consulta por Enfermería 6 a 8 meses",
+      "keyword": "enfermería",
+      "consolidado": {
+        "consulta_procedimiento": "Atencion en salud por profesional de enfermeria - Primera Infancia",
+        "edad_aplicable": "6 a 8 Meses",
+        "edad_NT_RPMS": "6 a 8 Meses"
+      }
+    },
+    {
+      "columna_usuario": "Consulta por Enfermería 9 a 11 meses",
+      "keyword": "enfermería",
+      "consolidado": {
+        "consulta_procedimiento": "Atencion en salud por profesional de enfermeria - Primera Infancia",
+        "edad_aplicable": "9 a 11 Meses",
+        "edad_NT_RPMS": "9 a 11 Meses"
+      }
+    },
+    {
+      "columna_usuario": "Consulta por Enfermería 18 a 23 meses",
+      "keyword": "enfermería",
+      "consolidado": {
+        "consulta_procedimiento": "Atencion en salud por profesional de enfermeria - Primera Infancia",
+        "edad_aplicable": "18 a 23 Meses",
+        "edad_NT_RPMS": "18 a 23 Meses"
+      }
+    },
+    {
+      "columna_usuario": "Consulta por Enfermería 30 a 35 meses",
+      "keyword": "enfermería",
+      "consolidado": {
+        "consulta_procedimiento": "Atencion en salud por profesional de enfermeria - Primera Infancia",
+        "edad_aplicable": "30 a 35 Meses",
+        "edad_NT_RPMS": "30 a 35 Meses"
+      }
+    },
+    {
+      "columna_usuario": "Consulta por Enfermería 4 años",
+      "keyword": "enfermería",
+      "consolidado": {
+        "consulta_procedimiento": "Atencion en salud por profesional de enfermeria - Primera Infancia",
+        "edad_aplicable": "4 Años",
+        "edad_NT_RPMS": "4 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha más reciente de Consulta Odontológica",
+      "keyword": "odontológica",
+      "consolidado": {
+        "consulta_procedimiento": "Atención en salud bucal por profesional de odontología - Primera Infancia",
+        "edad_aplicable": "6 Meses a 5 Años",
+        "edad_NT_RPMS": "6 Meses a 5 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha más reciente de aplicación flúor",
+      "keyword": "flúor",
+      "consolidado": {
+        "consulta_procedimiento": "Aplicación de Barniz de Flúor - Primera Infancia",
+        "edad_aplicable": "1 a 5 Años",
+        "edad_NT_RPMS": "1 a 5 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha más reciente de aplicación de sellantes",
+      "keyword": "sellantes",
+      "consolidado": {
+        "consulta_procedimiento": "Aplicación de Sellantes - Primera Infancia",
+        "edad_aplicable": "3 a 5 Años",
+        "edad_NT_RPMS": "3 a 5 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha máss reciente de remoción placa bacteriana",
+      "keyword": "placa",
+      "consolidado": {
+        "consulta_procedimiento": "Profilaxis y Remoción de Placa Bacterina - Primera Infancia",
+        "edad_aplicable": "1 a 5 Años",
+        "edad_NT_RPMS": "1 a 5 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha más reciente de suministro de Sulfato ferroso",
+      "keyword": "sulfato",
+      "consolidado": {
+        "consulta_procedimiento": "Suplementacion con Micronutrientes(Sulfato ferroso Jarabe 120 ML)- Primera Infancia",
+        "edad_aplicable": "2 a 5 Años",
+        "edad_NT_RPMS": "2 a 5 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha más reciente de Suministro de Vitamina A",
+      "keyword": "vitamina",
+      "consolidado": {
+        "consulta_procedimiento": "Suplementacion con Micronutrientes(Vitamina A con 200. UI)- Primera Infancia",
+        "edad_aplicable": "2 a 5 Años",
+        "edad_NT_RPMS": "2 a 5 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha más reciente de suministro de micronutrientes en polvo",
+      "keyword": "micronutrientes",
+      "consolidado": {
+        "consulta_procedimiento": "Fortificación casera con micronutrientes en polvo",
+        "edad_aplicable": "6 a 8 Meses",
+        "edad_NT_RPMS": "6 a 8 Meses"
+      }
+    },
+    {
+      "columna_usuario": "Fecha más reciente de suministro de micronutrientes en polvo",
+      "keyword": "micronutrientes",
+      "consolidado": {
+        "consulta_procedimiento": "Fortificación casera con micronutrientes en polvo",
+        "edad_aplicable": "12 a 17 Meses",
+        "edad_NT_RPMS": "12 a 17 Meses"
+      }
+    },
+    {
+      "columna_usuario": "Fecha más reciente de suministro de micronutrientes en polvo",
+      "keyword": "micronutrientes",
+      "consolidado": {
+        "consulta_procedimiento": "Fortificación casera con micronutrientes en polvo",
+        "edad_aplicable": "18 a 23 Meses",
+        "edad_NT_RPMS": "18 a 23 Meses"
+      }
+    },
+    {
+      "columna_usuario": "Fecha más reciente de suministro de desparasitación antihelmántica",
+      "keyword": "desparasitación",
+      "consolidado": {
+        "consulta_procedimiento": "Desparasitación intestinal antihelmíntica(Albendazol suspensión Oral de 200 mg)",
+        "edad_aplicable": "12 a 23 Meses",
+        "edad_NT_RPMS": "12 a 23 Meses"
+      }
+    },
+    {
+      "columna_usuario": "Fecha más reciente de suministro de desparasitación antihelmántica",
+      "keyword": "desparasitación",
+      "consolidado": {
+        "consulta_procedimiento": "Desparasitación intestinal antihelmíntica(Albendazol suspensión Oral de 400 mg)",
+        "edad_aplicable": "2 a 4 Años",
+        "edad_NT_RPMS": "2 a 4 Años"
+      }
+    }
+  ]
+}

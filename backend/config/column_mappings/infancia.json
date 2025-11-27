@@ -1,0 +1,114 @@
+{
+  "curso_vida": "infancia",
+  "rango_edad": "6 a 11 años",
+  "mappings": [
+    {
+      "columna_usuario": "Consulta por Medicina 6 años",
+      "keyword": "medicina",
+      "consolidado": {
+        "consulta_procedimiento": "Atencion en salud por medicina General - Infancia",
+        "edad_aplicable": "6 Años",
+        "edad_NT_RPMS": "6, 8 y 10 Años"
+      }
+    },
+    {
+      "columna_usuario": "Consulta por Medicina 8 años",
+      "keyword": "medicina",
+      "consolidado": {
+        "consulta_procedimiento": "Atencion en salud por medicina General - Infancia",
+        "edad_aplicable": "8 Años",
+        "edad_NT_RPMS": "6, 8 y 10 Años"
+      }
+    },
+    {
+      "columna_usuario": "Consulta por Medicina 10 años",
+      "keyword": "medicina",
+      "consolidado": {
+        "consulta_procedimiento": "Atencion en salud por medicina General - Infancia",
+        "edad_aplicable": "10 Años",
+        "edad_NT_RPMS": "6, 8 y 10 Años"
+      }
+    },
+    {
+      "columna_usuario": "Consulta por Enfermería 7 años",
+      "keyword": "enfermería",
+      "consolidado": {
+        "consulta_procedimiento": "Atencion en salud por profesional de enfermeria - Infancia",
+        "edad_aplicable": "7 Años",
+        "edad_NT_RPMS": "7, 9 y 11 Años"
+      }
+    },
+    {
+      "columna_usuario": "Consulta por Enfermería 9 años",
+      "keyword": "enfermería",
+      "consolidado": {
+        "consulta_procedimiento": "Atencion en salud por profesional de enfermeria - Infancia",
+        "edad_aplicable": "9 Años",
+        "edad_NT_RPMS": "7, 9 y 11 Años"
+      }
+    },
+    {
+      "columna_usuario": "Consulta por Enfermería 11 años",
+      "keyword": "enfermería",
+      "consolidado": {
+        "consulta_procedimiento": "Atencion en salud por profesional de enfermeria - Infancia",
+        "edad_aplicable": "11 Años",
+        "edad_NT_RPMS": "7, 9 y 11 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha más reciente de Consulta Odontológica",
+      "keyword": "odontológica",
+      "consolidado": {
+        "consulta_procedimiento": "Atención en salud bucal por profesional de odontología - Infancia",
+        "edad_aplicable": "6 a 11 Años",
+        "edad_NT_RPMS": "6 a 11 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha de diagnostico de Anemia nutricional",
+      "keyword": "anemia",
+      "consolidado": {
+        "consulta_procedimiento": "Tamizaje para Anemia(Hematocrito)- Infancia",
+        "edad_aplicable": "10 a 11 Años",
+        "edad_NT_RPMS": "10 a 11 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha Hemoglobina",
+      "keyword": "anemia",
+      "consolidado": {
+        "consulta_procedimiento": "Tamizaje para Anemia(Hemoglobina)- Infancia",
+        "edad_aplicable": "10 a 11 Años",
+        "edad_NT_RPMS": "10 a 11 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha más reciente de aplicación flúor",
+      "keyword": "flúor",
+      "consolidado": {
+        "consulta_procedimiento": "Aplicación de Barniz de Flúor - Infancia",
+        "edad_aplicable": "6 a 11 Años",
+        "edad_NT_RPMS": "6 a 11 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha más reciente de aplicación de sellantes",
+      "keyword": "sellantes",
+      "consolidado": {
+        "consulta_procedimiento": "Aplicación de Sellantes - Infancia",
+        "edad_aplicable": "6 a 11 Años",
+        "edad_NT_RPMS": "6 a 11 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha más reciente de remoción placa bacteriana",
+      "keyword": "placa",
+      "consolidado": {
+        "consulta_procedimiento": "Profilaxis y Remoción de Placa Bacterina - Infancia",
+        "edad_aplicable": "6 a 11 Años",
+        "edad_NT_RPMS": "6 a 11 Años"
+      }
+    }
+  ]
+}
