@@ -10,7 +10,7 @@ from models.schemas import (
 from controllers.files_controllers.storage_manager import FileStorageManager
 from controllers.files_controllers.upload_handler import UploadHandler  
 from controllers.files_controllers.data_handler import DataHandler
-from controllers.files_controllers.transformation_handler import TransformationHandler
+# from controllers.files_controllers.transformation_handler import TransformationHandler
 from controllers.files_controllers.export_handler import ExportHandler
 from controllers.files_controllers.delete_handler import DeleteHandler
 from controllers.files_controllers.file_info_handler import FileInfoHandler
@@ -23,7 +23,7 @@ class FileController:
         # MODIFICADO: Inicializar handlers con capacidades de hilos
         self.upload_handler = UploadHandler(self.storage_manager)  # Ya optimizado con hilos
         self.data_handler = DataHandler(self.storage_manager)
-        self.transformation_handler = TransformationHandler(self.storage_manager)
+        # self.transformation_handler = TransformationHandler(self.storage_manager)
         self.export_handler = ExportHandler(self.storage_manager, self.data_handler)
         self.delete_handler = DeleteHandler(self.storage_manager)
         self.file_info_handler = FileInfoHandler(self.storage_manager)
@@ -54,19 +54,19 @@ class FileController:
         return self.data_handler.get_columns(file_id, sheet_name)
     
     # MODIFICADO: Operaciones de Transformación con hilos
-    def transform_data(self, request: TransformRequest) -> Dict[str, Any]:
-        """MODIFICADO: Aplica transformación a los datos CON HILOS"""
+    # def transform_data(self, request: TransformRequest) -> Dict[str, Any]:
+    #     """MODIFICADO: Aplica transformación a los datos CON HILOS"""
         
-        file_info = self.storage_manager.get_file_info(request.file_id)
-        if file_info and file_info.get('total_rows', 0) > 15000:
+    #     file_info = self.storage_manager.get_file_info(request.file_id)
+    #     if file_info and file_info.get('total_rows', 0) > 15000:
             
-            # Usar hilo para transformaciones de archivos grandes
-            transform_future = thread_manager.submit_cpu_task(
-                self.transformation_handler.transform_data, request
-            )
-            return transform_future.result(timeout=180)
-        else:
-            return self.transformation_handler.transform_data(request)
+    #         # Usar hilo para transformaciones de archivos grandes
+    #         transform_future = thread_manager.submit_cpu_task(
+    #             self.transformation_handler.transform_data, request
+    #         )
+    #         return transform_future.result(timeout=180)
+    #     else:
+    #         return self.transformation_handler.transform_data(request)
     
     # MODIFICADO: Operaciones de Exportación con hilos
     def export_processed_data(self, request: ExportRequest) -> Dict[str, Any]:
@@ -158,8 +158,8 @@ async def upload_file(file: UploadFile):
 def get_data(request: DataRequest):
     return file_controller.get_data(request)
 
-def transform_data(request: TransformRequest):
-    return file_controller.transform_data(request)
+# def transform_data(request: TransformRequest):
+#     return file_controller.transform_data(request)
 
 def get_file_info(file_id: str):
     return file_controller.get_file_info(file_id)

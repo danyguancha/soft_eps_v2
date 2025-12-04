@@ -33,7 +33,7 @@ export const AppHeader: React.FC<Props> = ({
 
   // Refactorización: extraer lógica del título
   const getAppTitle = (): string => {
-    return 'EvalNote';
+    return 'SIEN';
   };
 
   // Refactorización: extraer lógica del nombre del archivo

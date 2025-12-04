@@ -109,8 +109,8 @@ class ExcelExporter:
         """
         # Headers de fila 2 (sub-headers atómicos)
         header_row2 = [
-            "Procedimiento/Consulta", "Rango Edad", "Población Objeto", "Frecuencia Indicada",
-            "Pobl. Susceptible", "Meta", "Proyección Tiempo", "Valor Mensual"
+            "Procedimiento/Consulta", "Rango Edad", "Cups", "Frecuencia indicada", "Población Objeto", "Periodo", "Frecuencia de uso_ips",
+            "Frecuencia ajustada anual", "Meta", "Pobl. Susceptible anual", "Pobl. Susceptible mensual",  "Proyección Tiempo"
         ]
         color_mapping = [self.COLORS['basico']] * len(header_row2)
         merge_ranges = []  # (nombre, col_inicio, col_fin)
@@ -193,8 +193,8 @@ class ExcelExporter:
         
         # Columnas básicas (merge vertical fila 1 y 2)
         headers_base = [
-            "Procedimiento/Consulta", "Rango Edad", "Población Objeto", "Frecuencia Indicada",
-            "Pobl. Susceptible", "Meta", "Proyección Tiempo", "Valor Mensual"
+            "Procedimiento/Consulta", "Rango Edad", "Cups", "Frecuencia indicada", "Población Objeto", "Periodo", "Frecuencia de uso_ips",
+            "Frecuencia ajustada anual", "Meta", "Pobl. Susceptible anual", "Pobl. Susceptible mensual",  "Proyección Tiempo"
         ]
         
         for i, header_name in enumerate(headers_base, 1):
@@ -281,12 +281,17 @@ class ExcelExporter:
         # ========== COLUMNAS BÁSICAS ==========
         row.append(self._clean(item.get('consulta_procedimiento', '')))
         row.append(self._clean(item.get('rango_edad', '')))
-        row.append(str(item.get('poblacion_objeto', 0)))
+        row.append(self._clean(item.get('cups', '')))        
         row.append(self._format_decimal(item.get('frecuencia_indicada', 0)))
-        row.append(str(item.get('poblacion_susceptible', 0)))
+        row.append(str(item.get('poblacion_objeto', 0)))
+        row.append(self._clean(item.get('periodo', '')))
+        row.append(self._format_decimal(item.get('frecuencia_uso_ips', '')))
+        row.append(self._format_decimal(item.get('fecuencia_ajustada_anual', '')))
         row.append(self._format_decimal(item.get('meta', 0)))
+        row.append(str(item.get('poblacion_susceptible_anual', 0)))
+        row.append(str(item.get('poblacion_susceptible_mensual', 0)))
         row.append(str(item.get('proyeccion_tiempo', 12)))
-        row.append(str(item.get('valor_mensual', 0)))
+        
         
         # ========== ENERO, FEBRERO, MARZO ==========
         for i in range(0, 3):

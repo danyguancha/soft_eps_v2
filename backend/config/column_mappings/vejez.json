@@ -224,7 +224,7 @@
       "consolidado": {
         "consulta_procedimiento": "Detartraje supragingival - Vejez",
         "edad_aplicable": ">=60 Años",
-        "edad_NT_RPMS": ">=60 Años"
+        "edad_NT_RPMS": ">= 60 Años"
       }
     },
     {

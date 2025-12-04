@@ -15,5 +15,9 @@ DEFAULT_KEYWORDS: List[KeywordRule] = [
     KeywordRule(name="placa", synonyms=("placa", "bacteriana", "bacteriano")),
     KeywordRule(name="detartraje", synonyms=("detartraje", "detartrajear", "detartrajeo", "detartrajes","Detartraje")),
     KeywordRule(name="sellantes", synonyms=("sellante", "selladores", "sellador", "Sellantes")),
-    KeywordRule(name="vacunación", synonyms=("vacunación", "vacunaciones", "vacunar", "vacuna", "Vacunación")),
+    KeywordRule(name="micronutrientes", synonyms=("micronutrientes", "micronu", "micronutrientes")),
+    KeywordRule(name="vitamina_a", synonyms=("Vitamina A",  " Vit A")),
+    KeywordRule(name="sulfato_ferroso", synonyms=("Sulfato ferroso", "sulfato_ferroso", "sulfato ferroso", "ferroso")),
+    KeywordRule(name="diu", synonyms=("")),
+    KeywordRule(name="subdermico", synonyms=(""))
 ]

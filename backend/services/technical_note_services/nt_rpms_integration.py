@@ -239,7 +239,8 @@ class NTRPMSIntegration:
                 frecuencia_edad,
                 meta,
                 frecuencia_indicada,
-                frecuencia_uso,
+                cups,
+                periodo,
                 proyeccion_tiempo,
                 nombre_ips,
                 departamento,
@@ -259,11 +260,12 @@ class NTRPMSIntegration:
                     'frecuencia_edad': result[1],
                     'meta': float(result[2]) if result[2] else 0.0,
                     'frecuencia_indicada': float(result[3]) if result[3] else 0.0,
-                    'frecuencia_uso': float(result[4]) if result[4] else 0.0,
-                    'proyeccion_tiempo': int(result[5]) if result[5] else 12,
-                    'nombre_ips': result[6],
-                    'departamento': result[7],
-                    'municipio': result[8]
+                    'cups': result[4],
+                    'periodo': result[5],
+                    'proyeccion_tiempo': int(result[6]) if result[6] else 12,
+                    'nombre_ips': result[7],
+                    'departamento': result[8],
+                    'municipio': result[9]
                 }
             
             # 🔥 Si no se encuentra con filtros geográficos, intentar sin ellos

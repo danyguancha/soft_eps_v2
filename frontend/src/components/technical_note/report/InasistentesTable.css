@@ -1,3 +1,7 @@
+/* ========================================
+   TABLA DE INASISTENTES - ESTILOS GENERALES
+   ======================================== */
+
 .inasistentes-table-compact .ant-table-thead > tr > th {
     padding: 4px 8px !important;
     font-size: 10px !important;
@@ -58,3 +62,511 @@
 .activity-table-compact .ant-table-tbody > tr:hover > td {
     background-color: #f0f7ff !important;
 }
+
+/* ========================================
+   FILTROS Y BOTONES
+   ======================================== */
+
+.inasistentes-filter-card {
+    margin-top: 16px;
+}
+
+/* Botones de filtro de edad */
+.filter-btn {
+    border-radius: 20px;
+    font-size: 11px;
+    height: 32px;
+    padding: 0 20px;
+    transition: all 0.3s;
+}
+
+.filter-btn:hover {
+    transform: scale(1.05);
+}
+
+.filter-btn-active {
+    background-color: #1890ff;
+    color: white;
+    border-color: #1890ff;
+    box-shadow: 0 2px 8px rgba(24, 144, 255, 0.3);
+}
+
+/* Botones de meses */
+.mes-btn {
+    border-radius: 16px;
+    font-size: 10px;
+    height: 36px;
+    min-width: 110px;
+    transition: all 0.3s;
+}
+
+.mes-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.mes-btn-active {
+    background-color: #ff4d4f;
+    color: white;
+    border-color: #ff4d4f;
+    box-shadow: 0 4px 12px rgba(255, 77, 79, 0.3);
+}
+
+.mes-btn-disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* ========================================
+   TABLA DE DETALLES
+   ======================================== */
+
+.inasistentes-detail-table .ant-table-thead > tr > th {
+    background-color: #fafafa;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 8px;
+}
+
+.inasistentes-detail-table .ant-table-tbody > tr > td {
+    padding: 8px;
+    font-size: 10px;
+}
+
+/* Contenedor de tabla con altura fija */
+.table-container {
+    max-height: 450px;
+    overflow-y: auto;
+    margin-bottom: 16px;
+}
+
+/* Wrapper para la tabla con scroll */
+.table-wrapper {
+    position: relative;
+}
+
+.inasistentes-detail-table .ant-table-wrapper {
+    max-height: 450px;
+}
+
+.inasistentes-detail-table .ant-table-body {
+    max-height: 350px !important;
+    overflow-y: auto !important;
+}
+
+/* Fijar header de tabla al hacer scroll */
+.inasistentes-detail-table .ant-table-thead {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+/* ========================================
+   SECCIONES Y CONTENEDORES
+   ======================================== */
+
+.section-divider {
+    height: 1px;
+    background: linear-gradient(to right, transparent, #d9d9d9, transparent);
+    margin: 16px 0;
+}
+
+.info-box {
+    margin-bottom: 20px;
+    padding: 12px;
+    background-color: #f0f5ff;
+    border-radius: 8px;
+    border: 1px solid #adc6ff;
+}
+
+.filter-section {
+    margin-bottom: 20px;
+}
+
+.filter-section-header {
+    margin-bottom: 12px;
+}
+
+.mes-selected-box {
+    margin-bottom: 16px;
+    padding: 12px;
+    background-color: #fff7e6;
+    border-radius: 8px;
+    border: 1px solid #ffd591;
+}
+
+.summary-box {
+    margin-top: 24px;
+    padding: 16px;
+    background-color: #fafafa;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.empty-state {
+    padding: 60px 0;
+}
+
+/* ========================================
+   TEXTOS Y TIPOGRAFÍA
+   ======================================== */
+
+.text-info-title {
+    font-size: 11px;
+    color: #1890ff;
+    display: block;
+}
+
+.text-info-subtitle {
+    font-size: 10px;
+}
+
+.text-filter-title {
+    font-size: 12px;
+}
+
+.text-filter-subtitle {
+    font-size: 10px;
+}
+
+.text-mes-title {
+    font-size: 13px;
+    color: #fa8c16;
+}
+
+.text-mes-subtitle {
+    font-size: 10px;
+    display: block;
+    margin-top: 4px;
+}
+
+.text-summary-label {
+    font-size: 10px;
+    display: block;
+}
+
+.text-summary-value {
+    font-size: 18px;
+}
+
+.text-summary-value-red {
+    font-size: 18px;
+    color: #ff4d4f;
+}
+
+.text-summary-value-blue {
+    font-size: 18px;
+    color: #1890ff;
+}
+
+.text-summary-value-orange {
+    font-size: 18px;
+    color: #fa8c16;
+}
+
+.text-summary-value-green {
+    font-size: 18px;
+    color: #52c41a;
+}
+
+.text-empty-secondary {
+    font-size: 12px;
+}
+
+.text-empty-small {
+    font-size: 10px;
+}
+
+/* ========================================
+   COLUMNAS DE TABLA
+   ======================================== */
+
+.col-actividad {
+    font-size: 10px;
+    display: block;
+}
+
+.col-tag-rango {
+    font-size: 8px;
+    margin-top: 4px;
+}
+
+.col-ubicacion-container {
+    padding: 2px 0;
+}
+
+.col-ubicacion-dept {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    margin-bottom: 2px;
+}
+
+.col-ubicacion-dept-text {
+    font-size: 9px;
+}
+
+.col-ubicacion-muni {
+    margin-bottom: 2px;
+}
+
+.col-ubicacion-muni-text {
+    font-size: 8px;
+    color: #666;
+}
+
+.col-ubicacion-ips {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.col-ubicacion-ips-text {
+    font-size: 8px;
+    color: #52c41a;
+}
+
+.col-nombre-container {
+    padding: 2px 0;
+}
+
+.col-nombre-primer {
+    margin-bottom: 2px;
+}
+
+.col-nombre-primer-text {
+    font-size: 10px;
+}
+
+.col-nombre-apellido-text {
+    font-size: 9px;
+    color: #666;
+}
+
+.col-fecha-text {
+    font-size: 9px;
+}
+
+.col-edad-text {
+    font-size: 10px;
+}
+
+.col-tag-identificacion {
+    font-size: 9px;
+}
+
+.col-tag-estado {
+    font-size: 9px;
+}
+
+/* ========================================
+   ICONOS
+   ======================================== */
+
+.icon-dept {
+    color: #1890ff;
+    font-size: 9px;
+}
+
+.icon-ips {
+    color: #52c41a;
+    font-size: 8px;
+}
+
+.icon-title-red {
+    color: #ff4d4f;
+    font-size: 16px;
+}
+
+.icon-info-blue {
+    color: #1890ff;
+    font-size: 16px;
+}
+
+.icon-filter-blue {
+    color: #1890ff;
+    font-size: 14px;
+}
+
+.icon-calendar-red {
+    color: #ff4d4f;
+    font-size: 14px;
+}
+
+.icon-calendar-orange {
+    color: #fa8c16;
+    font-size: 16px;
+}
+
+.icon-empty-gray {
+    font-size: 48px;
+    color: #d9d9d9;
+}
+
+.icon-estado {
+    font-size: 9px;
+}
+
+/* ========================================
+   ESPACIADORES Y CONTENEDORES FLEX
+   ======================================== */
+
+.space-info {
+    align-items: center;
+}
+
+.space-filter-buttons {
+    flex-wrap: wrap;
+}
+
+.space-mes-content {
+    text-align: center;
+}
+
+.space-summary {
+    justify-content: center;
+}
+
+.space-empty {
+    flex-direction: column;
+}
+
+/* ========================================
+   BADGES
+   ======================================== */
+
+.badge-filter-active {
+    background-color: white;
+    color: #1890ff;
+}
+
+.badge-filter-inactive {
+    background-color: #1890ff;
+    color: white;
+}
+
+.badge-mes-active {
+    background-color: white;
+    color: #ff4d4f;
+    font-size: 9px;
+}
+
+.badge-mes-disabled {
+    background-color: #d9d9d9;
+    color: white;
+    font-size: 9px;
+}
+
+.badge-mes-inactive {
+    background-color: #ff4d4f;
+    color: white;
+    font-size: 9px;
+}
+
+.badge-title {
+    background-color: #ff4d4f;
+}
+
+.badge-mes-selected {
+    background-color: #ff4d4f;
+}
+
+/* ========================================
+   BOTONES ESPECIALES
+   ======================================== */
+
+.btn-export-csv {
+    background-color: #52c41a;
+    border-color: #52c41a;
+}
+
+/* ========================================
+   TEXTO EN BOTONES DE MES
+   ======================================== */
+
+.mes-btn-text-active {
+    font-size: 11px;
+    color: white;
+}
+
+.mes-btn-text-disabled {
+    font-size: 11px;
+    color: #bfbfbf;
+}
+
+.mes-btn-text-normal {
+    font-size: 11px;
+    color: #262626;
+}
+
+/* ========================================
+   LOADING STATES
+   ======================================== */
+
+.loading-card {
+    height: 600px;
+}
+
+.loading-card-body {
+    padding: 12px;
+}
+
+.loading-text {
+    padding: 12px;
+    text-align: center;
+}
+
+.loading-text-content {
+    font-size: 11px;
+}
+
+/* ========================================
+   SCROLLBAR PERSONALIZADO
+   ======================================== */
+
+.table-container::-webkit-scrollbar,
+.inasistentes-detail-table .ant-table-body::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.table-container::-webkit-scrollbar-track,
+.inasistentes-detail-table .ant-table-body::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.table-container::-webkit-scrollbar-thumb,
+.inasistentes-detail-table .ant-table-body::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+.table-container::-webkit-scrollbar-thumb:hover,
+.inasistentes-detail-table .ant-table-body::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+@media (max-width: 768px) {
+    .filter-btn {
+        font-size: 10px;
+        height: 28px;
+        padding: 0 12px;
+    }
+
+    .mes-btn {
+        min-width: 90px;
+        height: 32px;
+        font-size: 9px;
+    }
+
+    .text-filter-title {
+        font-size: 11px;
+    }
+
+    .summary-box {
+        padding: 12px;
+    }
+
+    .text-summary-value,
+    .text-

@@ -562,6 +562,32 @@ export const ReportTable = memo<Props>(({
     });
 
     cols.push({
+      title: 'Cups',
+      dataIndex: 'cups',
+      key: 'cups',
+      width: 120,
+      align: 'center',
+      render: (text: string) => (
+        <Text strong style={{ color: '#940ceeff', fontSize: '12px' }}>
+          {text || '-'}
+        </Text>
+      )
+    });
+
+    cols.push({
+      title: 'Frecuencia indicada',
+      dataIndex: 'frecuencia_indicada',
+      key: 'frecuencia_indicada',
+      width: 120,
+      align: 'center',
+      render: (text: string) => (
+        <Text strong style={{ color: '#940ceeff', fontSize: '12px' }}>
+          {text || '-'}
+        </Text>
+      )
+    });
+
+    cols.push({
       title: 'Población Objeto',
       dataIndex: 'poblacion_objeto',
       key: 'poblacion_objeto',
@@ -575,26 +601,37 @@ export const ReportTable = memo<Props>(({
     });
 
     cols.push({
-      title: 'Frecuencia Indicada',
-      dataIndex: 'frecuencia_indicada',
-      key: 'frecuencia_indicada',
-      width: 110,
+      title: 'Periodo',
+      dataIndex: 'periodo',
+      key: 'periodo',
+      width: 120,
       align: 'center',
-      render: (val: number) => (
-        <Text>{val?.toFixed(0) || '0'}</Text>
+      render: (text: string) => (
+        <Text strong style={{ color: '#940ceeff', fontSize: '12px' }}>
+          {text || '-'}
+        </Text>
       )
     });
 
     cols.push({
-      title: 'Pobl. Susceptible',
-      dataIndex: 'poblacion_susceptible',
-      key: 'poblacion_susceptible',
-      width: 140,
+      title: 'Frecuencia uso_ips',
+      dataIndex: 'frecuencia_uso_ips',
+      key: 'frecuencia_uso_ips',
+      width: 120,
       align: 'center',
       render: (val: number) => (
-        <Text strong style={{ color: '#722ed1' }}>
-          {val?.toLocaleString() || '0'}
-        </Text>
+        <Text>{val?.toFixed(1) || '0'}</Text>
+      )
+    });
+
+    cols.push({
+      title: 'Frecuencia ajustada anual',
+      dataIndex: 'fecuencia_ajustada_anual',
+      key: 'fecuencia_ajustada_anual',
+      width: 120,
+      align: 'center',
+      render: (val: number) => (
+        <Text>{val?.toFixed(1) || '0'}</Text>
       )
     });
 
@@ -612,6 +649,32 @@ export const ReportTable = memo<Props>(({
     });
 
     cols.push({
+      title: 'Pobl. Susceptible anual',
+      dataIndex: 'poblacion_susceptible_anual',
+      key: 'poblacion_susceptible_anual',
+      width: 140,
+      align: 'center',
+      render: (val: number) => (
+        <Text strong style={{ color: '#722ed1' }}>
+          {val?.toLocaleString() || '0'}
+        </Text>
+      )
+    });
+
+    cols.push({
+      title: 'Pobl. Susceptible mensual',
+      dataIndex: 'poblacion_susceptible_mensual',
+      key: 'poblacion_susceptible_mensual',
+      width: 140,
+      align: 'center',
+      render: (val: number) => (
+        <Text strong style={{ color: '#722ed1' }}>
+          {val?.toLocaleString() || '0'}
+        </Text>
+      )
+    });
+
+    cols.push({
       title: 'Proyección Tiempo',
       dataIndex: 'proyeccion_tiempo',
       key: 'proyeccion_tiempo',
@@ -624,18 +687,6 @@ export const ReportTable = memo<Props>(({
       )
     });
 
-    cols.push({
-      title: 'Valor Mensual',
-      dataIndex: 'valor_mensual',
-      key: 'valor_mensual',
-      width: 120,
-      align: 'center',
-      render: (val: number) => (
-        <Text strong style={{ color: '#fa8c16', fontSize: '11px' }}>
-          {val?.toFixed(0) || '0'}
-        </Text>
-      )
-    });
 
     // ✨ COLUMNAS MENSUALES Y CONSOLIDADOS
     if (showTemporalData) {

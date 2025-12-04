@@ -1,10 +1,11 @@
-// components/technical-note/report/Report.tsx - VERSIÓN CON DEBUG
+// components/technical-note/report/Report.tsx - VERSIÓN SIMPLIFICADA SIN SELECCIÓN DE EDADES
 
 import React, { memo, useCallback, useState } from 'react';
-import { Card, Typography, Button, message } from 'antd';
+import { Card, Typography, Button, message, Space } from 'antd';
 import {
   BarChartOutlined,
-  CalendarOutlined
+  CalendarOutlined,
+  UserDeleteOutlined
 } from '@ant-design/icons';
 
 // Componentes
@@ -14,7 +15,6 @@ import { KeywordStatistics } from './KeywordStatistics';
 import { ReportTable } from './ReportTable';
 import { ReportHeader } from './ReportHeader';
 import { ReportControls } from './ReportControls';
-import { AgeRangeSelector } from './AgeRangeSelector';
 import { InasistentesTable } from './InasistentesTable';
 import {
   ReportLoading,
@@ -28,7 +28,6 @@ import { DEFAULT_KEYWORDS } from '../../../config/reportKeywords.config';
 import type { TemporalReportProps } from './interfaces/ReportInterfaz';
 import { TechnicalNoteService } from '../../../services/TechnicalNoteService';
 import type { InasistentesReportResponse } from '../../../interfaces/IAbsentUser';
-
 
 const { Text } = Typography;
 
@@ -68,74 +67,14 @@ export const Report: React.FC<ReportPropsExtended> = memo(({
 
   const { keywordStats, reportTitle } = useReportData(keywordReport, reportKeywords);
 
-  // ESTADOS: Manejo de selección de edades
-  const [, setAgeSelection] = useState({
-    selectedYears: [] as number[],
-    selectedMonths: [] as number[],
-    corteFecha: cutoffDate || "2025-07-31"
-  });
-
-  // ESTADOS: Manejo de reporte de inasistentes DINÁMICO
+  // ESTADOS: Manejo de reporte de inasistentes
   const [inasistentesReport, setInasistentesReport] = useState<InasistentesReportResponse | null>(null);
   const [loadingInasistentes, setLoadingInasistentes] = useState(false);
   const [showInasistentesReport, setShowInasistentesReport] = useState(false);
 
-  // EFECTO: Sincronizar ageSelection cuando cambia cutoffDate
-  React.useEffect(() => {
-    console.log('📅 useEffect cutoffDate cambió a:', cutoffDate);
-    if (cutoffDate) {
-      setAgeSelection(prev => ({
-        ...prev,
-        corteFecha: cutoffDate
-      }));
-      console.log(`Fecha de corte actualizada desde padre: ${cutoffDate}`);
-    }
-  }, [cutoffDate]);
-
-  // HANDLER CORREGIDO: handleLoadReport CON VALIDACIÓN Y FECHA
+  // HANDLER: Generar reporte de cobertura
   const handleLoadReport = useCallback(() => {
     console.log('📊 handleLoadReport ejecutado');
-    console.log('   - selectedFile:', selectedFile);
-    console.log('   - cutoffDate:', cutoffDate);
-    console.log('   - cutoffDate type:', typeof cutoffDate);
-    console.log('   - cutoffDate Boolean:', Boolean(cutoffDate));
-
-    if (!selectedFile) {
-      console.error('❌ No hay archivo seleccionado');
-      message.error('No hay archivo seleccionado');
-      return;
-    }
-
-    if (!cutoffDate) {
-      console.error('❌ cutoffDate es:', cutoffDate);
-      console.error('❌ cutoffDate evaluado como falsy');
-      message.error('Debe seleccionar una fecha de corte antes de generar el reporte');
-      return;
-    }
-
-    console.log('Todas las validaciones pasadas, generando reporte...');
-    console.log('📊 Generando reporte con:', {
-      selectedFile,
-      cutoffDate,
-      reportKeywords,
-      reportMinCount,
-      geographicFilters
-    });
-
-    // LLAMADA CON 6 PARÁMETROS EN ORDEN CORRECTO
-    onLoadKeywordAgeReport(
-      selectedFile,
-      cutoffDate,
-      reportKeywords.length > 0 ? reportKeywords : DEFAULT_KEYWORDS,
-      reportMinCount,
-      true,
-      geographicFilters
-    );
-  }, [selectedFile, cutoffDate, reportKeywords, reportMinCount, geographicFilters, onLoadKeywordAgeReport]);
-
-  // HANDLER CORREGIDO: handleRegenerateReport CON FECHA
-  const handleRegenerateReport = useCallback(() => {
-    console.log('🔄 handleRegenerateReport ejecutado');
     console.log('   - selectedFile:', selectedFile);
     console.log('   - cutoffDate:', cutoffDate);
 
@@ -147,11 +86,43 @@ export const Report: React.FC<ReportPropsExtended> = memo(({
 
     if (!cutoffDate) {
       console.error('❌ No hay fecha de corte');
+      message.error('Debe seleccionar una fecha de corte antes de generar el reporte');
+      return;
+    }
+
+    console.log('✅ Generando reporte de cobertura con:', {
+      selectedFile,
+      cutoffDate,
+      reportKeywords,
+      reportMinCount,
+      geographicFilters
+    });
+
+    onLoadKeywordAgeReport(
+      selectedFile,
+      cutoffDate,
+      reportKeywords.length > 0 ? reportKeywords : DEFAULT_KEYWORDS,
+      reportMinCount,
+      true,
+      geographicFilters
+    );
+  }, [selectedFile, cutoffDate, reportKeywords, reportMinCount, geographicFilters, onLoadKeywordAgeReport]);
+
+  // HANDLER: Regenerar reporte de cobertura
+  const handleRegenerateReport = useCallback(() => {
+    console.log('🔄 handleRegenerateReport ejecutado');
+
+    if (!selectedFile) {
+      message.error('No hay archivo seleccionado');
+      return;
+    }
+
+    if (!cutoffDate) {
       message.error('Debe seleccionar una fecha de corte antes de regenerar el reporte');
       return;
     }
 
-    console.log('Regenerando reporte con:', {
+    console.log('✅ Regenerando reporte con:', {
       selectedFile,
       cutoffDate,
       reportKeywords,
@@ -168,68 +139,74 @@ export const Report: React.FC<ReportPropsExtended> = memo(({
     );
   }, [selectedFile, cutoffDate, reportKeywords, reportMinCount, showTemporalData, geographicFilters, onLoadKeywordAgeReport]);
 
-  // HANDLER: Generación de reporte dinámico de inasistentes
-  const handleAgeSelectionChange = useCallback(async (selection: {
-    selectedYears: number[];
-    selectedMonths: number[];
-    corteFecha: string;
-  }) => {
-    setAgeSelection(selection);
-
-    const hasActiveSelection = selection.selectedYears.length > 0 || selection.selectedMonths.length > 0;
-
-    if (hasActiveSelection && selectedFile) {
-      const effectiveCutoffDate = selection.corteFecha || cutoffDate;
-      
-      if (!effectiveCutoffDate) {
-        console.error('❌ No hay fecha de corte disponible para generar el reporte');
-        message.error('Debe seleccionar una fecha de corte antes de generar el reporte de inasistentes');
-        return;
-      }
-
-      setLoadingInasistentes(true);
-      setShowInasistentesReport(true);
-
-      try {
-        console.log('🏥 Generando reporte DINÁMICO de inasistentes...');
-
-        const response = await TechnicalNoteService.getInasistentesReport(
-          selectedFile,
-          effectiveCutoffDate,
-          selection.selectedMonths,
-          selection.selectedYears,
-          reportKeywords,
-          geographicFilters
-        );
-
-        setInasistentesReport(response);
-        
-        if (response.success && response.resumen_general) {
-          console.log(`Reporte dinámico generado`);
-        }
-
-      } catch (error) {
-        console.error('❌ Error generando reporte dinámico:', error);
-        message.error('Error generando reporte de inasistentes');
-        setInasistentesReport(null);
-      } finally {
-        setLoadingInasistentes(false);
-      }
-    } else {
-      setShowInasistentesReport(false);
-      setInasistentesReport(null);
+  // HANDLER: Generar reporte de inasistentes
+  const handleGenerateInasistentesReport = useCallback(async () => {
+    if (!selectedFile) {
+      message.error('No hay archivo seleccionado');
+      return;
     }
-  }, [selectedFile, geographicFilters, reportKeywords, cutoffDate]);
 
-  // VALIDACIÓN: No permitir generar reporte sin fecha de corte
-  const canGenerateReport = Boolean(cutoffDate);
+    if (!cutoffDate) {
+      message.error('Debe seleccionar una fecha de corte antes de generar el reporte de inasistentes');
+      return;
+    }
 
-  // LOG DE DEBUG DETALLADO
+    setLoadingInasistentes(true);
+    setShowInasistentesReport(true);
+
+    try {
+      console.log('🏥 Generando reporte de inasistentes...');
+      console.log('   - Archivo:', selectedFile);
+      console.log('   - Fecha corte:', cutoffDate);
+      console.log('   - Keywords:', reportKeywords);
+      console.log('   - Filtros geográficos:', geographicFilters);
+
+      // Llamada actualizada con la nueva firma
+      const response = await TechnicalNoteService.getInasistentesReport(
+        selectedFile,
+        cutoffDate,
+        reportKeywords.length > 0 ? reportKeywords : DEFAULT_KEYWORDS,
+        {
+          departamento: geographicFilters.departamento,
+          municipio: geographicFilters.municipio,
+          ips: geographicFilters.ips
+        }
+      );
+
+      console.log('✅ Reporte de inasistentes generado:', response);
+
+      setInasistentesReport(response);
+
+      if (response.success && response.resumen_general) {
+        const total = response.resumen_general.total_inasistentes_global;
+        message.success(`Reporte generado: ${total} inasistentes encontrados`);
+      } else {
+        message.warning('Reporte generado sin inasistentes');
+      }
+
+    } catch (error) {
+      console.error('❌ Error generando reporte de inasistentes:', error);
+      message.error('Error generando reporte de inasistentes');
+      setInasistentesReport(null);
+      setShowInasistentesReport(false);
+    } finally {
+      setLoadingInasistentes(false);
+    }
+  }, [selectedFile, cutoffDate, reportKeywords, geographicFilters]);
+
+  // HANDLER: Ocultar reporte de inasistentes
+  const handleHideInasistentesReport = useCallback(() => {
+    setShowInasistentesReport(false);
+    setInasistentesReport(null);
+  }, []);
+
+  // VALIDACIÓN: Puede generar reportes
+  const canGenerateReport = Boolean(cutoffDate && selectedFile);
+
+  // LOG DE DEBUG
   React.useEffect(() => {
     console.log('🔍 ====== Estado actual del componente Report ======');
     console.log('   cutoffDate:', cutoffDate);
-    console.log('   cutoffDate type:', typeof cutoffDate);
-    console.log('   cutoffDate truthy:', !!cutoffDate);
     console.log('   selectedFile:', selectedFile);
     console.log('   canGenerateReport:', canGenerateReport);
     console.log('   hasReport:', hasReport);
@@ -239,10 +216,6 @@ export const Report: React.FC<ReportPropsExtended> = memo(({
 
   // Estado inicial - sin reporte
   if (!hasReport && !loadingReport && !showReport) {
-    console.log('🎨 Renderizando estado inicial - sin reporte');
-    console.log('   - canGenerateReport:', canGenerateReport);
-    console.log('   - cutoffDate actual:', cutoffDate);
-
     return (
       <Card className="temporal-report-card temporal-empty-state">
         <div className="temporal-empty-content">
@@ -253,7 +226,7 @@ export const Report: React.FC<ReportPropsExtended> = memo(({
               Analiza las columnas con palabras clave y filtros geográficos
             </Text>
 
-            {!canGenerateReport && (
+            {!cutoffDate && (
               <Text type="danger" style={{ display: 'block', marginTop: 8, fontSize: 12 }}>
                 ⚠️ Debe seleccionar una fecha de corte antes de generar el reporte
               </Text>
@@ -356,22 +329,79 @@ export const Report: React.FC<ReportPropsExtended> = memo(({
                 cutoffDate={cutoffDate}
               />
 
+              {/* Botón para generar reporte de inasistentes */}
               {selectedFile && cutoffDate && (
-                <div style={{ marginTop: 24 }}>
-                  <AgeRangeSelector
-                    filename={selectedFile}
-                    cutoffDate={cutoffDate}
-                    onAgeSelectionChange={handleAgeSelectionChange}
-                  />
-                </div>
+                <Card
+                  style={{ marginTop: 24 }}
+                  bodyStyle={{ padding: '16px' }}
+                >
+                  <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                    <div style={{ textAlign: 'center' }}>
+                      <UserDeleteOutlined
+                        style={{
+                          fontSize: 48,
+                          color: showInasistentesReport ? '#ff4d4f' : '#8c8c8c',
+                          marginBottom: 12
+                        }}
+                      />
+                      <Text strong style={{ display: 'block', fontSize: 16, marginBottom: 8 }}>
+                        Reporte de Inasistentes
+                      </Text>
+                      <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 16 }}>
+                        Genera un reporte detallado mes a mes de personas que no han asistido a consultas
+                      </Text>
+
+                      <Space>
+                        {!showInasistentesReport ? (
+                          <Button
+                            type="primary"
+                            icon={<UserDeleteOutlined />}
+                            onClick={handleGenerateInasistentesReport}
+                            loading={loadingInasistentes}
+                            size="large"
+                            style={{ backgroundColor: '#ff4d4f', borderColor: '#ff4d4f' }}
+                          >
+                            Generar Reporte de Inasistentes
+                          </Button>
+                        ) : (
+                          <>
+                            <Button
+                              type="default"
+                              onClick={handleGenerateInasistentesReport}
+                              loading={loadingInasistentes}
+                            >
+                              Actualizar Reporte
+                            </Button>
+                            <Button
+                              type="default"
+                              onClick={handleHideInasistentesReport}
+                              disabled={loadingInasistentes}
+                            >
+                              Ocultar Reporte
+                            </Button>
+                          </>
+                        )}
+                      </Space>
+
+                      {cutoffDate && (
+                        <div style={{ marginTop: 12 }}>
+                          <Text type="secondary" style={{ fontSize: 11 }}>
+                            📅 Fecha de corte: <Text strong>{cutoffDate}</Text>
+                          </Text>
+                        </div>
+                      )}
+                    </div>
+                  </Space>
+                </Card>
               )}
 
+              {/* Validación de fecha de corte */}
               {selectedFile && !cutoffDate && (
-                <Card 
-                  style={{ 
-                    marginTop: 24, 
+                <Card
+                  style={{
+                    marginTop: 24,
                     backgroundColor: '#fff7e6',
-                    border: '1px solid #ffd591' 
+                    border: '1px solid #ffd591'
                   }}
                 >
                   <div style={{ textAlign: 'center', padding: '20px' }}>
@@ -386,6 +416,7 @@ export const Report: React.FC<ReportPropsExtended> = memo(({
                 </Card>
               )}
 
+              {/* Tabla de inasistentes */}
               {selectedFile && showInasistentesReport && cutoffDate && (
                 <div style={{ marginTop: 24 }}>
                   <InasistentesTable

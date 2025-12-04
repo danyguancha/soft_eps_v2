@@ -2,13 +2,16 @@
   "columnas_base": [
     "consulta_procedimiento",
     "rango_edad",
+    "cups",
+    "frecuencia_indicada",
     "poblacion_objeto",
-    "proyeccion_tiempo",
-    "frecuencia_uso",
-    "poblacion_susceptible",
+    "periodo",
+    "frecuencia_uso_ips",
+    "fecuencia_ajustada_anual",
     "meta",
-    "proyeccion_tiempo",
-    "valor_mensual"
+    "poblacion_susceptible_anual",
+    "poblacion_susceptible_mensual",
+    "proyeccion_tiempo"
   ],
   "meses": ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"],
   "trimestres": {

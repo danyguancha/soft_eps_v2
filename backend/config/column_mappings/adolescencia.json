@@ -115,8 +115,8 @@
       "keyword": "sellantes",
       "consolidado": {
         "consulta_procedimiento": "Aplicación de Sellantes - Adolescencia",
-        "edad_aplicable": "12 a 17 Años",
-        "edad_NT_RPMS": "12 a 17 Años"
+        "edad_aplicable": "12 a 15 Años",
+        "edad_NT_RPMS": "12 a 15 Años"
       }
     },
     {
@@ -124,6 +124,15 @@
       "keyword": "placa",
       "consolidado": {
         "consulta_procedimiento": "Profilaxis y Remoción de Placa Bacterina - Adolescencia",
+        "edad_aplicable": "12 a 17 Años",
+        "edad_NT_RPMS": "12 a 17 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha más reciente de Detartraje",
+      "keyword": "detartraje",
+      "consolidado": {
+        "consulta_procedimiento": "Detartraje supragingival - Adolescencia",
         "edad_aplicable": "12 a 17 Años",
         "edad_NT_RPMS": "12 a 17 Años"
       }

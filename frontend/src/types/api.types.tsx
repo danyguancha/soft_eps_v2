@@ -74,22 +74,6 @@ export interface TabConfig {
   requiresFile?: boolean;
 }
 
-// Estados de UI para el componente principal
-export interface UIState {
-  activeTab: TabKey;
-  collapsed: boolean;
-  currentPage: number;
-  pageSize: number;
-  filters: FilterCondition[];
-  sorting: SortCondition[];
-  searchTerm: string;
-  chatDrawerVisible: boolean;
-  transformModalVisible: boolean;
-  selectedTransform: string;
-  mobileMenuVisible: boolean;
-  crossModalVisible: boolean;
-}
-
 // Estado específico para la tabla del cruce
 export interface CrossTableState {
   currentPage: number;
@@ -108,12 +92,6 @@ export interface DataRequest {
   page: number;
   page_size: number;
   search?: string;
-}
-
-export interface TransformRequest {
-  file_id: string;
-  operation: 'concatenate' | 'split_column' | 'replace_values' | 'create_calculated' | 'rename_column' | 'delete_column' | 'fill_null' | 'to_uppercase' | 'to_lowercase' | 'extract_substring';
-  params: Record<string, any>;
 }
 
 export interface ExportRequest {
@@ -140,22 +118,11 @@ export interface DeleteRowsByFilterRequest {
   filters: FilterCondition[];
 }
 
-export interface AIRequest {
-  question: string;
-  file_context?: string;
-}
-
 // Response types
 export interface FileUploadResponse extends FileInfo {
   message: string;
   filename: string;
   id: string;
-}
-
-export interface TransformResponse {
-  message: string;
-  new_columns: string[];
-  total_rows: number;
 }
 
 export interface ExportResponse {
@@ -239,7 +206,7 @@ export interface ErrorBoundaryState {
 export interface UseFileOperationsReturn {
   files: FileData[] | null;
   currentFile: FileData | null;
-  currentData: PaginatedResponse<Record<string, any>> | null;  // Cambio aquí
+  currentData: PaginatedResponse<Record<string, any>> | null;
   loading: boolean;
   error: string | null;
   setCurrentFile: (file: FileData | null) => void;

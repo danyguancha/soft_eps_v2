@@ -110,20 +110,6 @@ def get_data(request: DataRequest):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.post("/transform")
-def transform_data(request: TransformRequest):
-    """Aplica transformaciones a los datos"""
-    try:
-        return execute_with_timeout(
-            file_controller.transform_data,
-            timeout_seconds=EndpointConfig.OPERATION_TIMEOUT * 2,
-            request=request
-        )
-    except TimeoutError:
-        raise HTTPException(status_code=408, detail="Timeout en transformación")
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
 @router.get("/file/{file_id}")
 def get_file_info(file_id: str):
     """Obtiene información básica del archivo"""

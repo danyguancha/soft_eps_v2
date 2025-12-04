@@ -81,12 +81,44 @@ export const REPORT_KEYWORDS: KeywordConfig[] = [
     searchTerms: ['sellante', 'selladores', 'Sellantes']
   },
   {
-    key: 'vacunación',
-    label: 'Vacunación',
-    color: '#1c6afaff',
-    icon: SMILE_ICON, 
-    synonyms: ['vacunacion', 'vacunación', 'vacuna', 'Vacunación'],
-    searchTerms: ['vacunacion', 'vacunación', 'vacuna', 'Vacunación']
+    key: 'micronutrientes',
+    label: 'Micronutrientes',
+    color: '#c67204ff',
+    icon: SMILE_ICON,
+    synonyms: ['micronutrientes', 'micro', 'Micronutrientes'],
+    searchTerms: ['micronutrientes', 'micro', 'Micronutrientes', 'micronutriente']
+  },
+  {
+    key: 'vitamina_a',
+    label: 'Vitamina A',
+    color: '#14c604ff',
+    icon: SMILE_ICON,
+    synonyms: ['Vitamina A', 'vitamina a', 'vit A', 'Vit A', 'vit. a'],
+    searchTerms: ['Vitamina A', 'vitamina a', 'vit A', 'Vit A', 'vit. a']
+  },
+  {
+    key: 'sulfato_ferroso',
+    label: 'Sulfato Ferroso',
+    color: '#595b59ff',
+    icon: SMILE_ICON,
+    synonyms: ['Sulfato Ferroso', 'Sulfato ferroso', 'sulf ferroso', 'hierro', 'sulfato Ferroso'],
+    searchTerms: ['Sulfato Ferroso', 'Sulfato ferroso', 'sulf ferroso', 'hierro', 'sulfato Ferroso']
+  },
+  {
+    key: 'diu',
+    label: 'Dispositivo intrauterino',
+    color: '#595b59ff',
+    icon: SMILE_ICON,
+    synonyms: ['diu', 'DIU', 'intrauterino', 'Dispositivo intrauterino', 'Dispositivo Intrauterino'],
+    searchTerms: ['diu', 'DIU', 'intrauterino', 'Dispositivo intrauterino', 'Dispositivo Intrauterino']
+  },
+  {
+    key: 'subdermico',
+    label: 'Implante subdermico',
+    color: '#595b59ff',
+    icon: SMILE_ICON,
+    synonyms: ['subdermico', 'Subdermico', 'Implante subdermico', 'implante Subdérmico', 'Implante Subdérmico'],
+    searchTerms: ['subdermico', 'Subdermico', 'Implante subdermico', 'implante Subdérmico', 'Implante Subdérmico']
   }
 ];
 

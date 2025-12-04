@@ -1,4 +1,4 @@
-// services/TechnicalNoteService.tsx - CÓDIGO COMPLETO
+// services/TechnicalNoteService.tsx - CÓDIGO COMPLETO ACTUALIZADO
 import api from '../Api';
 import type { InasistentesReportResponse } from '../interfaces/IAbsentUser';
 import type { AgeRangesResponse } from '../interfaces/IAge';
@@ -17,6 +17,7 @@ import type {
   TechnicalFileMetadata
 } from '../interfaces/ITechnicalNote';
 import type { FilterCondition } from '../types/api.types';
+
 
 export class TechnicalNoteService {
 
@@ -58,7 +59,7 @@ export class TechnicalNoteService {
         const filesProcessed = data.files_processed || 0;
         const totalRows = data.total_rows || 0;
         const totalColumns = data.total_columns || 0;
-        const processingTime = data.processing_time_seconds; // Puede ser undefined
+        const processingTime = data.processing_time_seconds;
 
         console.log('✓ Procesamiento exitoso:');
         console.log(`  - Archivos procesados: ${filesProcessed}`);
@@ -67,7 +68,6 @@ export class TechnicalNoteService {
         console.log(`  - CSV: ${data.csv_path || 'N/A'}`);
         console.log(`  - Parquet: ${data.parquet_path || 'N/A'}`);
 
-        // VALIDAR antes de usar .toFixed()
         if (processingTime !== undefined && processingTime !== null) {
           console.log(`  - Tiempo: ${processingTime.toFixed(2)}s`);
         } else {
@@ -516,15 +516,20 @@ export class TechnicalNoteService {
   }
 
   // ========================================
-  // ABSENT USERS METHODS
+  // ABSENT USERS METHODS - ACTUALIZADOS
   // ========================================
 
+  /**
+   * Obtiene reporte de inasistentes mensual
+   * @param filename - Nombre del archivo a analizar
+   * @param cutoffDate - Fecha de corte para el análisis (YYYY-MM-DD)
+   * @param keywords - Palabras clave para filtrar actividades (ej: ['medicina'])
+   * @param geographicFilters - Filtros geográficos opcionales
+   */
   static async getInasistentesReport(
     filename: string,
     cutoffDate: string,
-    selectedMonths: number[],
-    selectedYears: number[] = [],
-    selectedKeywords: string[] = [],
+    keywords: string[] = ['medicina'],
     geographicFilters: GeographicFilters = {}
   ): Promise<InasistentesReportResponse> {
     if (!cutoffDate) {
@@ -532,20 +537,33 @@ export class TechnicalNoteService {
     }
 
     try {
-      const requestBody = {
-        selectedMonths,
-        selectedYears,
-        selectedKeywords,
-        departamento: geographicFilters.departamento,
-        municipio: geographicFilters.municipio,
-        ips: geographicFilters.ips
+      console.log('📋 Generando reporte de inasistentes...');
+      console.log(`   - Archivo: ${filename}`);
+      console.log(`   - Fecha corte: ${cutoffDate}`);
+      console.log(`   - Keywords:`, keywords);
+      console.log(`   - Filtros geográficos:`, geographicFilters);
+
+      // Construir body del request
+      const requestBody: any = {
+        selectedKeywords: keywords
       };
 
+      if (geographicFilters.departamento) {
+        requestBody.departamento = geographicFilters.departamento;
+      }
+      if (geographicFilters.municipio) {
+        requestBody.municipio = geographicFilters.municipio;
+      }
+      if (geographicFilters.ips) {
+        requestBody.ips = geographicFilters.ips;
+      }
+
+      // Construir query params
       const params = new URLSearchParams({
         corte_fecha: cutoffDate
       });
 
-      console.log(`📋 Generando reporte inasistentes (fecha: ${cutoffDate})...`);
+      console.log('📤 Request body:', JSON.stringify(requestBody, null, 2));
 
       const response = await api.post<InasistentesReportResponse>(
         `/technical-note/inasistentes-report/${filename}?${params}`,
@@ -554,27 +572,38 @@ export class TechnicalNoteService {
       );
 
       const data = response.data;
-      const totalInasistentes = data.resumen_general?.total_inasistentes_global || 0;
-      const totalActividades = data.resumen_general?.total_actividades_evaluadas || 0;
 
-      console.log('✓ Reporte obtenido:');
-      console.log(`  - Inasistentes: ${totalInasistentes}`);
-      console.log(`  - Actividades: ${totalActividades}`);
-      console.log(`  - Fecha: ${cutoffDate}`);
+      if (data.success) {
+        const totalInasistentes = data.resumen_general?.total_inasistentes_global || 0;
+        const totalActividades = data.resumen_general?.total_actividades_evaluadas || 0;
+
+        console.log('✓ Reporte generado exitosamente:');
+        console.log(`  - Total inasistentes: ${totalInasistentes}`);
+        console.log(`  - Total actividades: ${totalActividades}`);
+        console.log(`  - Fecha corte: ${cutoffDate}`);
+      } else {
+        console.warn('⚠️ Reporte generado con advertencias');
+      }
 
       return data;
-    } catch (error) {
-      console.error('✗ Error obteniendo reporte inasistentes:', error);
+    } catch (error: any) {
+      console.error('✗ Error generando reporte de inasistentes:', error);
+      console.error('✗ Error response:', error.response?.data);
       throw error;
     }
   }
 
+  /**
+   * Exporta reporte de inasistentes a CSV
+   * @param filename - Nombre del archivo a analizar
+   * @param cutoffDate - Fecha de corte (YYYY-MM-DD)
+   * @param keywords - Palabras clave para filtrar
+   * @param geographicFilters - Filtros geográficos opcionales
+   */
   static async exportInasistentesCSV(
     filename: string,
     cutoffDate: string,
-    selectedMonths: number[],
-    selectedYears: number[] = [],
-    selectedKeywords: string[] = [],
+    keywords: string[] = ['medicina'],
     geographicFilters: GeographicFilters = {}
   ): Promise<Blob> {
     if (!cutoffDate) {
@@ -582,16 +611,24 @@ export class TechnicalNoteService {
     }
 
     try {
-      console.log(`📥 Exportando CSV: ${filename} (fecha: ${cutoffDate})`);
+      console.log('📥 Exportando CSV de inasistentes...');
+      console.log(`   - Archivo: ${filename}`);
+      console.log(`   - Fecha corte: ${cutoffDate}`);
+      console.log(`   - Keywords:`, keywords);
 
-      const requestBody = {
-        selectedMonths,
-        selectedYears,
-        selectedKeywords,
-        departamento: geographicFilters.departamento,
-        municipio: geographicFilters.municipio,
-        ips: geographicFilters.ips
+      const requestBody: any = {
+        selectedKeywords: keywords
       };
+
+      if (geographicFilters.departamento) {
+        requestBody.departamento = geographicFilters.departamento;
+      }
+      if (geographicFilters.municipio) {
+        requestBody.municipio = geographicFilters.municipio;
+      }
+      if (geographicFilters.ips) {
+        requestBody.ips = geographicFilters.ips;
+      }
 
       const params = new URLSearchParams({
         corte_fecha: cutoffDate
@@ -609,10 +646,11 @@ export class TechnicalNoteService {
         }
       );
 
-      console.log(`✓ CSV exportado exitosamente (fecha: ${cutoffDate})`);
+      console.log(`✓ CSV exportado exitosamente (${response.data.size} bytes)`);
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
       console.error('✗ Error exportando CSV:', error);
+      console.error('✗ Error response:', error.response?.data);
       throw error;
     }
   }
@@ -702,9 +740,6 @@ export class TechnicalNoteService {
   }
 }
 
-// ========================================
-// EXPORT HELPERS
-// ========================================
 
 export const TechnicalNoteHelpers = {
   formatFileSize: TechnicalNoteService.formatFileSize,

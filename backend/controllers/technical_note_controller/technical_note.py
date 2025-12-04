@@ -594,32 +594,122 @@ class TechnicalNoteController:
     def get_age_ranges(self, filename: str, corte_fecha: str):
         """MODIFICADO: Pasar fecha dinámica al controlador de edad"""
         return AgeController().get_age_ranges(filename, corte_fecha, self.static_files_dir)
-    
+
     def get_inasistentes_report(
-        self, filename: str, selected_months: List[int],
-        selected_years: List[int] = None, selected_keywords: List[str] = None,
-        corte_fecha: str = None,
-        departamento: Optional[str] = None, municipio: Optional[str] = None,
-        ips: Optional[str] = None
-    ):
-        """MODIFICADO: Pasar fecha dinámica al controlador de ausentes"""
-        return AbsentUserController().get_inasistentes_report(
-            filename, selected_months, selected_years, selected_keywords, corte_fecha,
-            departamento, municipio, ips, self.static_files_dir
-        )
-    
-    def export_inasistentes_csv(
-        self, filename: str, selected_months: List[int],
-        selected_years: List[int] = None, selected_keywords: List[str] = None,
+        self,
+        filename: str,
+        keywords: List[str] = None,
         corte_fecha: str = None,
         departamento: Optional[str] = None,
-        municipio: Optional[str] = None, ips: Optional[str] = None
+        municipio: Optional[str] = None,
+        ips: Optional[str] = None
     ):
-        """MODIFICADO: Pasar fecha dinámica al exportador"""
-        return AbsentUserController().export_inasistentes_to_csv(
-            filename, selected_months, selected_years, selected_keywords, 
-            corte_fecha, departamento, municipio, ips, self.static_files_dir
-        )
+        """Genera reporte de inasistentes mes a mes"""
+        try:
+            print(f"\n{'='*60}")
+            print(f"CONTROLLER: get_inasistentes_report")
+            print(f"{'='*60}")
+            print(f"Filename: {filename}")
+            print(f"Fecha corte: {corte_fecha}")
+            
+            # Validar fecha de corte
+            if not corte_fecha:
+                raise HTTPException(
+                    status_code=400,
+                    detail="El parámetro 'corte_fecha' es obligatorio"
+                )
+            
+            # Obtener data source
+            file_key = generate_file_key(filename)
+            data_source = self.data_source_service.ensure_data_source_available(filename, file_key)
+            print(f"✓ Data source obtenido")
+            
+            # Obtener column_mappings dinámicamente
+            column_mappings = config_loader.get_column_mappings(filename=filename)
+            print(f"✓ Mapeo de columnas cargado: {len(column_mappings.get('mappings', []))} mapeos")
+            
+            # Construir filtros geográficos
+            geographic_filters = {
+                'departamento': departamento,
+                'municipio': municipio,
+                'ips': ips
+            }
+            
+            # Llamar al controlador de inasistentes con la nueva firma
+            result = AbsentUserController().get_inasistentes_report(
+                filename=filename,
+                keywords=keywords,
+                corte_fecha=corte_fecha,
+                departamento=departamento,
+                municipio=municipio,
+                ips=ips,
+                path_technical_note=self.static_files_dir,
+                column_mappings=column_mappings
+            )
+            
+            print(f"{'='*60}")
+            print(f"Reporte generado exitosamente")
+            print(f"{'='*60}\n")
+            
+            return result
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            print(f"✗ ERROR en get_inasistentes_report: {e}")
+            import traceback
+            traceback.print_exc()
+            raise HTTPException(status_code=500, detail=f"Error generando reporte: {str(e)}")
+
+
+    def export_inasistentes_csv(
+        self,
+        filename: str,
+        keywords: List[str] = None,
+        corte_fecha: str = None,
+        departamento: Optional[str] = None,
+        municipio: Optional[str] = None,
+        ips: Optional[str] = None,
+        encoding: str = "utf-8-sig"
+    ):
+        """Exporta reporte de inasistentes a CSV"""
+        try:
+            print(f"\n{'='*60}")
+            print(f"CONTROLLER: export_inasistentes_csv")
+            print(f"{'='*60}")
+            print(f"Filename: {filename}")
+            
+            # Validar fecha de corte
+            if not corte_fecha:
+                raise HTTPException(
+                    status_code=400,
+                    detail="El parámetro 'corte_fecha' es obligatorio"
+                )
+            
+            # Obtener column_mappings dinámicamente
+            column_mappings = config_loader.get_column_mappings(filename=filename)
+            
+            # Llamar al exportador con la nueva firma
+            return AbsentUserController().export_inasistentes_to_csv(
+                filename=filename,
+                keywords=keywords,
+                corte_fecha=corte_fecha,
+                departamento=departamento,
+                municipio=municipio,
+                ips=ips,
+                path_technical_note=self.static_files_dir,
+                column_mappings=column_mappings,
+                encoding=encoding
+            )
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            print(f"✗ ERROR en export_inasistentes_csv: {e}")
+            import traceback
+            traceback.print_exc()
+            raise HTTPException(status_code=500, detail=f"Error exportando CSV: {str(e)}")
+
 
 
 # Función factory para mantener compatibilidad

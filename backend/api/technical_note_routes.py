@@ -698,19 +698,18 @@ def get_age_ranges(
 
 # ========== ENDPOINTS DE INASISTENTES ==========
 
+# En tu archivo de rutas (router)
+
 @router.post("/inasistentes-report/{filename}")
 def get_inasistentes_report(
     filename: str,
     request: Dict[str, Any],
-    corte_fecha: str = Query(..., description=mandatory_date)
+    corte_fecha: str = Query(..., description="Fecha de corte en formato YYYY-MM-DD")
 ):
-    """Genera reporte de inasistentes con fecha dinámica"""
+    """Genera reporte de inasistentes mes a mes"""
     try:
         print(f"POST /inasistentes-report/{filename}")
-        
-        selected_months = request.get("selectedMonths", [])
-        selected_years = request.get("selectedYears", [])
-        selected_keywords = request.get("selectedKeywords", [])
+        print(f"Fecha de corte: {corte_fecha}")
         
         # Validar formato de fecha
         try:
@@ -721,17 +720,13 @@ def get_inasistentes_report(
                 detail="Fecha debe tener formato YYYY-MM-DD"
             )
         
-        if not selected_months and not selected_years:
-            raise HTTPException(
-                status_code=400, 
-                detail="Debe seleccionar al menos una edad"
-            )
+        # Extraer keywords del request
+        selected_keywords = request.get("selectedKeywords", ["medicina"])
         
+        # Construir resultado usando la nueva firma
         result = technical_note_controller.get_inasistentes_report(
             filename=filename,
-            selected_months=selected_months,
-            selected_years=selected_years,
-            selected_keywords=selected_keywords,
+            keywords=selected_keywords,
             corte_fecha=corte_fecha,
             departamento=request.get("departamento"),
             municipio=request.get("municipio"),
@@ -746,6 +741,9 @@ def get_inasistentes_report(
     except HTTPException:
         raise
     except Exception as e:
+        print(f"ERROR: {e}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 
@@ -753,31 +751,35 @@ def get_inasistentes_report(
 def export_inasistentes_csv(
     filename: str,
     request: Dict[str, Any],
-    corte_fecha: str = Query(..., description=mandatory_date)
+    corte_fecha: str = Query(..., description="Fecha de corte en formato YYYY-MM-DD"),
+    encoding: str = Query(default="utf-8-sig", description="Encoding del CSV")
 ):
     """Exporta reporte de inasistentes a CSV"""
     try:
         print(f"POST /inasistentes-report/{filename}/export-csv")
+        print(f"Fecha de corte: {corte_fecha}")
         
-        selected_months = request.get("selectedMonths", [])
-        selected_years = request.get("selectedYears", [])
-        selected_keywords = request.get("selectedKeywords", [])
-        
-        if not selected_months and not selected_years:
+        # Validar formato de fecha
+        try:
+            datetime.strptime(corte_fecha, "%Y-%m-%d")
+        except ValueError:
             raise HTTPException(
-                status_code=400, 
-                detail="Debe seleccionar al menos una edad"
+                status_code=400,
+                detail="Fecha debe tener formato YYYY-MM-DD"
             )
         
+        # Extraer keywords del request
+        selected_keywords = request.get("selectedKeywords", ["medicina"])
+        
+        # Exportar usando la nueva firma
         csv_response = technical_note_controller.export_inasistentes_csv(
             filename=filename,
-            selected_months=selected_months,
-            selected_years=selected_years,
-            selected_keywords=selected_keywords,
+            keywords=selected_keywords,
             corte_fecha=corte_fecha,
             departamento=request.get("departamento"),
             municipio=request.get("municipio"),
-            ips=request.get("ips")
+            ips=request.get("ips"),
+            encoding=encoding
         )
         
         return csv_response
@@ -785,6 +787,9 @@ def export_inasistentes_csv(
     except HTTPException:
         raise
     except Exception as e:
+        print(f"ERROR: {e}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 

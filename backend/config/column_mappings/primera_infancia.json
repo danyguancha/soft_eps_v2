@@ -148,7 +148,7 @@
     },
     {
       "columna_usuario": "Fecha más reciente de suministro de Sulfato ferroso",
-      "keyword": "sulfato",
+      "keyword": "sulfato_ferroso",
       "consolidado": {
         "consulta_procedimiento": "Suplementacion con Micronutrientes(Sulfato ferroso Jarabe 120 ML)- Primera Infancia",
         "edad_aplicable": "2 a 5 Años",
@@ -157,7 +157,7 @@
     },
     {
       "columna_usuario": "Fecha más reciente de Suministro de Vitamina A",
-      "keyword": "vitamina",
+      "keyword": "vitamina_a",
       "consolidado": {
         "consulta_procedimiento": "Suplementacion con Micronutrientes(Vitamina A con 200. UI)- Primera Infancia",
         "edad_aplicable": "2 a 5 Años",
