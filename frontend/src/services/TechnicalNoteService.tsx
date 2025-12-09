@@ -1,4 +1,4 @@
-// services/TechnicalNoteService.tsx - CÓDIGO COMPLETO ACTUALIZADO
+// services/TechnicalNoteService.tsx - CÓDIGO COMPLETO CON SOPORTE PARA RED
 import api from '../Api';
 import type { InasistentesReportResponse } from '../interfaces/IAbsentUser';
 import type { AgeRangesResponse } from '../interfaces/IAge';
@@ -22,22 +22,78 @@ import type { FilterCondition } from '../types/api.types';
 export class TechnicalNoteService {
 
   // ========================================
-  // NT RPMS METHODS
+  // NT RPMS METHODS - ACTUALIZADOS PARA RED
   // ========================================
 
-  static async processNTRPMSFolder(folderPath: string): Promise<NTRPMSProcessResponse> {
+  /**
+   * Procesa archivos NT RPMS desde una carpeta compartida en red
+   * @param networkPath - Ruta UNC (ej: \\192.168.1.100\NT_RPMS_Share)
+   * @returns Respuesta con información del procesamiento
+   */
+  static async processNTRPMSFromNetwork(networkPath: string): Promise<NTRPMSProcessResponse> {
     try {
       console.log('='.repeat(60));
-      console.log('PROCESANDO NT RPMS');
+      console.log('PROCESANDO NT RPMS DESDE RED');
       console.log('='.repeat(60));
-      console.log(`📁 Carpeta: ${folderPath}`);
+      console.log(`🌐 Ruta de red: ${networkPath}`);
 
-      const requestBody: NTRPMSProcessRequest = {
+      const requestBody = {
+        network_path: networkPath
+      };
+
+      const response = await api.post<NTRPMSProcessResponse>(
+        '/technical-note/nt-rpms/process-network',
+        requestBody,
+        {
+          timeout: 300000, // 5 minutos
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      const data = response.data;
+
+      if (!data) {
+        throw new Error('No se recibió respuesta del servidor');
+      }
+
+      console.log('📦 Respuesta recibida:', JSON.stringify(data, null, 2));
+
+      if (data.success) {
+        this._logSuccessfulProcessing(data);
+      } else {
+        console.warn('⚠️ Procesamiento completado con advertencias');
+        if (data.errors && data.errors.length > 0) {
+          console.warn('Errores:');
+          data.errors.forEach(err => console.warn(`  - ${err}`));
+        }
+      }
+
+      return data;
+    } catch (error: any) {
+      return this._handleProcessingError(error, 'desde red');
+    }
+  }
+
+  /**
+   * Procesa archivos NT RPMS desde una carpeta local del servidor
+   * @param folderPath - Ruta local en el servidor
+   * @returns Respuesta con información del procesamiento
+   */
+  static async processNTRPMSFromLocal(folderPath: string): Promise<NTRPMSProcessResponse> {
+    try {
+      console.log('='.repeat(60));
+      console.log('PROCESANDO NT RPMS LOCAL');
+      console.log('='.repeat(60));
+      console.log(`📁 Carpeta local: ${folderPath}`);
+
+      const requestBody = {
         folder_path: folderPath
       };
 
       const response = await api.post<NTRPMSProcessResponse>(
-        '/technical-note/nt-rpms/process',
+        '/technical-note/nt-rpms/process-local',
         requestBody,
         {
           timeout: 300000,
@@ -56,30 +112,7 @@ export class TechnicalNoteService {
       console.log('📦 Respuesta recibida:', JSON.stringify(data, null, 2));
 
       if (data.success) {
-        const filesProcessed = data.files_processed || 0;
-        const totalRows = data.total_rows || 0;
-        const totalColumns = data.total_columns || 0;
-        const processingTime = data.processing_time_seconds;
-
-        console.log('✓ Procesamiento exitoso:');
-        console.log(`  - Archivos procesados: ${filesProcessed}`);
-        console.log(`  - Registros totales: ${totalRows.toLocaleString()}`);
-        console.log(`  - Columnas: ${totalColumns}`);
-        console.log(`  - CSV: ${data.csv_path || 'N/A'}`);
-        console.log(`  - Parquet: ${data.parquet_path || 'N/A'}`);
-
-        if (processingTime !== undefined && processingTime !== null) {
-          console.log(`  - Tiempo: ${processingTime.toFixed(2)}s`);
-        } else {
-          console.log(`  - Tiempo: No disponible`);
-        }
-
-        if (data.consolidation_details) {
-          const details = data.consolidation_details;
-          console.log(`  - Archivos encontrados: ${details.files_found || 0}`);
-          console.log(`  - Exitosos: ${details.files_successfully_processed || 0}`);
-          console.log(`  - Errores: ${details.files_with_errors || 0}`);
-        }
+        this._logSuccessfulProcessing(data);
       } else {
         console.warn('⚠️ Procesamiento completado con advertencias');
         if (data.errors && data.errors.length > 0) {
@@ -90,39 +123,133 @@ export class TechnicalNoteService {
 
       return data;
     } catch (error: any) {
-      console.error('✗ Error completo capturado:', error);
-      console.error('✗ Error.response:', error.response);
-      console.error('✗ Error.response.data:', error.response?.data);
-      console.error('✗ Error.message:', error.message);
-
-      let errorMessage = 'Error desconocido al procesar archivos';
-
-      if (error.response?.data?.detail) {
-        errorMessage = error.response.data.detail;
-        console.error('📌 Error extraído de response.data.detail:', errorMessage);
-      }
-      else if (typeof error.response?.data === 'string') {
-        errorMessage = error.response.data;
-        console.error('📌 Error extraído de response.data (string):', errorMessage);
-      }
-      else if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
-        console.error('📌 Error extraído de response.data.message:', errorMessage);
-      }
-      else if (error.message) {
-        errorMessage = error.message;
-        console.error('📌 Error extraído de error.message:', errorMessage);
-      }
-      else if (typeof error === 'string') {
-        errorMessage = error;
-        console.error('📌 Error como string:', errorMessage);
-      }
-
-      console.error('✗ Mensaje final de error:', errorMessage);
-      throw new Error(errorMessage);
+      return this._handleProcessingError(error, 'local');
     }
   }
 
+  /**
+   * [DEPRECATED] Usar processNTRPMSFromNetwork o processNTRPMSFromLocal
+   */
+  static async processNTRPMSFolder(folderPath: string): Promise<NTRPMSProcessResponse> {
+    console.warn('⚠️ processNTRPMSFolder está deprecado. Usa processNTRPMSFromNetwork o processNTRPMSFromLocal');
+    
+    // Detectar si es ruta de red o local
+    if (folderPath.startsWith('\\\\') || folderPath.startsWith('//')) {
+      return this.processNTRPMSFromNetwork(folderPath);
+    } else {
+      return this.processNTRPMSFromLocal(folderPath);
+    }
+  }
+
+  /**
+   * Método auxiliar para loggear procesamiento exitoso
+   */
+  private static _logSuccessfulProcessing(data: NTRPMSProcessResponse): void {
+    const filesProcessed = data.extraction_summary?.archivos_procesados || 0;
+    const totalRows = data.total_rows || 0;
+    const totalColumns = data.total_columns || 0;
+    const timing = data.timing;
+
+    console.log('✓ Procesamiento exitoso:');
+    console.log(`  - Archivos procesados: ${filesProcessed}`);
+    console.log(`  - Registros totales: ${totalRows.toLocaleString()}`);
+    console.log(`  - Columnas: ${totalColumns}`);
+    console.log(`  - CSV: ${data.csv_path || 'N/A'}`);
+    console.log(`  - Parquet: ${data.parquet_path || 'N/A'}`);
+
+    if (timing) {
+      console.log(`  - Tiempo extracción: ${timing.extraction_time?.toFixed(2)}s`);
+      console.log(`  - Tiempo conversión: ${timing.conversion_time?.toFixed(2)}s`);
+      console.log(`  - Tiempo total: ${timing.total_time?.toFixed(2)}s`);
+    }
+
+    // Info de red si está disponible
+    if (data.network_info) {
+      console.log(`  - Carpeta origen: ${data.network_info.original_path}`);
+      console.log(`  - Tipo acceso: ${data.network_info.access_type}`);
+      console.log(`  - Archivos Excel encontrados: ${data.network_info.excel_files_found}`);
+    }
+
+    // Info de compresión
+    if (data.compression_info) {
+      console.log(`  - Tamaño CSV: ${data.compression_info.original_size_mb?.toFixed(2)} MB`);
+      console.log(`  - Tamaño Parquet: ${data.compression_info.parquet_size_mb?.toFixed(2)} MB`);
+      console.log(`  - Ratio compresión: ${data.compression_info.compression_ratio?.toFixed(1)}%`);
+    }
+
+    if (data.extraction_summary) {
+      const summary = data.extraction_summary;
+      console.log(`  - Archivos con errores: ${summary.archivos_con_errores || 0}`);
+      if (summary.errores && summary.errores.length > 0) {
+        console.log('  Errores específicos:');
+        summary.errores.forEach(([file, error]) => {
+          console.log(`    • ${file}: ${error}`);
+        });
+      }
+    }
+  }
+
+  /**
+   * Método auxiliar para manejar errores de procesamiento
+   */
+  private static _handleProcessingError(error: any, source: string): never {
+    console.error(`✗ Error completo capturado (${source}):`, error);
+    console.error('✗ Error.response:', error.response);
+    console.error('✗ Error.response.data:', error.response?.data);
+    console.error('✗ Error.message:', error.message);
+
+    let errorMessage = `Error desconocido al procesar archivos ${source}`;
+    let suggestion: string | undefined;
+
+    // Extraer mensaje de error y sugerencias
+    if (error.response?.data?.detail) {
+      const detail = error.response.data.detail;
+      
+      // Si detail es un objeto con error y suggestion
+      if (typeof detail === 'object' && detail.error) {
+        errorMessage = detail.error;
+        suggestion = detail.suggestion;
+        console.error('📌 Error:', errorMessage);
+        if (suggestion) {
+          console.error('💡 Sugerencia:', suggestion);
+        }
+      } 
+      // Si detail es string directo
+      else if (typeof detail === 'string') {
+        errorMessage = detail;
+        console.error('📌 Error extraído de response.data.detail:', errorMessage);
+      }
+    }
+    else if (typeof error.response?.data === 'string') {
+      errorMessage = error.response.data;
+      console.error('📌 Error extraído de response.data (string):', errorMessage);
+    }
+    else if (error.response?.data?.message) {
+      errorMessage = error.response.data.message;
+      console.error('📌 Error extraído de response.data.message:', errorMessage);
+    }
+    else if (error.message) {
+      errorMessage = error.message;
+      console.error('📌 Error extraído de error.message:', errorMessage);
+    }
+    else if (typeof error === 'string') {
+      errorMessage = error;
+      console.error('📌 Error como string:', errorMessage);
+    }
+
+    console.error('✗ Mensaje final de error:', errorMessage);
+    
+    // Construir mensaje completo con sugerencia si existe
+    const fullMessage = suggestion 
+      ? `${errorMessage}\n\n💡 Sugerencia:\n${suggestion}`
+      : errorMessage;
+    
+    throw new Error(fullMessage);
+  }
+
+  /**
+   * Obtiene información del archivo NT RPMS consolidado disponible
+   */
   static async getNTRPMSFileInfo(): Promise<NTRPMSFileInfo | null> {
     try {
       console.log('🔍 Verificando archivo NT RPMS consolidado...');
@@ -152,6 +279,9 @@ export class TechnicalNoteService {
     }
   }
 
+  /**
+   * Elimina el archivo NT RPMS consolidado
+   */
   static async deleteNTRPMSFile(): Promise<{ success: boolean; message: string }> {
     try {
       console.log('🗑️ Eliminando archivo NT RPMS...');
@@ -171,6 +301,39 @@ export class TechnicalNoteService {
       throw new Error(
         error.response?.data?.detail || 'Error eliminando archivo NT RPMS'
       );
+    }
+  }
+
+  /**
+   * Obtiene lista de archivos NT RPMS procesados
+   */
+  static async listProcessedNTRPMS(): Promise<{
+    success: boolean;
+    files: Array<{
+      filename: string;
+      csv_path: string;
+      parquet_path: string | null;
+      has_parquet: boolean;
+      size_mb: number;
+      created: string;
+      modified: string;
+    }>;
+    count: number;
+  }> {
+    try {
+      console.log('📋 Listando archivos NT RPMS procesados...');
+
+      const response = await api.get(
+        '/technical-note/nt-rpms/list-processed',
+        { timeout: 10000 }
+      );
+
+      console.log(`✓ ${response.data.count} archivos procesados encontrados`);
+
+      return response.data;
+    } catch (error: any) {
+      console.error('✗ Error listando archivos NT RPMS:', error);
+      throw error;
     }
   }
 
@@ -382,8 +545,9 @@ export class TechnicalNoteService {
         params.append('municipio', filters.municipio);
       }
 
-      const url = `/technical-note/geographic/${filename}/${geoType}${params.toString() ? `?${params}` : ''
-        }`;
+      const url = `/technical-note/geographic/${filename}/${geoType}${
+        params.toString() ? `?${params}` : ''
+      }`;
 
       console.log(`🗺️ Obteniendo ${geoType}: GET ${url}`);
 
@@ -516,16 +680,9 @@ export class TechnicalNoteService {
   }
 
   // ========================================
-  // ABSENT USERS METHODS - ACTUALIZADOS
+  // ABSENT USERS METHODS
   // ========================================
 
-  /**
-   * Obtiene reporte de inasistentes mensual
-   * @param filename - Nombre del archivo a analizar
-   * @param cutoffDate - Fecha de corte para el análisis (YYYY-MM-DD)
-   * @param keywords - Palabras clave para filtrar actividades (ej: ['medicina'])
-   * @param geographicFilters - Filtros geográficos opcionales
-   */
   static async getInasistentesReport(
     filename: string,
     cutoffDate: string,
@@ -543,7 +700,6 @@ export class TechnicalNoteService {
       console.log(`   - Keywords:`, keywords);
       console.log(`   - Filtros geográficos:`, geographicFilters);
 
-      // Construir body del request
       const requestBody: any = {
         selectedKeywords: keywords
       };
@@ -558,7 +714,6 @@ export class TechnicalNoteService {
         requestBody.ips = geographicFilters.ips;
       }
 
-      // Construir query params
       const params = new URLSearchParams({
         corte_fecha: cutoffDate
       });
@@ -593,13 +748,6 @@ export class TechnicalNoteService {
     }
   }
 
-  /**
-   * Exporta reporte de inasistentes a CSV
-   * @param filename - Nombre del archivo a analizar
-   * @param cutoffDate - Fecha de corte (YYYY-MM-DD)
-   * @param keywords - Palabras clave para filtrar
-   * @param geographicFilters - Filtros geográficos opcionales
-   */
   static async exportInasistentesCSV(
     filename: string,
     cutoffDate: string,
@@ -738,9 +886,35 @@ export class TechnicalNoteService {
     };
     return colores[estado as keyof typeof colores] || '#9E9E9E';
   }
+
+  /**
+   * Valida si una ruta es de red (UNC)
+   */
+  static isNetworkPath(path: string): boolean {
+    return path.startsWith('\\\\') || path.startsWith('//');
+  }
+
+  /**
+   * Normaliza una ruta de red para el formato correcto
+   */
+  static normalizeNetworkPath(path: string): string {
+    // Convertir forward slashes a backslashes
+    let normalized = path.replace(/\//g, '\\');
+    
+    // Asegurar que empiece con \\
+    if (!normalized.startsWith('\\\\')) {
+      if (normalized.startsWith('\\')) {
+        normalized = '\\' + normalized;
+      } else {
+        normalized = '\\\\' + normalized;
+      }
+    }
+    
+    return normalized.trim();
+  }
 }
 
-
+// Exportar helpers
 export const TechnicalNoteHelpers = {
   formatFileSize: TechnicalNoteService.formatFileSize,
   isLargeFile: TechnicalNoteService.isLargeFile,
@@ -751,9 +925,18 @@ export const TechnicalNoteHelpers = {
   getSemaforoColor: TechnicalNoteService.getSemaforoColor,
   cleanupCache: TechnicalNoteService.cleanupAllCache,
   getCacheStatus: TechnicalNoteService.getCacheStatus,
-  processNTRPMS: TechnicalNoteService.processNTRPMSFolder,
+  
+  // Métodos NT RPMS actualizados
+  processNTRPMSFromNetwork: TechnicalNoteService.processNTRPMSFromNetwork,
+  processNTRPMSFromLocal: TechnicalNoteService.processNTRPMSFromLocal,
+  processNTRPMS: TechnicalNoteService.processNTRPMSFolder, // Deprecado pero mantenido
   getNTRPMSInfo: TechnicalNoteService.getNTRPMSFileInfo,
-  deleteNTRPMS: TechnicalNoteService.deleteNTRPMSFile
+  deleteNTRPMS: TechnicalNoteService.deleteNTRPMSFile,
+  listProcessedNTRPMS: TechnicalNoteService.listProcessedNTRPMS,
+  
+  // Utilidades de red
+  isNetworkPath: TechnicalNoteService.isNetworkPath,
+  normalizeNetworkPath: TechnicalNoteService.normalizeNetworkPath
 };
 
 export default TechnicalNoteService;

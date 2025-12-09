@@ -1,4 +1,4 @@
-# api/technical_note_routes.py - CON ENDPOINT NT RPMS INTEGRADO
+# api/technical_note_routes.py - CON ENDPOINTS NT RPMS PARA RED COMPARTIDA
 from datetime import datetime
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, UploadFile, File
 from typing import Any, Dict, List, Optional
@@ -8,6 +8,8 @@ import shutil
 from fastapi.encoders import jsonable_encoder
 import pandas as pd
 from fastapi.responses import JSONResponse, StreamingResponse
+from pydantic import BaseModel, Field
+
 from controllers.nt_rpms_controller import nt_rpms_controller
 from controllers.technical_note_controller.technical_note import technical_note_controller
 from models.schemas import NTRPMSProcessRequest
@@ -17,6 +19,7 @@ from services.duckdb_service.duckdb_service import duckdb_service
 
 report_exporter = ReportExporter()
 router = APIRouter()
+
 
 # ========== MODELOS PYDANTIC ==========
 mandatory_date = "Fecha de corte OBLIGATORIA (YYYY-MM-DD)"
@@ -34,7 +37,29 @@ EXCLUDED_FILES = {
     ]
 }
 
+
+# ========== NUEVOS MODELOS PARA RED ==========
+
+class NetworkPathRequest(BaseModel):
+    """Modelo para solicitud de procesamiento desde red"""
+    network_path: str = Field(
+        ...,
+        description="Ruta UNC de red compartida",
+        example="\\\\192.168.1.100\\NT_RPMS_Share"
+    )
+
+
+class LocalPathRequest(BaseModel):
+    """Modelo para solicitud de procesamiento local"""
+    folder_path: str = Field(
+        ...,
+        description="Ruta local en el servidor",
+        example="C:\\archivos\\NT_RPMS"
+    )
+
+
 # ========== ENDPOINTS DE LIMPIEZA DE CACHE ==========
+
 
 def clean_directory_selective(directory: str, excluded_files: list) -> Dict[str, Any]:
     """
@@ -256,11 +281,145 @@ async def get_cache_status() -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=f"Error obteniendo estado: {str(e)}")
 
 
-# ========== NUEVO ENDPOINT NT RPMS ==========
+# ========== ENDPOINTS NT RPMS - RED COMPARTIDA ==========
 
-@router.post("/nt-rpms/process")
+
+@router.post("/nt-rpms/process-network", tags=["NT RPMS"])
+async def process_network_nt_rpms(request: NetworkPathRequest) -> Dict[str, Any]:
+    """
+    Procesa archivos NT RPMS desde una carpeta compartida en red
+    
+    **Ejemplos de rutas válidas:**
+    - Windows UNC: `\\\\192.168.1.100\\NT_RPMS_Share`
+    - Drive mapeado: `Z:\\NT_RPMS`
+    - Linux mount: `/mnt/smb/nt_rpms`
+    
+    **Requisitos:**
+    1. La carpeta debe estar compartida en el cliente
+    2. El servidor debe tener permisos de lectura
+    3. El firewall debe permitir SMB/CIFS
+    4. Ambos equipos en la misma red
+    
+    Args:
+        request: Objeto con network_path (ruta UNC)
+    
+    Returns:
+        Resultado del procesamiento con información de red
+    """
+    try:
+        print(f"\n{'='*60}")
+        print("ENDPOINT: POST /nt-rpms/process-network")
+        print(f"{'='*60}")
+        print(f"Ruta de red solicitada: {request.network_path}")
+        
+        # Procesar usando el método de red del controlador
+        result = nt_rpms_controller.process_network_path(request.network_path)
+        
+        if not result.get("success"):
+            # Incluir sugerencias de solución si hay error
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error": result.get("error"),
+                    "suggestion": result.get("suggestion"),
+                    "total_time": result.get("total_time")
+                }
+            )
+        
+        print(f"\n✓ Procesamiento desde red completado exitosamente")
+        print(f"  - Carpeta red: {request.network_path}")
+        print(f"  - CSV: {result['csv_path']}")
+        print(f"  - Parquet: {result['parquet_path']}")
+        print(f"  - Registros: {result['total_rows']:,}")
+        
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"✗ Error inesperado en /nt-rpms/process-network: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error inesperado: {str(e)}"
+        )
+
+
+@router.post("/nt-rpms/process-local", tags=["NT RPMS"])
+async def process_local_nt_rpms(request: LocalPathRequest) -> Dict[str, Any]:
+    """
+    Procesa archivos NT RPMS desde una carpeta local del servidor
+    
+    **Nota:** Esta ruta solo funciona si la carpeta está físicamente en el servidor
+    
+    Args:
+        request: Objeto con folder_path (ruta local del servidor)
+    
+    Returns:
+        Resultado del procesamiento
+    """
+    try:
+        print(f"\n{'='*60}")
+        print("ENDPOINT: POST /nt-rpms/process-local")
+        print(f"{'='*60}")
+        print(f"Carpeta local solicitada: {request.folder_path}")
+        
+        # Validar que la carpeta existe
+        if not os.path.isdir(request.folder_path):
+            raise HTTPException(
+                status_code=400,
+                detail=f"La carpeta no existe: {request.folder_path}"
+            )
+        
+        # Contar archivos Excel en la carpeta
+        excel_files = [f for f in os.listdir(request.folder_path) 
+                      if f.lower().endswith(('.xlsx', '.xls')) and not f.startswith('~$')]
+        
+        if not excel_files:
+            raise HTTPException(
+                status_code=400,
+                detail=f"No se encontraron archivos Excel en la carpeta: {request.folder_path}"
+            )
+        
+        print(f"📁 Archivos Excel encontrados: {len(excel_files)}")
+        
+        # Procesar carpeta usando el controlador
+        result = nt_rpms_controller.process_nt_rpms_folder(request.folder_path)
+        
+        if not result.get("success"):
+            raise HTTPException(
+                status_code=500,
+                detail=result.get("error", "Error desconocido en procesamiento")
+            )
+        
+        print(f"\n✓ Procesamiento local completado exitosamente")
+        print(f"  - CSV: {result['csv_path']}")
+        print(f"  - Parquet: {result['parquet_path']}")
+        print(f"  - Registros: {result['total_rows']:,}")
+        
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"✗ Error inesperado en /nt-rpms/process-local: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error inesperado: {str(e)}"
+        )
+
+
+# ========== ENDPOINT ANTIGUO (MANTENER POR COMPATIBILIDAD) ==========
+
+
+@router.post("/nt-rpms/process", tags=["NT RPMS"])
 async def process_nt_rpms_folder(request: NTRPMSProcessRequest) -> Dict[str, Any]:
     """
+    **[DEPRECATED]** Usar /nt-rpms/process-local o /nt-rpms/process-network
+    
     Procesa archivos NT RPMS de una carpeta y los convierte a Parquet
     
     Args:
@@ -271,7 +430,8 @@ async def process_nt_rpms_folder(request: NTRPMSProcessRequest) -> Dict[str, Any
     """
     try:
         print(f"\n{'='*60}")
-        print("ENDPOINT: POST /nt-rpms/process")
+        print("ENDPOINT: POST /nt-rpms/process [DEPRECATED]")
+        print(f"⚠️  ADVERTENCIA: Usa /nt-rpms/process-local o /nt-rpms/process-network")
         print(f"{'='*60}")
         print(f"Carpeta solicitada: {request.folder_path}")
         
@@ -322,7 +482,7 @@ async def process_nt_rpms_folder(request: NTRPMSProcessRequest) -> Dict[str, Any
         )
 
 
-@router.get("/nt-rpms/status/{file_hash}")
+@router.get("/nt-rpms/status/{file_hash}", tags=["NT RPMS"])
 async def get_nt_rpms_processing_status(file_hash: str) -> Dict[str, Any]:
     """
     Obtiene el estado de un procesamiento NT RPMS por su hash
@@ -353,7 +513,7 @@ async def get_nt_rpms_processing_status(file_hash: str) -> Dict[str, Any]:
         )
 
 
-@router.get("/nt-rpms/list-processed")
+@router.get("/nt-rpms/list-processed", tags=["NT RPMS"])
 async def list_processed_nt_rpms() -> Dict[str, Any]:
     """
     Lista todos los archivos NT RPMS procesados disponibles
@@ -382,6 +542,7 @@ async def list_processed_nt_rpms() -> Dict[str, Any]:
 
 
 # ========== ENDPOINTS PRINCIPALES ==========
+
 
 @router.get("/available")
 def get_available_technical_files():
@@ -467,6 +628,7 @@ def get_file_columns(filename: str):
 
 # ========== ENDPOINTS GEOGRÁFICOS ==========
 
+
 @router.get("/geographic/{filename}/departamentos")
 def get_departamentos(filename: str):
     """Obtiene departamentos únicos"""
@@ -523,6 +685,7 @@ def get_ips(
 
 
 # ========== ENDPOINT DE REPORTE PRINCIPAL ==========
+
 
 @router.get("/report/{filename}")
 def get_keyword_age_report(
@@ -641,6 +804,7 @@ def get_keyword_age_report(
 
 # ========== ENDPOINTS DE VALORES ÚNICOS ==========
 
+
 @router.get("/unique-values/{filename}/{column_name}")
 def get_column_unique_values(
     filename: str,
@@ -661,6 +825,7 @@ def get_column_unique_values(
 
 
 # ========== ENDPOINTS DE RANGOS DE EDAD ==========
+
 
 @router.get("/age-ranges/{filename}")
 def get_age_ranges(
@@ -698,7 +863,6 @@ def get_age_ranges(
 
 # ========== ENDPOINTS DE INASISTENTES ==========
 
-# En tu archivo de rutas (router)
 
 @router.post("/inasistentes-report/{filename}")
 def get_inasistentes_report(
@@ -794,6 +958,7 @@ def export_inasistentes_csv(
 
 
 # ========== ENDPOINTS DE EXPORTACIÓN ==========
+
 
 @router.get("/reports/download/{file_id}")
 async def download_report_file(file_id: str):

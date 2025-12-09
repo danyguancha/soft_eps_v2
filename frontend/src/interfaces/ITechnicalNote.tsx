@@ -1,4 +1,6 @@
+// interfaces/ITechnicalNote.ts - INTERFACES ACTUALIZADAS
 import type { FilterCondition } from "../types/api.types";
+
 
 export interface TechnicalFileInfo {
   filename: string;
@@ -205,7 +207,8 @@ export interface KeywordAgeReport {
 }
 
 
-// ========== NUEVAS INTERFACES PARA CACHE ==========
+// ========== INTERFACES PARA CACHE ==========
+
 
 export interface DirectoryStatus {
   exists: boolean;
@@ -221,6 +224,7 @@ export interface CacheStatusResponse {
     metadata_cache: DirectoryStatus;
     parquet_cache: DirectoryStatus;
     technical_note: DirectoryStatus;
+    extract_info_nt: DirectoryStatus;
   };
   memory_state: {
     loaded_tables_count: number;
@@ -234,38 +238,153 @@ export interface CacheStatusResponse {
 export interface CleanupCacheResponse {
   success: boolean;
   message: string;
-  cleaned_directories: string[];
+  summary: {
+    total_files_deleted: number;
+    total_files_preserved: number;
+    directories_processed: number;
+  };
+  detailed_results: Array<{
+    directory: string;
+    files_deleted: string[];
+    files_preserved: string[];
+    subdirs_deleted: string[];
+    errors: string[];
+  }>;
   tables_cleared: number;
   technical_files_cleared: number;
   errors: string[] | null;
+  excluded_files_config: Record<string, string[]>;
   timestamp: string;
 }
 
+
+// ========== INTERFACES PARA NT RPMS - ACTUALIZADAS ==========
+
+
+/**
+ * Request para procesar desde carpeta compartida en red
+ */
+export interface NTRPMSNetworkPathRequest {
+  network_path: string; // Ejemplo: "\\192.168.1.100\NT_RPMS_Share"
+}
+
+
+/**
+ * Request para procesar desde carpeta local del servidor
+ */
+export interface NTRPMSLocalPathRequest {
+  folder_path: string; // Ejemplo: "C:\archivos\NT_RPMS"
+}
+
+
+/**
+ * [DEPRECATED] Request genérico (mantener por compatibilidad)
+ */
 export interface NTRPMSProcessRequest {
   folder_path: string;
 }
 
+
+/**
+ * Información de red cuando se procesa desde carpeta compartida
+ */
+export interface NetworkInfo {
+  original_path: string;           // Ruta original ingresada
+  resolved_path: string;            // Ruta normalizada/resuelta
+  access_type: 'network_share' | 'local'; // Tipo de acceso
+  total_files_in_folder?: number;   // Total archivos en carpeta
+  excel_files_found?: number;       // Archivos Excel encontrados
+}
+
+
+/**
+ * Información de tiempo de procesamiento
+ */
+export interface ProcessingTiming {
+  extraction_time: number;  // Segundos de extracción Excel->CSV
+  conversion_time: number;  // Segundos de conversión CSV->Parquet
+  total_time: number;       // Tiempo total del proceso
+}
+
+
+/**
+ * Información de compresión
+ */
+export interface CompressionInfo {
+  original_size_mb: number;     // Tamaño CSV en MB
+  parquet_size_mb: number;      // Tamaño Parquet en MB
+  compression_ratio: number;    // Porcentaje de compresión
+}
+
+
+/**
+ * Resumen de extracción desde archivos Excel
+ */
+export interface ExtractionSummary {
+  archivos_procesados: number;      // Archivos procesados exitosamente
+  archivos_con_errores: number;     // Archivos con errores
+  total_registros: number;          // Total registros consolidados
+  errores?: Array<[string, string]>; // Lista de [archivo, error]
+}
+
+
+/**
+ * Respuesta completa del procesamiento NT RPMS
+ */
 export interface NTRPMSProcessResponse {
   success: boolean;
-  message: string;
+  message?: string;
+  error?: string;
+  suggestion?: string;
+  
+  // Rutas de archivos generados
   csv_path: string;
   parquet_path: string;
+  
+  // Información de datos
   total_rows: number;
   total_columns: number;
   columns: string[];
-  processing_time_seconds: number;
-  files_processed: number;
-  consolidation_details: {
+  
+  // Información de tiempo
+  timing: ProcessingTiming;
+  
+  // Información de compresión
+  compression_info: CompressionInfo;
+  
+  // Resumen de extracción
+  extraction_summary: ExtractionSummary;
+  
+  // Información de red (solo para process-network)
+  network_info?: NetworkInfo;
+  
+  // Metadata adicional
+  from_cache: boolean;
+  file_hash: string;
+  file_id: string;
+  has_geographic_enrichment: boolean;
+  
+  // Errores (si los hay)
+  errors?: string[];
+  
+  timestamp?: string;
+  
+  // [DEPRECATED] Campos antiguos (mantener por compatibilidad)
+  processing_time_seconds?: number;
+  files_processed?: number;
+  consolidation_details?: {
     source_folder: string;
     files_found: number;
     files_successfully_processed: number;
     files_with_errors: number;
     total_records_consolidated: number;
   };
-  errors?: string[];
-  timestamp: string;
 }
 
+
+/**
+ * Información de archivo NT RPMS disponible
+ */
 export interface NTRPMSFileInfo {
   filename: string;
   display_name: string;
@@ -275,4 +394,141 @@ export interface NTRPMSFileInfo {
   parquet_path: string;
   csv_path: string;
   is_available: boolean;
+  file_size_mb?: number;
+  created_at?: string;
+  last_modified?: string;
 }
+
+
+/**
+ * Información de archivo NT RPMS procesado (para lista)
+ */
+export interface NTRPMSProcessedFile {
+  filename: string;
+  csv_path: string;
+  parquet_path: string | null;
+  has_parquet: boolean;
+  size_mb: number;
+  created: string;      // ISO timestamp
+  modified: string;     // ISO timestamp
+}
+
+
+/**
+ * Respuesta de lista de archivos procesados
+ */
+export interface NTRPMSListResponse {
+  success: boolean;
+  files: NTRPMSProcessedFile[];
+  count: number;
+  message?: string;
+}
+
+
+/**
+ * Respuesta de eliminación de archivo NT RPMS
+ */
+export interface NTRPMSDeleteResponse {
+  success: boolean;
+  message: string;
+  files_deleted?: string[];
+}
+
+
+/**
+ * Respuesta de estado de procesamiento por hash
+ */
+export interface NTRPMSStatusResponse {
+  success: boolean;
+  file_hash: string;
+  parquet_path: string;
+  metadata: {
+    total_rows?: number;
+    total_columns?: number;
+    created_at?: string;
+    file_size_mb?: number;
+  };
+  error?: string;
+}
+
+
+/**
+ * Opciones de validación de ruta de red
+ */
+export interface NetworkPathValidation {
+  is_valid: boolean;
+  normalized_path: string;
+  is_network_path: boolean;
+  exists: boolean;
+  is_directory: boolean;
+  has_read_permission: boolean;
+  total_files?: number;
+  excel_files?: number;
+  error_message?: string;
+  suggestions?: string[];
+}
+
+
+// ========== TIPOS AUXILIARES ==========
+
+
+/**
+ * Tipo para modo de procesamiento
+ */
+export type NTRPMSProcessMode = 'network' | 'local' | 'auto';
+
+
+/**
+ * Tipo para estado de procesamiento
+ */
+export type ProcessingStatus = 
+  | 'idle' 
+  | 'validating' 
+  | 'extracting' 
+  | 'converting' 
+  | 'completed' 
+  | 'error';
+
+
+/**
+ * Tipo para nivel de semáforo
+ */
+export type SemaforoLevel = 
+  | 'Óptimo' 
+  | 'Aceptable' 
+  | 'Deficiente' 
+  | 'Muy Deficiente' 
+  | 'NA';
+
+
+/**
+ * Configuración de procesamiento NT RPMS
+ */
+export interface NTRPMSProcessConfig {
+  mode: NTRPMSProcessMode;
+  path: string;
+  validate_before_process?: boolean;
+  enrich_geographic_data?: boolean;
+  timeout_seconds?: number;
+  retry_on_error?: boolean;
+  max_retries?: number;
+}
+
+
+/**
+ * Estado del procesamiento NT RPMS (para UI)
+ */
+export interface NTRPMSProcessingState {
+  status: ProcessingStatus;
+  progress_percentage: number;
+  current_step: string;
+  files_processed: number;
+  total_files: number;
+  elapsed_time_seconds: number;
+  estimated_remaining_seconds?: number;
+  error_message?: string;
+  suggestions?: string[];
+}
+
+
+
