@@ -188,3 +188,23 @@ class KeywordAgeReport(BaseModel):
 class NTRPMSProcessRequest(BaseModel):
     """Modelo de request para procesamiento NT RPMS"""
     folder_path: str = Field(..., description="Ruta de la carpeta con archivos Excel NT RPMS")
+
+
+# ========== NUEVOS MODELOS PARA RED ==========
+
+class NetworkPathRequest(BaseModel):
+    """Modelo para solicitud de procesamiento desde red"""
+    network_path: str = Field(
+        ...,
+        description="Ruta UNC de red compartida",
+        example="\\\\192.168.1.100\\NT_RPMS_Share"
+    )
+
+
+class LocalPathRequest(BaseModel):
+    """Modelo para solicitud de procesamiento local"""
+    folder_path: str = Field(
+        ...,
+        description="Ruta local en el servidor",
+        example="C:\\archivos\\NT_RPMS"
+    )

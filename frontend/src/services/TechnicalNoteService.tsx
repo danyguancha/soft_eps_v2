@@ -1,15 +1,12 @@
-// services/TechnicalNoteService.tsx - CÓDIGO COMPLETO CON SOPORTE PARA RED
+// services/TechnicalNoteService.tsx - SIN MÉTODOS DE LIMPIEZA MANUAL
 import api from '../Api';
 import type { InasistentesReportResponse } from '../interfaces/IAbsentUser';
 import type { AgeRangesResponse } from '../interfaces/IAge';
 import type {
-  CacheStatusResponse,
-  CleanupCacheResponse,
   ColumnUniqueValues,
   GeographicFilters,
   GeographicValuesResponse,
   KeywordAgeReport,
-  NTRPMSProcessRequest,
   NTRPMSProcessResponse,
   NTRPMSFileInfo,
   TechnicalFileData,
@@ -17,6 +14,7 @@ import type {
   TechnicalFileMetadata
 } from '../interfaces/ITechnicalNote';
 import type { FilterCondition } from '../types/api.types';
+
 
 
 export class TechnicalNoteService {
@@ -338,60 +336,9 @@ export class TechnicalNoteService {
   }
 
   // ========================================
-  // CACHE MANAGEMENT METHODS
+  // 🔥 MÉTODOS DE LIMPIEZA ELIMINADOS
+  // La limpieza es 100% automática desde el backend
   // ========================================
-
-  static async cleanupAllCache(): Promise<CleanupCacheResponse> {
-    try {
-      console.log('🧹 Limpiando cache del backend...');
-
-      const response = await api.post<CleanupCacheResponse>(
-        '/technical-note/cache/cleanup-all',
-        {},
-        { timeout: 30000 }
-      );
-
-      const data = response.data;
-
-      if (data.success) {
-        console.log('✓ Cache limpiado exitosamente:');
-        console.log(`  - Tablas limpiadas: ${data.tables_cleared}`);
-        console.log(`  - Archivos técnicos limpiados: ${data.technical_files_cleared}`);
-      } else {
-        console.warn('⚠️ Cache limpiado con errores:', data.errors);
-      }
-
-      return data;
-    } catch (error) {
-      console.error('✗ Error limpiando cache:', error);
-      throw error;
-    }
-  }
-
-  static async getCacheStatus(): Promise<CacheStatusResponse> {
-    try {
-      console.log('📊 Obteniendo estado del cache...');
-
-      const response = await api.get<CacheStatusResponse>(
-        '/technical-note/cache/status',
-        { timeout: 10000 }
-      );
-
-      const data = response.data;
-
-      console.log('Estado del cache:');
-      Object.entries(data.directories).forEach(([dir, status]) => {
-        console.log(`  ${dir}: ${status.file_count} archivos (${status.size_mb.toFixed(2)} MB)`);
-      });
-      console.log(`  Tablas en memoria: ${data.memory_state.loaded_tables_count}`);
-      console.log(`  Archivos técnicos: ${data.memory_state.loaded_technical_files_count}`);
-
-      return data;
-    } catch (error) {
-      console.error('✗ Error obteniendo estado del cache:', error);
-      throw error;
-    }
-  }
 
   // ========================================
   // FILE MANAGEMENT METHODS
@@ -914,7 +861,7 @@ export class TechnicalNoteService {
   }
 }
 
-// Exportar helpers
+// Exportar helpers (SIN métodos de limpieza)
 export const TechnicalNoteHelpers = {
   formatFileSize: TechnicalNoteService.formatFileSize,
   isLargeFile: TechnicalNoteService.isLargeFile,
@@ -923,8 +870,6 @@ export const TechnicalNoteHelpers = {
   downloadBlobAsFile: TechnicalNoteService.downloadBlobAsFile,
   downloadFromLink: TechnicalNoteService.downloadFromLink,
   getSemaforoColor: TechnicalNoteService.getSemaforoColor,
-  cleanupCache: TechnicalNoteService.cleanupAllCache,
-  getCacheStatus: TechnicalNoteService.getCacheStatus,
   
   // Métodos NT RPMS actualizados
   processNTRPMSFromNetwork: TechnicalNoteService.processNTRPMSFromNetwork,

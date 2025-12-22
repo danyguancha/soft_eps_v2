@@ -106,7 +106,7 @@ export const REPORT_KEYWORDS: KeywordConfig[] = [
   },
   {
     key: 'diu',
-    label: 'Dispositivo intrauterino',
+    label: 'diu',
     color: '#595b59ff',
     icon: SMILE_ICON,
     synonyms: ['diu', 'DIU', 'intrauterino', 'Dispositivo intrauterino', 'Dispositivo Intrauterino'],
@@ -114,7 +114,7 @@ export const REPORT_KEYWORDS: KeywordConfig[] = [
   },
   {
     key: 'subdermico',
-    label: 'Implante subdermico',
+    label: 'subdermico',
     color: '#595b59ff',
     icon: SMILE_ICON,
     synonyms: ['subdermico', 'Subdermico', 'Implante subdermico', 'implante Subdérmico', 'Implante Subdérmico'],

@@ -14,40 +14,21 @@ from api.routes import router
 from api.technical_note_routes import router as technical_note_router
 from middleware.content_size_limit import ContentSizeLimitMiddleware
 
+# 🔥 IMPORTAR CONFIG Y SERVICIO DE LIMPIEZA
+from config.config import Config, cache_config
+from services.technical_note_services.cache_cleanup_service import cache_cleanup_service
 
-# ========== CONFIGURACIÓN ==========
-class Config:
-    # Configuración para producción
-    MAX_FILE_SIZE = 5 * 1024 * 1024 * 1024  # 5GB
-    UPLOAD_DIR = "uploads"
-    REQUEST_TIMEOUT = 300  # 5 minutos
-    
-    # Puerto FIJO para producción
-    PORT = int(os.getenv("PORT", 8000))
-    HOST = os.getenv("HOST", "0.0.0.0")
-    
-    # Ambiente
-    ENVIRONMENT = os.getenv("ENVIRONMENT", "production")
-    
-    # Workers (para Gunicorn/Uvicorn workers)
-    WORKERS = int(os.getenv("WORKERS", 2))
-    
-    # CORS - Ajustar según tu red
-    ALLOWED_ORIGINS = os.getenv(
-        "ALLOWED_ORIGINS",
-        "*"  # En producción, especifica IPs: "http://192.168.1.100,http://nt.local"
-    ).split(",")
 
 
 # ========== MIDDLEWARE ==========
 class ProductionMiddleware(BaseHTTPMiddleware):
-    """Middleware optimizado para producción"""
+    """Middleware optimizado para producción CON tracking de accesos"""
     
     async def dispatch(self, request: Request, call_next):
         start_time = time.time()
         
         # Log solo para operaciones importantes
-        log_paths = ["/upload", "/process", "/nt-rpms"]
+        log_paths = ["/upload", "/process", "/nt-rpms", "/technical-note"]
         should_log = any(path in str(request.url) for path in log_paths)
         
         if should_log:
@@ -65,7 +46,7 @@ class ProductionMiddleware(BaseHTTPMiddleware):
             # Headers de seguridad
             response.headers.update({
                 "X-Content-Type-Options": "nosniff",
-                "X-Frame-Options": "SAMEORIGIN",  # Permitir mismo origen
+                "X-Frame-Options": "SAMEORIGIN",
                 "X-XSS-Protection": "1; mode=block",
                 "Referrer-Policy": "strict-origin-when-cross-origin"
             })
@@ -82,21 +63,11 @@ class ProductionMiddleware(BaseHTTPMiddleware):
             raise
 
 
+
 # ========== LIFESPAN ==========
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Gestión del ciclo de vida de la aplicación"""
-    
-    # ===== STARTUP =====
-    print("=" * 60)
-    print("🚀 INICIANDO SISTEMA DE EVALUACIÓN NT")
-    print("=" * 60)
-    print(f"Ambiente: {Config.ENVIRONMENT}")
-    print(f"Puerto: {Config.PORT}")
-    print(f"Host: {Config.HOST}")
-    print(f"Workers: {Config.WORKERS}")
-    print("-" * 60)
-    
     # Inicializar servicios
     try:
         from services.duckdb_service_wrapper import safe_duckdb_service
@@ -109,12 +80,25 @@ async def lifespan(app: FastAPI):
         Config.UPLOAD_DIR,
         "parquet_cache",
         "extract_info_nt",
-        "temp_uploads"
+        "technical_note",
+        "metadata_cache",
+        "duckdb_storage"
     ]
     
     for directory in directories:
         os.makedirs(directory, exist_ok=True)
         print(f"✓ Directorio: {directory}")
+    
+    print("-" * 60)
+    
+    # 🔥 INICIAR SERVICIO DE LIMPIEZA AUTOMÁTICA
+    print("🧹 Configurando limpieza automática de cache...")
+    print(f"   - Intervalo de limpieza: cada {cache_config.CLEANUP_INTERVAL_MINUTES} minutos")
+    print(f"   - TTLs configurados:")
+    for dir_name, dir_conf in cache_config.DIRECTORIES.items():
+        print(f"      • {dir_name}: {dir_conf['ttl_minutes']} minutos")
+    
+    cache_cleanup_service.start_automatic_cleanup()
     
     print("-" * 60)
     print("✅ Sistema listo para recibir peticiones")
@@ -126,6 +110,10 @@ async def lifespan(app: FastAPI):
     print("\n" + "=" * 60)
     print("🛑 DETENIENDO SISTEMA")
     print("=" * 60)
+    
+    # 🔥 DETENER SERVICIO DE LIMPIEZA
+    print("🧹 Deteniendo limpieza automática...")
+    cache_cleanup_service.stop_automatic_cleanup()
     
     # Cerrar conexiones
     try:
@@ -140,15 +128,17 @@ async def lifespan(app: FastAPI):
     print("=" * 60)
 
 
+
 # ========== CREAR APP ==========
 app = FastAPI(
     title="Sistema de Evaluación de Nota Técnica",
     description="API para el procesamiento y evaluación de notas técnicas. Basadas en la estructura del software SIGIRES.",
-    version="2.4.0",
-    docs_url="/docs" if Config.ENVIRONMENT == "development" else None,  # Docs solo en dev
+    version="2.5.0",  # 🔥 Versión actualizada
+    docs_url="/docs" if Config.ENVIRONMENT == "development" else None,
     redoc_url="/redoc" if Config.ENVIRONMENT == "development" else None,
     lifespan=lifespan
 )
+
 
 
 # ========== MIDDLEWARE ==========
@@ -172,6 +162,7 @@ app.add_middleware(
 )
 
 
+
 # ========== HEALTH CHECK ==========
 @app.get("/health")
 def health_check():
@@ -179,10 +170,15 @@ def health_check():
     return {
         "status": "healthy",
         "service": "nt-rpms-backend",
-        "version": "2.4.0",
+        "version": "2.5.0",
         "environment": Config.ENVIRONMENT,
-        "timestamp": time.time()
+        "timestamp": time.time(),
+        "cache_cleanup": {
+            "enabled": cache_cleanup_service.is_running,
+            "interval_minutes": cache_config.CLEANUP_INTERVAL_MINUTES
+        }
     }
+
 
 
 @app.get("/")
@@ -190,10 +186,16 @@ def root():
     """Endpoint raíz"""
     return {
         "message": "Sistema de Evaluación de Nota Técnica",
-        "version": "2.4.0",
+        "version": "2.5.0",
         "docs": "/docs" if Config.ENVIRONMENT == "development" else "Deshabilitado en producción",
-        "health": "/health"
+        "health": "/health",
+        "features": {
+            "automatic_cache_cleanup": True,
+            "ttl_based_expiration": True,
+            "protected_files": True
+        }
     }
+
 
 
 # ========== ROUTERS ==========
@@ -208,30 +210,3 @@ app.include_router(
     prefix="/api/v1/technical-note", 
     tags=["Technical Note"]
 )
-
-
-# ========== EJECUCIÓN DIRECTA ==========
-if __name__ == "__main__":
-    """
-    Ejecución directa para desarrollo.
-    En producción, usar Gunicorn/Uvicorn desde servicio.
-    """
-    print("\n⚠️  MODO DESARROLLO - No usar en producción")
-    print("   Use systemd/NSSM con Gunicorn/Uvicorn\n")
-    
-    try:
-        uvicorn.run(
-            "main:app",
-            host=Config.HOST,
-            port=Config.PORT,
-            reload=Config.ENVIRONMENT == "development",
-            log_level="info",
-            timeout_keep_alive=Config.REQUEST_TIMEOUT,
-            access_log=True,
-        )
-    except KeyboardInterrupt:
-        print("\n✋ Aplicación detenida por el usuario")
-    except Exception as e:
-        print(f"\n❌ Error crítico: {e}")
-        import traceback
-        traceback.print_exc()

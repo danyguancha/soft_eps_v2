@@ -1,11 +1,13 @@
-
 from dataclasses import dataclass
 from typing import Tuple, List
+
 
 @dataclass(frozen=True)
 class KeywordRule:
     name: str
     synonyms: Tuple[str, ...]
+    metodo_anticonceptivo: str = None
+
 
 DEFAULT_KEYWORDS: List[KeywordRule] = [
     KeywordRule(name="medicina", synonyms=("medicina", "médica", "médico", "medical")),
@@ -18,6 +20,10 @@ DEFAULT_KEYWORDS: List[KeywordRule] = [
     KeywordRule(name="micronutrientes", synonyms=("micronutrientes", "micronu", "micronutrientes")),
     KeywordRule(name="vitamina_a", synonyms=("Vitamina A",  " Vit A")),
     KeywordRule(name="sulfato_ferroso", synonyms=("Sulfato ferroso", "sulfato_ferroso", "sulfato ferroso", "ferroso")),
-    KeywordRule(name="diu", synonyms=("")),
-    KeywordRule(name="subdermico", synonyms=(""))
+    
+    # Keywords especiales - NO necesitan metodo_anticonceptivo aquí
+    KeywordRule(name="diu", synonyms=("diu", "DIU", "dispositivo intrauterino")),
+    KeywordRule(name="subdermico", synonyms=("subdermico", "subdérmico", "implante subdermico", "implante subdérmico"))
 ]
+
+

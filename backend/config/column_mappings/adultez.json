@@ -145,6 +145,24 @@
         "edad_aplicable": "29 a 59 Años",
         "edad_NT_RPMS": "29 a 59 Años"
       }
+    },
+    {
+      "columna_usuario": "Fecha más reciente de Suministro de Método Anticonceptivo",
+      "keyword": "diu",
+      "consolidado": {
+        "consulta_procedimiento": "Inserción de dispositivo intrauterino anticonceptivo(DIU)- Adultez",
+        "edad_aplicable": "29 a 49 Años",
+        "edad_NT_RPMS": "29 a 49 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha más reciente de Suministro de Método Anticonceptivo",
+      "keyword": "subdermico",
+      "consolidado": {
+        "consulta_procedimiento": "Insercion de Anticonceptivo Subdermico - Adultez",
+        "edad_aplicable": "29 a 49 Años",
+        "edad_NT_RPMS": "29 a 49 Años"
+      }
     }
   ]
 }

@@ -1,288 +1,29 @@
-# api/technical_note_routes.py - CON ENDPOINTS NT RPMS PARA RED COMPARTIDA
+# api/technical_note_routes.py - SIN ENDPOINTS DE LIMPIEZA MANUAL
 from datetime import datetime
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, UploadFile, File
-from typing import Any, Dict, List, Optional
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
+from typing import Any, Dict, Optional
 import json
 import os
-import shutil
 from fastapi.encoders import jsonable_encoder
-import pandas as pd
 from fastapi.responses import JSONResponse, StreamingResponse
-from pydantic import BaseModel, Field
-
 from controllers.nt_rpms_controller import nt_rpms_controller
 from controllers.technical_note_controller.technical_note import technical_note_controller
-from models.schemas import NTRPMSProcessRequest
+from models.schemas import LocalPathRequest, NTRPMSProcessRequest, NetworkPathRequest
 from services.technical_note_services.report_service_aux.report_exporter import ReportExporter
-from services.duckdb_service.duckdb_service import duckdb_service
-
+from services.technical_note_services.cache_cleanup_service import cache_access_tracker
 
 report_exporter = ReportExporter()
 router = APIRouter()
 
 
-# ========== MODELOS PYDANTIC ==========
 mandatory_date = "Fecha de corte OBLIGATORIA (YYYY-MM-DD)"
-EXCLUDED_FILES = {
-    "extract_info_nt": [
-        "departamentos.xlsx",
-    ],
-    "technical_note": [
-    ],
-    "duckdb_storage": [
-    ],
-    "metadata_cache": [
-    ],
-    "parquet_cache": [
-    ]
-}
 
 
-# ========== NUEVOS MODELOS PARA RED ==========
-
-class NetworkPathRequest(BaseModel):
-    """Modelo para solicitud de procesamiento desde red"""
-    network_path: str = Field(
-        ...,
-        description="Ruta UNC de red compartida",
-        example="\\\\192.168.1.100\\NT_RPMS_Share"
-    )
-
-
-class LocalPathRequest(BaseModel):
-    """Modelo para solicitud de procesamiento local"""
-    folder_path: str = Field(
-        ...,
-        description="Ruta local en el servidor",
-        example="C:\\archivos\\NT_RPMS"
-    )
-
-
-# ========== ENDPOINTS DE LIMPIEZA DE CACHE ==========
-
-
-def clean_directory_selective(directory: str, excluded_files: list) -> Dict[str, Any]:
-    """
-    Limpia un directorio eliminando todos los archivos EXCEPTO los especificados.
-    
-    Args:
-        directory: Ruta del directorio a limpiar
-        excluded_files: Lista de nombres de archivos a NO eliminar
-        
-    Returns:
-        Dict con información de la limpieza
-    """
-    result = {
-        "directory": directory,
-        "files_deleted": [],
-        "files_preserved": [],
-        "subdirs_deleted": [],
-        "errors": []
-    }
-    
-    try:
-        if not os.path.exists(directory):
-            print(f"⚠️  Directorio no existe: {directory}")
-            os.makedirs(directory, exist_ok=True)
-            return result
-        
-        # Listar todos los elementos en el directorio
-        for item_name in os.listdir(directory):
-            item_path = os.path.join(directory, item_name)
-            
-            try:
-                # Si es un archivo
-                if os.path.isfile(item_path):
-                    # Verificar si está en la lista de exclusión
-                    if item_name in excluded_files:
-                        print(f"✓ Archivo preservado: {item_name}")
-                        result["files_preserved"].append(item_name)
-                    else:
-                        # Eliminar archivo
-                        os.remove(item_path)
-                        print(f"✓ Archivo eliminado: {item_name}")
-                        result["files_deleted"].append(item_name)
-                
-                # Si es un subdirectorio, eliminarlo completamente
-                elif os.path.isdir(item_path):
-                    shutil.rmtree(item_path)
-                    print(f"✓ Subdirectorio eliminado: {item_name}")
-                    result["subdirs_deleted"].append(item_name)
-                    
-            except Exception as e:
-                error_msg = f"Error procesando {item_name}: {str(e)}"
-                print(f"✗ {error_msg}")
-                result["errors"].append(error_msg)
-        
-        # Asegurar que el directorio principal exista
-        os.makedirs(directory, exist_ok=True)
-        
-    except Exception as e:
-        error_msg = f"Error limpiando directorio {directory}: {str(e)}"
-        print(f"✗ {error_msg}")
-        result["errors"].append(error_msg)
-        # Asegurar que el directorio exista incluso si falla
-        os.makedirs(directory, exist_ok=True)
-    
-    return result
-
-
-@router.post("/cache/cleanup-all")
-async def cleanup_all_cache() -> Dict[str, Any]:
-    """
-    Endpoint para limpiar todos los directorios de cache y archivos precargados.
-    Respeta la lista de archivos excluidos definida en EXCLUDED_FILES.
-    """
-    try:
-        print("🧹 Iniciando limpieza completa de cache...")
-        
-        # Directorios a limpiar
-        directories_to_clean = [
-            "duckdb_storage",
-            "metadata_cache",
-            "parquet_cache",
-            "technical_note",
-            "extract_info_nt"
-        ]
-        
-        cleaned_results = []
-        global_errors = []
-        total_files_deleted = 0
-        total_files_preserved = 0
-        
-        # Limpiar cada directorio selectivamente
-        for directory in directories_to_clean:
-            print(f"\n📁 Procesando directorio: {directory}")
-            
-            # Obtener lista de archivos excluidos para este directorio
-            excluded_files = EXCLUDED_FILES.get(directory, [])
-            
-            if excluded_files:
-                print(f"   Archivos a preservar: {', '.join(excluded_files)}")
-            
-            # Limpiar directorio selectivamente
-            clean_result = clean_directory_selective(directory, excluded_files)
-            
-            cleaned_results.append(clean_result)
-            total_files_deleted += len(clean_result["files_deleted"])
-            total_files_preserved += len(clean_result["files_preserved"])
-            
-            if clean_result["errors"]:
-                global_errors.extend(clean_result["errors"])
-        
-        # Limpiar tablas cargadas en memoria de DuckDB
-        tables_count = 0
-        if hasattr(duckdb_service, 'loaded_tables'):
-            tables_count = len(duckdb_service.loaded_tables)
-            duckdb_service.loaded_tables.clear()
-            print(f"\n✓ {tables_count} tablas eliminadas de memoria DuckDB")
-        
-        # Limpiar archivos técnicos cargados
-        tech_files_count = 0
-        if hasattr(technical_note_controller, 'loaded_technical_files'):
-            tech_files_count = len(technical_note_controller.loaded_technical_files)
-            technical_note_controller.loaded_technical_files.clear()
-            print(f"✓ {tech_files_count} archivos técnicos eliminados de memoria")
-        
-        # Reiniciar conexión DuckDB para liberar recursos
-        try:
-            if hasattr(duckdb_service, 'restart_connection'):
-                duckdb_service.restart_connection()
-                print("✓ Conexión DuckDB reiniciada")
-        except Exception as e:
-            error_msg = f"Error reiniciando conexión DuckDB: {str(e)}"
-            print(f"✗ {error_msg}")
-            global_errors.append(error_msg)
-        
-        # Mensaje final
-        success_message = (
-            f"Cache limpiado completamente. "
-            f"Archivos eliminados: {total_files_deleted}, "
-            f"Archivos preservados: {total_files_preserved}"
-        )
-        
-        if global_errors:
-            success_message = f"Cache limpiado con {len(global_errors)} errores"
-        
-        print(f"\n✓ {success_message}")
-        
-        return {
-            "success": len(global_errors) == 0,
-            "message": success_message,
-            "summary": {
-                "total_files_deleted": total_files_deleted,
-                "total_files_preserved": total_files_preserved,
-                "directories_processed": len(directories_to_clean)
-            },
-            "detailed_results": cleaned_results,
-            "tables_cleared": tables_count,
-            "technical_files_cleared": tech_files_count,
-            "errors": global_errors if global_errors else None,
-            "excluded_files_config": EXCLUDED_FILES,
-            "timestamp": str(pd.Timestamp.now())
-        }
-        
-    except Exception as e:
-        print(f"✗ Error crítico en cleanup_all_cache: {e}")
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error limpiando cache: {str(e)}"
-        )
-
-
-@router.get("/cache/status")
-async def get_cache_status() -> Dict[str, Any]:
-    """
-    Obtiene el estado actual del cache (útil para debugging y monitoreo)
-    """
-    try:
-        directories_status = {}
-        
-        # Verificar estado de cada directorio
-        for directory in ["duckdb_storage", "metadata_cache", "parquet_cache", "technical_note", "extract_info_nt"]:
-            if os.path.exists(directory):
-                file_count = sum(len(files) for _, _, files in os.walk(directory))
-                dir_size = sum(
-                    os.path.getsize(os.path.join(root, file))
-                    for root, _, files in os.walk(directory)
-                    for file in files
-                )
-                directories_status[directory] = {
-                    "exists": True,
-                    "file_count": file_count,
-                    "size_mb": round(dir_size / (1024 * 1024), 2)
-                }
-            else:
-                directories_status[directory] = {
-                    "exists": False,
-                    "file_count": 0,
-                    "size_mb": 0
-                }
-        
-        # Estado de memoria
-        loaded_tables_count = len(duckdb_service.loaded_tables) if hasattr(duckdb_service, 'loaded_tables') else 0
-        loaded_technical_count = len(technical_note_controller.loaded_technical_files) if hasattr(technical_note_controller, 'loaded_technical_files') else 0
-        
-        return {
-            "success": True,
-            "directories": directories_status,
-            "memory_state": {
-                "loaded_tables_count": loaded_tables_count,
-                "loaded_technical_files_count": loaded_technical_count,
-                "duckdb_available": duckdb_service.is_available()
-            },
-            "timestamp": str(pd.Timestamp.now())
-        }
-        
-    except Exception as e:
-        print(f"Error obteniendo estado del cache: {e}")
-        raise HTTPException(status_code=500, detail=f"Error obteniendo estado: {str(e)}")
+# 🔥 NOTA: Los endpoints de limpieza manual fueron ELIMINADOS
+# La limpieza ahora es 100% automática desde el backend basada en TTL
 
 
 # ========== ENDPOINTS NT RPMS - RED COMPARTIDA ==========
-
 
 @router.post("/nt-rpms/process-network", tags=["NT RPMS"])
 async def process_network_nt_rpms(request: NetworkPathRequest) -> Dict[str, Any]:
@@ -316,7 +57,6 @@ async def process_network_nt_rpms(request: NetworkPathRequest) -> Dict[str, Any]
         result = nt_rpms_controller.process_network_path(request.network_path)
         
         if not result.get("success"):
-            # Incluir sugerencias de solución si hay error
             raise HTTPException(
                 status_code=400,
                 detail={
@@ -325,6 +65,12 @@ async def process_network_nt_rpms(request: NetworkPathRequest) -> Dict[str, Any]
                     "total_time": result.get("total_time")
                 }
             )
+        
+        # 🔥 TRACKING: Registrar archivos generados
+        if result.get("csv_path"):
+            cache_access_tracker.track_access(result["csv_path"], "extract_info_nt")
+        if result.get("parquet_path"):
+            cache_access_tracker.track_access(result["parquet_path"], "parquet_cache")
         
         print(f"\n✓ Procesamiento desde red completado exitosamente")
         print(f"  - Carpeta red: {request.network_path}")
@@ -393,6 +139,12 @@ async def process_local_nt_rpms(request: LocalPathRequest) -> Dict[str, Any]:
                 detail=result.get("error", "Error desconocido en procesamiento")
             )
         
+        # 🔥 TRACKING: Registrar archivos generados
+        if result.get("csv_path"):
+            cache_access_tracker.track_access(result["csv_path"], "extract_info_nt")
+        if result.get("parquet_path"):
+            cache_access_tracker.track_access(result["parquet_path"], "parquet_cache")
+        
         print(f"\n✓ Procesamiento local completado exitosamente")
         print(f"  - CSV: {result['csv_path']}")
         print(f"  - Parquet: {result['parquet_path']}")
@@ -413,7 +165,6 @@ async def process_local_nt_rpms(request: LocalPathRequest) -> Dict[str, Any]:
 
 
 # ========== ENDPOINT ANTIGUO (MANTENER POR COMPATIBILIDAD) ==========
-
 
 @router.post("/nt-rpms/process", tags=["NT RPMS"])
 async def process_nt_rpms_folder(request: NTRPMSProcessRequest) -> Dict[str, Any]:
@@ -462,6 +213,12 @@ async def process_nt_rpms_folder(request: NTRPMSProcessRequest) -> Dict[str, Any
                 status_code=500,
                 detail=result.get("error", "Error desconocido en procesamiento")
             )
+        
+        # 🔥 TRACKING: Registrar archivos generados
+        if result.get("csv_path"):
+            cache_access_tracker.track_access(result["csv_path"], "extract_info_nt")
+        if result.get("parquet_path"):
+            cache_access_tracker.track_access(result["parquet_path"], "parquet_cache")
         
         print(f"\n✓ Procesamiento completado exitosamente")
         print(f"  - CSV: {result['csv_path']}")
@@ -543,7 +300,6 @@ async def list_processed_nt_rpms() -> Dict[str, Any]:
 
 # ========== ENDPOINTS PRINCIPALES ==========
 
-
 @router.get("/available")
 def get_available_technical_files():
     """Lista archivos técnicos disponibles"""
@@ -576,6 +332,11 @@ def get_technical_file_data_with_excel_filters(
             except json.JSONDecodeError as e:
                 print(f"Error parseando filtros: {e}")
         
+        # 🔥 TRACKING: Registrar acceso al archivo técnico
+        file_path = os.path.join("technical_note", filename)
+        if os.path.exists(file_path):
+            cache_access_tracker.track_access(file_path, "technical_note")
+        
         result = technical_note_controller.read_technical_file_data_paginated(
             filename=filename,
             page=page, 
@@ -600,6 +361,11 @@ def get_technical_file_data_with_excel_filters(
 def get_technical_file_metadata(filename: str):
     """Metadatos del archivo"""
     try:
+        # 🔥 TRACKING: Registrar acceso
+        file_path = os.path.join("technical_note", filename)
+        if os.path.exists(file_path):
+            cache_access_tracker.track_access(file_path, "technical_note")
+        
         return technical_note_controller.get_technical_file_metadata(filename)
     except HTTPException:
         raise
@@ -627,7 +393,6 @@ def get_file_columns(filename: str):
 
 
 # ========== ENDPOINTS GEOGRÁFICOS ==========
-
 
 @router.get("/geographic/{filename}/departamentos")
 def get_departamentos(filename: str):
@@ -686,7 +451,6 @@ def get_ips(
 
 # ========== ENDPOINT DE REPORTE PRINCIPAL ==========
 
-
 @router.get("/report/{filename}")
 def get_keyword_age_report(
     filename: str,
@@ -729,38 +493,10 @@ def get_keyword_age_report(
             corte_fecha=corte_fecha
         )
         
-        # 🔍 DEBUGGING CRÍTICO
-        print(f"\n📦 RESULTADO DEL CONTROLLER:")
-        print(f"   Tipo: {type(result)}")
-        print(f"   Es dict: {isinstance(result, dict)}")
-        
-        if isinstance(result, dict):
-            print(f"   Keys: {list(result.keys())}")
-            print(f"   Tiene 'items': {'items' in result}")
-            print(f"   Tiene 'success': {'success' in result}")
-            
-            if 'items' in result:
-                items = result.get('items', [])
-                print(f"   Items es lista: {isinstance(items, list)}")
-                print(f"   Cantidad items: {len(items) if isinstance(items, list) else 'N/A'}")
-                
-                # Verificar si items se puede serializar
-                try:
-                    json.dumps(items, default=str)
-                    print(f"   ✓ Items es serializable")
-                except Exception as e:
-                    print(f"   ✗ Items NO es serializable: {e}")
-        
-        # ✓ SOLUCIÓN: Usar jsonable_encoder + JSONResponse
+        # Convertir a formato JSON-serializable
         try:
-            # Convertir todo a formato JSON-serializable
             encoded_result = jsonable_encoder(result)
             
-            print(f"\n📤 ENVIANDO RESPUESTA:")
-            print(f"   Tipo después de encode: {type(encoded_result)}")
-            print(f"   Items en respuesta: {len(encoded_result.get('items', [])) if isinstance(encoded_result, dict) else 'N/A'}")
-            
-            # Retornar con JSONResponse explícito
             return JSONResponse(
                 content=encoded_result,
                 status_code=200,
@@ -775,7 +511,7 @@ def get_keyword_age_report(
             import traceback
             traceback.print_exc()
             
-            # Intento alternativo: serializar manualmente
+            # Intento alternativo
             try:
                 json_str = json.dumps(result, default=str, ensure_ascii=False)
                 json_data = json.loads(json_str)
@@ -804,7 +540,6 @@ def get_keyword_age_report(
 
 # ========== ENDPOINTS DE VALORES ÚNICOS ==========
 
-
 @router.get("/unique-values/{filename}/{column_name}")
 def get_column_unique_values(
     filename: str,
@@ -825,7 +560,6 @@ def get_column_unique_values(
 
 
 # ========== ENDPOINTS DE RANGOS DE EDAD ==========
-
 
 @router.get("/age-ranges/{filename}")
 def get_age_ranges(
@@ -863,7 +597,6 @@ def get_age_ranges(
 
 # ========== ENDPOINTS DE INASISTENTES ==========
 
-
 @router.post("/inasistentes-report/{filename}")
 def get_inasistentes_report(
     filename: str,
@@ -887,7 +620,7 @@ def get_inasistentes_report(
         # Extraer keywords del request
         selected_keywords = request.get("selectedKeywords", ["medicina"])
         
-        # Construir resultado usando la nueva firma
+        # Construir resultado
         result = technical_note_controller.get_inasistentes_report(
             filename=filename,
             keywords=selected_keywords,
@@ -935,7 +668,7 @@ def export_inasistentes_csv(
         # Extraer keywords del request
         selected_keywords = request.get("selectedKeywords", ["medicina"])
         
-        # Exportar usando la nueva firma
+        # Exportar
         csv_response = technical_note_controller.export_inasistentes_csv(
             filename=filename,
             keywords=selected_keywords,
@@ -958,7 +691,6 @@ def export_inasistentes_csv(
 
 
 # ========== ENDPOINTS DE EXPORTACIÓN ==========
-
 
 @router.get("/reports/download/{file_id}")
 async def download_report_file(file_id: str):

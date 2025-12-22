@@ -100,6 +100,24 @@
         "edad_aplicable": "18 a 28 Años",
         "edad_NT_RPMS": "18 a 28 Años"
       }
+    },
+    {
+      "columna_usuario": "Fecha más reciente de Suministro de Método Anticonceptivo",
+      "keyword": "diu",
+      "consolidado": {
+        "consulta_procedimiento": "Inserción de dispositivo intrauterino anticonceptivo(DIU)- Juventud",
+        "edad_aplicable": "18 a 28 Años",
+        "edad_NT_RPMS": "18 a 28 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha más reciente de Suministro de Método Anticonceptivo",
+      "keyword": "subdermico",
+      "consolidado": {
+        "consulta_procedimiento": "Insercion de Anticonceptivo Subdermico",
+        "edad_aplicable": "18 a 28 Años",
+        "edad_NT_RPMS": "18 a 28 Años"
+      }
     }
   ]
 }

@@ -57,33 +57,6 @@ const AppContent: React.FC = () => {
     }
   }, [isMobile]);
 
-  // ========== LIMPIEZA DE CACHE AL INICIAR LA APLICACIÓN ==========
-  useEffect(() => {
-    const initializeCache = async () => {
-      try {
-        console.log('Limpiando cache del backend al iniciar...');
-        
-        const cleanupResult = await TechnicalNoteService.cleanupAllCache();
-        
-        if (cleanupResult.success) {
-          console.log('Cache limpiado exitosamente:');
-          console.log(`Directorios limpiados: ${cleanupResult.cleaned_directories.join(', ')}`);
-          console.log(`Tablas eliminadas: ${cleanupResult.tables_cleared}`);
-          console.log(`Archivos técnicos eliminados: ${cleanupResult.technical_files_cleared}`);
-          
-          message.success('Sistema inicializado correctamente', 1.5);
-        } else if (cleanupResult.errors && cleanupResult.errors.length > 0) {
-          console.warn('Limpieza completada con algunos errores:', cleanupResult.errors);
-        }
-      } catch (error) {
-        console.error('Error limpiando cache:', error);
-        message.warning('No se pudo limpiar el cache, continuando...', 2);
-      }
-    };
-
-    initializeCache();
-  }, []);
-
   // ========== HEALTH MONITOR SETUP ==========
   
 

@@ -1,6 +1,7 @@
 from typing import Dict, Any, List, Optional
 
 
+
 class ReportBuilder:
     """Responsable de construir items individuales del reporte"""
     
@@ -27,65 +28,46 @@ class ReportBuilder:
         nt_rpms_integration: Optional[Any],
         depto: str,
         muni: str,
-        ips_name: str
+        ips_name: str,
+        keyword: str = None
     ) -> Optional[Dict[str, Any]]:
-        """Procesa un mapping individual y genera un item del reporte"""
-        
         try:
             consolidado_info = mapping.get('consolidado', {})
             consulta_proc = consolidado_info.get('consulta_procedimiento', '')
             edad_aplicable = consolidado_info.get('edad_aplicable', '')
             edad_NT_RPMS = consolidado_info.get('edad_NT_RPMS', '')
-            
-            print(f"      Consulta: {consulta_proc}")
-            print(f"      Edad aplicable: {edad_aplicable}")
-            print(f"      Edad NT_RPMS: {edad_NT_RPMS}")
-            
-            rpms_data = self._get_rpms_data(
-                nt_rpms_integration, consulta_proc, edad_NT_RPMS,
-                depto, muni, ips_name
-            )
-            
+
+            rpms_data = self._get_rpms_data(nt_rpms_integration, consulta_proc, edad_NT_RPMS, depto, muni, ips_name)
             poblaciones_mensuales = self.population_calculator.get_population_by_predefined_dates(
-                data_source=data_source,
-                where_clause=where_clause,
-                edad_key=edad_aplicable,
-                corte_fecha=corte_fecha
+                data_source=data_source, where_clause=where_clause, edad_key=edad_aplicable, corte_fecha=corte_fecha
             )
-            
-            poblacion_obj_anual = self._calculate_poblacion_anual(
-                poblaciones_mensuales, mes_limite
-            )
-            
+            poblacion_obj_anual = self._calculate_poblacion_anual(poblaciones_mensuales, mes_limite)
             if poblacion_obj_anual == 0:
-                print("      Población = 0, omitiendo item")
                 return None
-            
-            rpms_values = self._calculate_rpms_values(
-                rpms_data, poblacion_obj_anual
-            )
-            
+
+            rpms_values = self._calculate_rpms_values(rpms_data, poblacion_obj_anual)
+
             numeradores_mensuales = self.numerator_calculator.calculate_by_month_simple(
                 data_source=data_source,
                 column_name=column_name,
                 where_clause=where_clause,
                 anio_corte=anio_corte,
-                mes_limite=mes_limite
+                mes_limite=mes_limite,
+                keyword=keyword,
+                corte_fecha=corte_fecha
             )
-            
+
             mensual_data = self._build_mensual_data(
                 meses_nombres, mes_limite, poblaciones_mensuales,
                 poblacion_obj_anual, numeradores_mensuales,
                 rpms_values['poblacion_susceptible_mensual']
             )
-            
-            trimestres = self.aggregation_calculator.calculate_trimestres(
-                mensual_data, meses_nombres, mes_limite
-            )
+
+            trimestres = self.aggregation_calculator.calculate_trimestres(mensual_data, meses_nombres, mes_limite)
             semestres = self.aggregation_calculator.calculate_semestres(trimestres)
             anual = self.aggregation_calculator.calculate_anual(semestres)
-            
-            item = {
+
+            return {
                 "consulta_procedimiento": consulta_proc or column_name,
                 "rango_edad": edad_aplicable,
                 "cups": rpms_values['cups'],
@@ -99,17 +81,10 @@ class ReportBuilder:
                 "poblacion_susceptible_mensual": rpms_values['poblacion_susceptible_mensual'],
                 "proyeccion_tiempo": rpms_values['proyeccion_tiempo'],
                 **{mes: mensual_data[mes] for mes in meses_nombres},
-                **trimestres,
-                **semestres,
-                "anual": anual
+                **trimestres, **semestres, "anual": anual
             }
-            
-            return item
-            
-        except Exception as e:
-            print(f"      Error procesando mapping: {e}")
-            import traceback
-            traceback.print_exc()
+        except Exception:
+            import traceback; traceback.print_exc()
             return None
     
     def _get_rpms_data(
