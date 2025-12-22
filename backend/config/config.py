@@ -27,24 +27,24 @@ class CacheConfig:
     # Tiempo en MINUTOS antes de considerar un archivo como "inactivo"
     
     # Cache de archivos convertidos (Parquet)
-    PARQUET_CACHE_TTL_MINUTES = int(os.getenv("PARQUET_CACHE_TTL_MINUTES", "120"))
+    PARQUET_CACHE_TTL_MINUTES = int(os.getenv("PARQUET_CACHE_TTL_MINUTES", "60"))
     
     # Cache de metadatos
-    METADATA_CACHE_TTL_MINUTES = int(os.getenv("METADATA_CACHE_TTL_MINUTES", "120"))
+    METADATA_CACHE_TTL_MINUTES = int(os.getenv("METADATA_CACHE_TTL_MINUTES", "60"))
     
     # Archivos NT RPMS procesados
-    NT_RPMS_CACHE_TTL_MINUTES = int(os.getenv("NT_RPMS_CACHE_TTL_MINUTES", "240"))
-    
+    NT_RPMS_CACHE_TTL_MINUTES = int(os.getenv("NT_RPMS_CACHE_TTL_MINUTES", "60"))
+
     # Archivos técnicos precargados
-    TECHNICAL_NOTE_TTL_MINUTES = int(os.getenv("TECHNICAL_NOTE_TTL_MINUTES", "180"))
+    TECHNICAL_NOTE_TTL_MINUTES = int(os.getenv("TECHNICAL_NOTE_TTL_MINUTES", "60"))
     
     # DuckDB storage
-    DUCKDB_STORAGE_TTL_MINUTES = int(os.getenv("DUCKDB_STORAGE_TTL_MINUTES", "120"))
+    DUCKDB_STORAGE_TTL_MINUTES = int(os.getenv("DUCKDB_STORAGE_TTL_MINUTES", "60"))
     
     
     # ========== FRECUENCIA DE LIMPIEZA ==========
     # Cada cuántos MINUTOS se ejecuta el proceso de limpieza automática
-    CLEANUP_INTERVAL_MINUTES = int(os.getenv("CLEANUP_INTERVAL_MINUTES", "30"))
+    CLEANUP_INTERVAL_MINUTES = int(os.getenv("CLEANUP_INTERVAL_MINUTES", "60"))
     
     
     # ========== PROTECCIÓN DE ARCHIVOS ==========
