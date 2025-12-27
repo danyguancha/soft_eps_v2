@@ -1,0 +1,31 @@
+/* styles/components/keyword-controls.css */
+
+.keyword-controls-card .ant-select-selection-overflow {
+  /* Permitir que los tags ocupen múltiples líneas si es necesario */
+  flex-wrap: wrap !important;
+  max-height: none !important;
+}
+
+.keyword-controls-card .ant-select-selection-overflow-item {
+  /* Asegurar que los tags no se corten */
+  flex-shrink: 0;
+}
+
+.keyword-controls-card .ant-select-selector {
+  /* Aumentar padding para mejor visualización con múltiples tags */
+  padding: 4px 8px !important;
+  min-height: 38px !important;
+}
+
+/* Mejorar visualización de tags en el select */
+.keyword-controls-card .ant-tag {
+  margin-bottom: 2px !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Estilo para el contador +N */
+.keyword-controls-card .ant-select-selection-overflow-item-suffix {
+  flex-shrink: 0 !important;
+}

@@ -118,6 +118,42 @@
         "edad_aplicable": "18 a 28 Años",
         "edad_NT_RPMS": "18 a 28 Años"
       }
+    },
+    {
+      "columna_usuario": "Fecha más reciente de Suministro de Método Anticonceptivo",
+      "keyword": "preservativo",
+      "consolidado": {
+        "consulta_procedimiento": "Suministro de Preservativos",
+        "edad_aplicable": "18 a 28 Años",
+        "edad_NT_RPMS": "18 a 28 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha asesoría pre test VIH",
+      "keyword": "Fecha asesoría pre y post test VIH",
+      "consolidado": {
+        "consulta_procedimiento": "Asesoria Pre y Pos Test VIH - Juventud",
+        "edad_aplicable": "18 a 28 Años",
+        "edad_NT_RPMS": "18 a 28 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha asesoría post test VIH",
+      "keyword": "Fecha asesoría pre y post test VIH",
+      "consolidado": {
+        "consulta_procedimiento": "Asesoria Pre y Pos Test VIH - Juventud",
+        "edad_aplicable": "18 a 28 Años",
+        "edad_NT_RPMS": "18 a 28 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha de tamizaje para VIH",
+      "keyword": "Fecha de tamizaje para VIH",
+      "consolidado": {
+        "consulta_procedimiento": "Prueba rápida para VIH - Juventud",
+        "edad_aplicable": "18 a 28 Años",
+        "edad_NT_RPMS": "18 a 28 Años"
+      }
     }
   ]
 }

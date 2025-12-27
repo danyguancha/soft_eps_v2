@@ -235,6 +235,42 @@
         "edad_aplicable": "60 a 79 Años",
         "edad_NT_RPMS": "60 a 79 Años"
       }
+    },
+    {
+      "columna_usuario": "Fecha más reciente de Suministro de Método Anticonceptivo",
+      "keyword": "preservativo",
+      "consolidado": {
+        "consulta_procedimiento": "Suministro de Preservativos",
+        "edad_aplicable": "60 a 79 Años",
+        "edad_NT_RPMS": "60 a 79 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha asesoría pre test VIH",
+      "keyword": "Asesoria Pre y Pos Test VIH",
+      "consolidado": {
+        "consulta_procedimiento": "Asesoria Pre y Pos Test VIH - Vejez",
+        "edad_aplicable": "60 a 79 Años",
+        "edad_NT_RPMS": "60 a 79 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha asesoría post test VIH",
+      "keyword": "Asesoria Pre y Pos Test VIH",
+      "consolidado": {
+        "consulta_procedimiento": "Asesoria Pre y Pos Test VIH - Vejez",
+        "edad_aplicable": "60 a 79 Años",
+        "edad_NT_RPMS": "60 a 79 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha de tamizaje para VIH",
+      "keyword": "Fecha de tamizaje para VIH",
+      "consolidado": {
+        "consulta_procedimiento": "Prueba rápida para VIH - Vejez",
+        "edad_aplicable": ">=60 Años",
+        "edad_NT_RPMS": ">=60 Años"
+      }
     }
   ]
 }

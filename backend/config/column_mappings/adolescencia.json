@@ -154,6 +154,16 @@
         "edad_aplicable": "14 a 17 Años",
         "edad_NT_RPMS": "14 a 17 Años"
       }
+    },
+    {
+      "columna_usuario": "Fecha más reciente de Suministro de Método Anticonceptivo",
+      "keyword": "preservativo",
+      "consolidado": {
+        "consulta_procedimiento": "Suministro de Preservativos",
+        "edad_aplicable": "14 a 17 Años",
+        "edad_NT_RPMS": "14 a 17 Años"
+      }
     }
+    
   ]
 }

@@ -1,31 +1,47 @@
-
+# services/technical_note_services/report_service_aux/semaforization.py
 
 from typing import Dict
 
 
 class Semaforization:
-    def calculate_semaforizacion(self, numerador: int, porcentaje: float) -> Dict[str, str]:
+    """Clase responsable de calcular semaforización (estado y color) según numerador, denominador y porcentaje"""
+    
+    def calculate_semaforizacion(
+        self, 
+        numerador: int, 
+        denominador: int,
+        porcentaje: float
+    ) -> Dict[str, str]:
         """
-        🚦 FUNCIÓN DE SEMAFORIZACIÓN: Calcula estado y color según porcentaje
+        🚦 FUNCIÓN DE SEMAFORIZACIÓN: Calcula estado y color según numerador, denominador y porcentaje
         
         Reglas:
-        - Numerador = 0 → NA (Gris)
+        - Denominador = 0 → NA (Gris) - Sin importar numerador
+        - Numerador = 0 y Denominador > 0 → Aplicar regla de porcentaje (0% = Muy Deficiente)
         - 0% ≤ % < 60% → Muy Deficiente (Rojo)
-        - 60% ≤ % ≤ 74.9% → Deficiente (Amarillo Oscuro)
-        - 75% ≤ % < 90% → Aceptable (Amarillo Claro)
+        - 60% ≤ % < 75% → Deficiente (Naranja)
+        - 75% ≤ % < 90% → Aceptable (Amarillo)
         - % ≥ 90% → Óptimo (Verde)
+        
+        Args:
+            numerador: Cantidad de casos registrados
+            denominador: Población susceptible/objetivo
+            porcentaje: Cobertura calculada (numerador/denominador * 100)
+        
+        Returns:
+            Dict con estado, color, color_name, descripcion
         """
         try:
-            # Caso especial: Numerador 0 = NA
-            if numerador == 0:
+            # 🔥 CASO 1: Denominador = 0 → NA (Sin datos)
+            if denominador == 0:
                 return {
                     "estado": "NA",
                     "color": "#808080",  # Gris
                     "color_name": "gris",
-                    "descripcion": "Sin datos"
+                    "descripcion": "Sin denominador"
                 }
             
-            # Semaforización por porcentaje
+            # 🔥 CASO 2: Denominador > 0 → Semaforización por porcentaje
             if porcentaje >= 90:
                 return {
                     "estado": "Óptimo",
@@ -36,15 +52,15 @@ class Semaforization:
             elif porcentaje >= 75:
                 return {
                     "estado": "Aceptable", 
-                    "color": "#ffc107",  # Amarillo Claro
-                    "color_name": "amarillo_claro",
+                    "color": "#ffc107",  # Amarillo
+                    "color_name": "amarillo",
                     "descripcion": "Buen desempeño"
                 }
             elif porcentaje >= 60:
                 return {
                     "estado": "Deficiente",
-                    "color": "#fd7e14",  # Amarillo Oscuro/Naranja
-                    "color_name": "amarillo_oscuro",
+                    "color": "#fd7e14",  # Naranja
+                    "color_name": "naranja",
                     "descripcion": "Desempeño bajo"
                 }
             else:  # porcentaje < 60

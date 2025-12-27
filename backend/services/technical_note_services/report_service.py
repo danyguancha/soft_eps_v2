@@ -290,7 +290,7 @@ class ReportService:
         - Filtra mappings por la keyword seleccionada (ej: DIU vs subdermico).
         - Aplica filtro de población disponible.
         - Llama a ReportBuilder pasando la keyword para que NumeratorCalculator
-          pueda aplicar el filtro especial de "Método Anticonceptivo".
+        pueda aplicar el filtro especial de "Método Anticonceptivo".
         """
         report_items = []
         meses_nombres = [
@@ -308,13 +308,10 @@ class ReportService:
                 print("   No se encontraron mappings para la columna")
                 continue
 
-            # 1) Filtrar mappings por keyword seleccionada (clave para DIU/Subdérmico)
+            # 🔥 1) Filtrar mappings por keyword con LÓGICA FLEXIBLE
             if kws_norm:
                 before = len(all_mappings)
-                all_mappings = [
-                    m for m in all_mappings
-                    if normalize_text(m.get('keyword', '')) in kws_norm
-                ]
+                all_mappings = self._filter_mappings_by_keyword_flexible(all_mappings, kws_norm)
                 print(f"   Mappings filtrados por keyword: {before} -> {len(all_mappings)}")
 
             if not all_mappings:
@@ -356,6 +353,7 @@ class ReportService:
                     print("      Item generado")
 
         return report_items
+
 
     def _detect_keyword_for_column(
         self,
@@ -402,3 +400,96 @@ class ReportService:
             'meses_reportados': 0,
             'metodo': 'numerador_sin_filtro_edad_ordenado'
         }
+    
+    def _filter_mappings_by_keyword_flexible(
+        self,
+        mappings: List[Dict[str, Any]],
+        kws_norm: set
+    ) -> List[Dict[str, Any]]:
+        """
+        Filtra mappings por keyword con LÓGICA ESTRICTA pero flexible.
+        
+        Reglas:
+        1. Coincidencia exacta: siempre incluir
+        2. Uno contiene al otro: incluir
+        3. Para mappings diferentes: verificar que compartan palabras clave específicas
+        (no solo genéricas como "VIH")
+        
+        Args:
+            mappings: Lista de mappings a filtrar
+            kws_norm: Set de keywords normalizadas buscadas
+        
+        Returns:
+            Lista de mappings filtrados
+        """
+        if not kws_norm:
+            return mappings
+        
+        filtered = []
+        
+        # Palabras genéricas que NO deben usarse como único criterio de coincidencia
+        generic_words = {'VIH', 'PARA', 'DE', 'LA', 'EL', 'EN', 'Y', 'A', 'CON'}
+        
+        for mapping in mappings:
+            mapping_kw = normalize_text(mapping.get('keyword', ''))
+            
+            # Si el mapping no tiene keyword, incluirlo (backward compatibility)
+            if not mapping_kw:
+                filtered.append(mapping)
+                continue
+            
+            # Dividir en palabras (filtrar palabras cortas)
+            mapping_words = set(w for w in mapping_kw.split() if len(w) > 2)
+            
+            matched = False
+            for kw_norm in kws_norm:
+                kw_words = set(w for w in kw_norm.split() if len(w) > 2)
+                
+                # ===== Criterio 1: Coincidencia exacta =====
+                if kw_norm == mapping_kw:
+                    matched = True
+                    print(f"      ✓ Coincidencia exacta: '{mapping_kw}'")
+                    break
+                
+                # ===== Criterio 2: Uno contiene al otro =====
+                if kw_norm in mapping_kw or mapping_kw in kw_norm:
+                    matched = True
+                    print(f"      ✓ Contención: '{kw_norm}' <-> '{mapping_kw}'")
+                    break
+                
+                # ===== Criterio 3: Coincidencia por palabras clave específicas =====
+                # Palabras compartidas
+                common_words = kw_words & mapping_words
+                
+                if len(common_words) > 0:
+                    # Filtrar palabras genéricas
+                    specific_common_words = common_words - generic_words
+                    
+                    # Si después de filtrar genéricas aún quedan palabras específicas, coincidir
+                    if len(specific_common_words) > 0:
+                        matched = True
+                        print(f"      ✓ Palabras específicas compartidas: {specific_common_words}")
+                        break
+                    
+                    # Si solo comparten palabras genéricas (como "VIH"), verificar si el mapping
+                    # es corto (1 palabra) - en ese caso SÍ incluirlo
+                    elif len(mapping_words) == 1 and mapping_words <= common_words:
+                        # El mapping es solo "VIH" y la keyword contiene "VIH"
+                        matched = True
+                        print(f"      ✓ Mapping corto genérico: '{mapping_kw}' contenido en keyword")
+                        break
+            
+            if matched:
+                filtered.append(mapping)
+        
+        # 🔥 FAILSAFE: Si se eliminaron TODOS, advertir pero NO devolver originales
+        # (queremos ser estrictos ahora)
+        if len(filtered) == 0 and len(mappings) > 0:
+            print(f"   ⚠️ ADVERTENCIA: Filtro eliminó todos los mappings")
+            print(f"   Keywords buscadas: {kws_norm}")
+            print(f"   Keywords en mappings: {[m.get('keyword', 'N/A') for m in mappings]}")
+            print(f"   💡 Verifica que las keywords sean correctas")
+        
+        return filtered
+
+

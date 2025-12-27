@@ -3,6 +3,7 @@ import { memo, useCallback } from 'react';
 import { Card, Space, Typography, Tag, Row, Col, Button } from 'antd';
 import { FilterOutlined, SyncOutlined } from '@ant-design/icons';
 import { OptimizedKeywordSelect } from './OptimizedKeywordSelect';
+import './keyword_controls.css';
 
 const { Text } = Typography;
 
@@ -45,7 +46,9 @@ export const KeywordControls = memo<KeywordControlsProps>(({
       <Row gutter={[16, 12]} align="middle">
         <Col xs={24} sm={16} md={18}>
           <Space direction="vertical" style={{ width: '100%' }} size={4}>
-            <Text strong style={{ fontSize: '13px' }}>Seleccionar palabras clave:</Text>
+            <Text strong style={{ fontSize: '13px' }}>
+              Seleccionar palabras clave:
+            </Text>
             <OptimizedKeywordSelect
               value={reportKeywords}
               onChange={handleKeywordsChange}

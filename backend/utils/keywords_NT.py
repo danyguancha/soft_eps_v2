@@ -23,7 +23,11 @@ DEFAULT_KEYWORDS: List[KeywordRule] = [
     
     # Keywords especiales - NO necesitan metodo_anticonceptivo aquí
     KeywordRule(name="diu", synonyms=("diu", "DIU", "dispositivo intrauterino")),
-    KeywordRule(name="subdermico", synonyms=("subdermico", "subdérmico", "implante subdermico", "implante subdérmico"))
+    KeywordRule(name="subdermico", synonyms=("subdermico", "subdérmico", "implante subdermico", "implante subdérmico")),
+    KeywordRule(name="preservativo", synonyms=("preservativo", "condon", "condón", "preservativos", "condones")),
+    KeywordRule(name="Asesoria Pre y Pos Test VIH", synonyms=("Asesoria Pre y Pos Test VIH", "Asesoría Pre y Pos Test VIH", "Asesoria Pre y Pos Test vih", "Asesoría Pre y Pos Test vih")),
+    KeywordRule(name="Fecha de tamizaje para VIH", synonyms=("Fecha de tamizaje para VIH", "fecha de tamizaje para vih", "Fecha de tamizaje para vih", "fecha de tamizaje para VIH")),
+
 ]
 
 

@@ -1,78 +1,119 @@
 // components/report/OptimizedKeywordSelect.tsx
-import { Select } from 'antd';
-import { memo, useCallback } from 'react';
-import { SELECT_OPTIONS } from '../../../config/reportKeywords.config';
-
-// Función debounce
-function debounce<T extends (...args: any[]) => any>(
-  func: T,
-  wait: number
-): (...args: Parameters<T>) => void {
-  let timeout: NodeJS.Timeout;
-  return (...args: Parameters<T>) => {
-    clearTimeout(timeout);
-    timeout = setTimeout(() => func(...args), wait);
-  };
-}
+import { memo, useMemo } from 'react';
+import { Select, Tag } from 'antd';
+import type { SelectProps } from 'antd';
 
 interface OptimizedKeywordSelectProps {
   value: string[];
-  onChange: (values: string[]) => void;
+  onChange: (keywords: string[]) => void;
   placeholder?: string;
   disabled?: boolean;
 }
 
-export const OptimizedKeywordSelect = memo<OptimizedKeywordSelectProps>(({ 
-  value, 
-  onChange, 
-  placeholder, 
-  disabled 
+const AVAILABLE_KEYWORDS = [
+  { value: 'medicina', label: 'Medicina', color: '#1890ff' },
+  { value: 'enfermeria', label: 'Enfermería', color: '#52c41a' },
+  { value: 'odontologia', label: 'Odontología', color: '#722ed1' },
+  { value: 'fluor', label: 'Flúor', color: '#13c2c2' },
+  { value: 'placa', label: 'Placa', color: '#eb2f96' },
+  { value: 'detartraje', label: 'Detartraje', color: '#fa8c16' },
+  { value: 'sellantes', label: 'Sellantes', color: '#faad14' },
+  { value: 'micronutrientes', label: 'Micronutrientes', color: '#a0d911' },
+  { value: 'vitamina_a', label: 'Vitamina A', color: '#f5222d' },
+  { value: 'sulfato_ferroso', label: 'Sulfato Ferroso', color: '#fa541c' },
+  { value: 'diu', label: 'DIU', color: '#2f54eb' },
+  { value: 'subdermico', label: 'Subdérmico', color: '#722ed1' },
+  { value: 'preservativo', label: 'Preservativo', color: '#b47304ff' },
+  { value: 'Fecha asesoría pre y post test VIH', label: 'Asesoría Pre Test VIH', color: '#0777bcff' },
+  { value: 'Fecha de tamizaje para VIH', label: 'Prueba Rápida VIH', color: '#d46b08ff' },
+];
+
+export const OptimizedKeywordSelect = memo<OptimizedKeywordSelectProps>(({
+  value,
+  onChange,
+  placeholder = 'Seleccionar palabras clave',
+  disabled = false
 }) => {
-  const debouncedOnChange = useCallback(
-    debounce((values: string[]) => {
-      onChange(values);
-    }, 100),
-    [onChange]
+  // Memoizar opciones para evitar recrearlas en cada render
+  const options = useMemo(() => 
+    AVAILABLE_KEYWORDS.map(kw => ({
+      value: kw.value,
+      label: kw.label,
+    })),
+    []
   );
 
-  const handleChange = useCallback((values: string[]) => {
-    if (JSON.stringify(values.sort()) !== JSON.stringify(value.sort())) {
-      debouncedOnChange(values);
-    }
-  }, [debouncedOnChange, value]);
+  // Memoizar color map
+  const colorMap = useMemo(() => {
+    const map = new Map<string, string>();
+    AVAILABLE_KEYWORDS.forEach(kw => {
+      map.set(kw.value, kw.color);
+    });
+    return map;
+  }, []);
+
+  // Renderizar tag personalizado
+  const tagRender: SelectProps['tagRender'] = (props) => {
+    const { label, value: tagValue, closable, onClose } = props;
+    const color = colorMap.get(tagValue as string) || '#1890ff';
+
+    return (
+      <Tag
+        color={color}
+        closable={closable}
+        onClose={onClose}
+        style={{
+          marginRight: 4,
+          marginBottom: 2,
+          fontSize: '12px',
+          padding: '2px 8px',
+          borderRadius: '4px',
+          display: 'inline-flex',
+          alignItems: 'center',
+          maxWidth: '100%',
+        }}
+      >
+        {label}
+      </Tag>
+    );
+  };
 
   return (
     <Select
       mode="multiple"
       value={value}
-      onChange={handleChange}
+      onChange={onChange}
+      options={options}
       placeholder={placeholder}
       disabled={disabled}
+      tagRender={tagRender}
       style={{ width: '100%' }}
-      options={SELECT_OPTIONS}
-      showSearch={true}
-      allowClear={false}
-      virtual={true}
-      maxTagCount={3}
-      maxTagTextLength={18}
+      size="middle"
+      showSearch
+      filterOption={(input, option) =>
+        (option?.label?.toString().toLowerCase() ?? '').includes(input.toLowerCase())
+      }
+      // 🔥 CONFIGURACIÓN CLAVE: usar 'responsive' en lugar de número fijo
+      maxTagCount="responsive"
+      maxTagPlaceholder={(omittedValues) => (
+        <Tag
+          color="#d9d9d9"
+          style={{
+            fontSize: '12px',
+            padding: '2px 8px',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontWeight: 500,
+          }}
+        >
+          +{omittedValues.length}
+        </Tag>
+      )}
+      // Mejorar el dropdown
+      dropdownStyle={{ maxHeight: 400, overflow: 'auto' }}
       optionFilterProp="label"
-      popupMatchSelectWidth={false}
-      styles={{
-        popup: {
-          root: {
-            minWidth: '280px',
-            maxHeight: '240px',
-            overflowY: 'auto'
-          }
-        }
-      }}
-      classNames={{
-        popup: {
-          root: 'keywords-select-dropdown'
-        }
-      }}
-      listHeight={240}
-      getPopupContainer={(triggerNode) => triggerNode.parentElement || document.body}
+      allowClear
+      maxTagTextLength={20}
     />
   );
 });

@@ -420,115 +420,134 @@ export const ReportTable = memo<Props>(({
   };
 
   // 🔥 Función helper para crear columna de trimestre
-  const createTrimestreColumn = (trimNum: number): ColumnGroupType<ReportItem> => ({
-    title: `Trimestre ${trimNum}`,
-    className: 'consolidado-trimestre-header',
-    children: [
-      {
-        title: 'Numerador',
-        dataIndex: `T${trimNum}`,
-        key: `T${trimNum}_Numerador`,
-        width: 70,
-        align: 'center',
-        render: (_: any, record: ReportItem) => {
-          const data = record[`T${trimNum}`] as ConsolidadoData | undefined;
-          return <Text>{data?.numerador?.toLocaleString() || '0'}</Text>;
+  const createTrimestreColumn = (trimNum: number): ColumnGroupType<ReportItem> => {
+    const trimKey = `trim${trimNum}`;  // 🔥 trim1, trim2, trim3, trim4
+
+    return {
+      title: `Trimestre ${trimNum}`,
+      className: 'consolidado-trimestre-header',
+      children: [
+        {
+          title: 'Numerador',
+          dataIndex: trimKey,
+          key: `${trimKey}_Numerador`,
+          width: 70,
+          align: 'center',
+          render: (_: any, record: ReportItem) => {
+            const data = record[trimKey] as ConsolidadoData | undefined;
+            return <Text>{data?.numerador?.toLocaleString() || '0'}</Text>;
+          }
+        },
+        {
+          title: 'Denominador',
+          dataIndex: trimKey,
+          key: `${trimKey}_Denominador`,
+          width: 70,
+          align: 'center',
+          render: (_: any, record: ReportItem) => {
+            const data = record[trimKey] as ConsolidadoData | undefined;
+            return <Text>{data?.denominador?.toLocaleString() || '0'}</Text>;
+          }
+        },
+        {
+          title: '%',
+          dataIndex: trimKey,
+          key: `${trimKey}_cob`,
+          width: 60,
+          align: 'center',
+          render: (_: any, record: ReportItem) => {
+            const data = record[trimKey] as ConsolidadoData | undefined;
+            if (!data) return '-';
+
+            // 🔥 Si denominador = 0, mostrar 0.0%
+            const cobertura = data.cobertura || 0;
+            const color = data.denominador === 0
+              ? '#808080'  // Gris si denominador = 0
+              : cobertura >= 70 ? '#52c41a' : cobertura >= 50 ? '#fa8c16' : '#ff4d4f';
+
+            return <Text strong style={{ color }}>{cobertura.toFixed(1)}%</Text>;
+          }
+        },
+        {
+          title: 'Calificación obtenida',
+          dataIndex: trimKey,
+          key: `${trimKey}_semaf`,
+          width: 90,
+          align: 'center',
+          render: (_: any, record: ReportItem) => {
+            const data = record[trimKey] as ConsolidadoData | undefined;
+            if (!data?.semaforizacion) return '-';
+            return <div style={getSemaforizacionStyle(data.color)}>{data.semaforizacion}</div>;
+          }
         }
-      },
-      {
-        title: 'Denominador',
-        dataIndex: `T${trimNum}`,
-        key: `T${trimNum}_Denominador`,
-        width: 70,
-        align: 'center',
-        render: (_: any, record: ReportItem) => {
-          const data = record[`T${trimNum}`] as ConsolidadoData | undefined;
-          return <Text>{data?.denominador?.toLocaleString() || '0'}</Text>;
-        }
-      },
-      {
-        title: '%',
-        dataIndex: `T${trimNum}`,
-        key: `T${trimNum}_cob`,
-        width: 60,
-        align: 'center',
-        render: (_: any, record: ReportItem) => {
-          const data = record[`T${trimNum}`] as ConsolidadoData | undefined;
-          if (!data) return '-';
-          const color = data.cobertura >= 70 ? '#52c41a' : data.cobertura >= 50 ? '#fa8c16' : '#ff4d4f';
-          return <Text strong style={{ color }}>{data.cobertura?.toFixed(0)}%</Text>;
-        }
-      },
-      {
-        title: '🚦',
-        dataIndex: `T${trimNum}`,
-        key: `T${trimNum}_semaf`,
-        width: 90,
-        align: 'center',
-        render: (_: any, record: ReportItem) => {
-          const data = record[`T${trimNum}`] as ConsolidadoData | undefined;
-          if (!data?.semaforizacion) return '-';
-          return <div style={getSemaforizacionStyle(data.color)}>{data.semaforizacion}</div>;
-        }
-      }
-    ]
-  });
+      ]
+    };
+  };
 
   // 🔥 Función helper para crear columna de semestre
-  const createSemestreColumn = (semNum: number): ColumnGroupType<ReportItem> => ({
-    title: `Semestre ${semNum}`,
-    className: 'consolidado-semestre-header',
-    children: [
-      {
-        title: 'Numerador',
-        dataIndex: `S${semNum}`,
-        key: `S${semNum}_Numerador`,
-        width: 70,
-        align: 'center',
-        render: (_: any, record: ReportItem) => {
-          const data = record[`S${semNum}`] as ConsolidadoData | undefined;
-          return <Text>{data?.numerador?.toLocaleString() || '0'}</Text>;
-        }
-      },
-      {
-        title: 'Denominador',
-        dataIndex: `S${semNum}`,
-        key: `S${semNum}_Denominador`,
-        width: 70,
-        align: 'center',
-        render: (_: any, record: ReportItem) => {
-          const data = record[`S${semNum}`] as ConsolidadoData | undefined;
-          return <Text>{data?.denominador?.toLocaleString() || '0'}</Text>;
-        }
-      },
-      {
-        title: '%',
-        dataIndex: `S${semNum}`,
-        key: `S${semNum}_cob`,
-        width: 60,
-        align: 'center',
-        render: (_: any, record: ReportItem) => {
-          const data = record[`S${semNum}`] as ConsolidadoData | undefined;
-          if (!data) return '-';
-          const color = data.cobertura >= 70 ? '#52c41a' : data.cobertura >= 50 ? '#fa8c16' : '#ff4d4f';
-          return <Text strong style={{ color }}>{data.cobertura?.toFixed(0)}%</Text>;
-        }
-      },
-      {
-        title: '🚦',
-        dataIndex: `S${semNum}`,
-        key: `S${semNum}_semaf`,
-        width: 90,
-        align: 'center',
-        render: (_: any, record: ReportItem) => {
-          const data = record[`S${semNum}`] as ConsolidadoData | undefined;
-          if (!data?.semaforizacion) return '-';
-          return <div style={getSemaforizacionStyle(data.color)}>{data.semaforizacion}</div>;
-        }
-      }
-    ]
-  });
+  const createSemestreColumn = (semNum: number): ColumnGroupType<ReportItem> => {
+    const semKey = `sem${semNum}`;  // 🔥 sem1, sem2
 
+    return {
+      title: `Semestre ${semNum}`,
+      className: 'consolidado-semestre-header',
+      children: [
+        {
+          title: 'Numerador',
+          dataIndex: semKey,
+          key: `${semKey}_Numerador`,
+          width: 70,
+          align: 'center',
+          render: (_: any, record: ReportItem) => {
+            const data = record[semKey] as ConsolidadoData | undefined;
+            return <Text>{data?.numerador?.toLocaleString() || '0'}</Text>;
+          }
+        },
+        {
+          title: 'Denominador',
+          dataIndex: semKey,
+          key: `${semKey}_Denominador`,
+          width: 70,
+          align: 'center',
+          render: (_: any, record: ReportItem) => {
+            const data = record[semKey] as ConsolidadoData | undefined;
+            return <Text>{data?.denominador?.toLocaleString() || '0'}</Text>;
+          }
+        },
+        {
+          title: '%',
+          dataIndex: semKey,
+          key: `${semKey}_cob`,
+          width: 60,
+          align: 'center',
+          render: (_: any, record: ReportItem) => {
+            const data = record[semKey] as ConsolidadoData | undefined;
+            if (!data) return '-';
+
+            // 🔥 Si denominador = 0, mostrar 0.0%
+            const cobertura = data.cobertura || 0;
+            const color = data.denominador === 0
+              ? '#808080'  // Gris si denominador = 0
+              : cobertura >= 70 ? '#52c41a' : cobertura >= 50 ? '#fa8c16' : '#ff4d4f';
+
+            return <Text strong style={{ color }}>{cobertura.toFixed(1)}%</Text>;
+          }
+        },
+        {
+          title: 'Calificación obtenida',
+          dataIndex: semKey,
+          key: `${semKey}_semaf`,
+          width: 90,
+          align: 'center',
+          render: (_: any, record: ReportItem) => {
+            const data = record[semKey] as ConsolidadoData | undefined;
+            if (!data?.semaforizacion) return '-';
+            return <div style={getSemaforizacionStyle(data.color)}>{data.semaforizacion}</div>;
+          }
+        }
+      ]
+    };
+  };
   // 🔥 Generar columnas
   const columns: ColumnsType<ReportItem> = useMemo(() => {
     const cols: ColumnsType<ReportItem> = [];
@@ -708,7 +727,7 @@ export const ReportTable = memo<Props>(({
       cols.push(createTrimestreColumn(4));
       cols.push(createSemestreColumn(2));
 
-      // Consolidado Anual
+      // Consolidado Anual (CORREGIDO)
       cols.push({
         title: 'Consolidado Anual',
         className: 'consolidado-anual-header',
@@ -744,12 +763,18 @@ export const ReportTable = memo<Props>(({
             render: (_: any, record: ReportItem) => {
               const data = record.anual;
               if (!data) return '-';
-              const color = data.cobertura >= 70 ? '#52c41a' : data.cobertura >= 50 ? '#fa8c16' : '#ff4d4f';
-              return <Text strong style={{ color, fontSize: '11px' }}>{data.cobertura?.toFixed(0)}%</Text>;
+
+              // 🔥 Si denominador = 0, mostrar 0.0%
+              const cobertura = data.cobertura || 0;
+              const color = data.denominador === 0
+                ? '#808080'  // Gris si denominador = 0
+                : cobertura >= 70 ? '#52c41a' : cobertura >= 50 ? '#fa8c16' : '#ff4d4f';
+
+              return <Text strong style={{ color, fontSize: '11px' }}>{cobertura.toFixed(1)}%</Text>;
             }
           },
           {
-            title: '🚦',
+            title: 'Calificación obtenida',
             dataIndex: 'anual',
             key: 'anual_semaf',
             width: 100,
@@ -762,6 +787,7 @@ export const ReportTable = memo<Props>(({
           }
         ]
       } as ColumnGroupType<ReportItem>);
+
     }
 
     return cols;
