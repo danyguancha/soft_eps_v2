@@ -55,7 +55,7 @@ class ReportBuilder:
                 )
             
             # PASO 3: Servicio habilitado - Continuar con cálculos normales
-            print(f"      ✅ Servicio HABILITADO - Calculando poblaciones y numeradores")
+            print(f"Servicio HABILITADO - Calculando poblaciones y numeradores")
             
             poblaciones_mensuales = self.population_calculator.get_population_by_predefined_dates(
                 data_source=data_source, 
