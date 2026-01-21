@@ -117,7 +117,7 @@ class NTRPMSController:
             
             # Generar nombres de archivo
             timestamp = int(time.time())
-            csv_filename = f"NT_RPMS_consolidado_{timestamp}.csv"
+            csv_filename = f"NT_RPMS_consolidado.csv"
             csv_path = os.path.join(self.base_output_dir, csv_filename)
             
             print("\n" + "="*60)
