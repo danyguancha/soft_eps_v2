@@ -1,7 +1,7 @@
-
-
+# controllers/technical_note_controller/absent_user/report_activity.py
 from typing import Any, Dict, List
 from services.duckdb_service.duckdb_service import duckdb_service
+
 
 
 class ReportActivity:
@@ -16,14 +16,17 @@ class ReportActivity:
             return f"'{data_source}'"
 
 
+
     def _build_activity_query(self, table_reference: str, column: str, 
                             age_filter: str, geo_filter: str, corte_fecha: str) -> str:
         """Construye el query SQL para una actividad específica"""
+        # ← MODIFICADO: Agregar columna Régimen al SELECT
         return f"""
         SELECT 
             "Departamento" as departamento,
             "Municipio" as municipio,
             "Nombre IPS" as nombre_ips,
+            "Régimen" as regimen,
             "Nro Identificación" as nro_identificacion,
             "Primer Apellido" as primer_apellido,
             "Segundo Apellido" as segundo_apellido,
@@ -43,6 +46,7 @@ class ReportActivity:
             AND {geo_filter}
         ORDER BY "Departamento", "Municipio", "Nombre IPS", "Primer Apellido", "Primer Nombre"
         """
+
 
 
     def _build_stats_query(self, table_reference: str, column: str, 
@@ -65,23 +69,27 @@ class ReportActivity:
         """
 
 
+
     def _process_activity_row(self, row: tuple, column: str) -> dict:
         """Procesa una fila individual de inasistente"""
+        # ← MODIFICADO: Ajustar índices porque ahora Régimen es índice 3
         return {
             "departamento": str(row[0]) if row[0] else "",
             "municipio": str(row[1]) if row[1] else "",
             "nombre_ips": str(row[2]) if row[2] else "",
-            "nro_identificacion": str(row[3]) if row[3] else "",
-            "primer_apellido": str(row[4]) if row[4] else "",
-            "segundo_apellido": str(row[5]) if row[5] else "",
-            "primer_nombre": str(row[6]) if row[6] else "",
-            "segundo_nombre": str(row[7]) if row[7] else "",
-            "fecha_nacimiento": str(row[8]) if row[8] else "",
-            "edad_anos": int(row[9]) if row[9] is not None else None,
-            "edad_meses": int(row[10]) if row[10] is not None else None,
-            "actividad_valor": str(row[11]) if row[11] else "VACÍO",
+            "regimen": str(row[3]) if row[3] else "",  # ← NUEVO: índice 3
+            "nro_identificacion": str(row[4]) if row[4] else "",
+            "primer_apellido": str(row[5]) if row[5] else "",
+            "segundo_apellido": str(row[6]) if row[6] else "",
+            "primer_nombre": str(row[7]) if row[7] else "",
+            "segundo_nombre": str(row[8]) if row[8] else "",
+            "fecha_nacimiento": str(row[9]) if row[9] else "",
+            "edad_anos": int(row[10]) if row[10] is not None else None,
+            "edad_meses": int(row[11]) if row[11] is not None else None,
+            "actividad_valor": str(row[12]) if row[12] else "VACÍO",
             "columna_evaluada": column.replace('"', '')
         }
+
 
 
     def _process_stats_result(self, stats_result: tuple) -> dict:
@@ -94,9 +102,14 @@ class ReportActivity:
         }
 
 
+
     def _process_single_activity(self, table_reference: str, column: str, 
                                 age_filter: str, geo_filter: str, corte_fecha: str) -> dict:
         """Procesa una actividad individual completa"""
+        
+        # ← NUEVO: Log del geo_filter para debugging
+        print(f"      🔍 geo_filter en _process_single_activity: {geo_filter}")
+        
         # Query de datos
         activity_sql = self._build_activity_query(
             table_reference, column, age_filter, geo_filter, corte_fecha
@@ -124,6 +137,7 @@ class ReportActivity:
         }
 
 
+
     def generate_activity_reports(
         self,
         data_source: str,
@@ -133,6 +147,13 @@ class ReportActivity:
         corte_fecha: str
     ) -> List[Dict[str, Any]]:
         """Genera reportes individuales por cada actividad"""
+        
+        # ← NUEVO: Log del geo_filter recibido
+        print(f"\n{'🔍'*40}")
+        print(f"ReportActivity.generate_activity_reports LLAMADO")
+        print(f"   geo_filter recibido: {geo_filter}")
+        print(f"{'🔍'*40}\n")
+        
         activity_reports = []
         
         # Extraer referencia limpia para las queries

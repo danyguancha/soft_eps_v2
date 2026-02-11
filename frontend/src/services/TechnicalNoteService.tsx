@@ -1,4 +1,4 @@
-// services/TechnicalNoteService.tsx - SIN MÉTODOS DE LIMPIEZA MANUAL
+// services/TechnicalNoteService.tsx - CON FILTRO DE RÉGIMEN
 import api from '../Api';
 import type { InasistentesReportResponse } from '../interfaces/IAbsentUser';
 import type { AgeRangesResponse } from '../interfaces/IAge';
@@ -17,11 +17,14 @@ import type { FilterCondition } from '../types/api.types';
 
 
 
+
 export class TechnicalNoteService {
+
 
   // ========================================
   // NT RPMS METHODS - ACTUALIZADOS PARA RED
   // ========================================
+
 
   /**
    * Procesa archivos NT RPMS desde una carpeta compartida en red
@@ -35,9 +38,11 @@ export class TechnicalNoteService {
       console.log('='.repeat(60));
       console.log(`🌐 Ruta de red: ${networkPath}`);
 
+
       const requestBody = {
         network_path: networkPath
       };
+
 
       const response = await api.post<NTRPMSProcessResponse>(
         '/technical-note/nt-rpms/process-network',
@@ -50,13 +55,17 @@ export class TechnicalNoteService {
         }
       );
 
+
       const data = response.data;
+
 
       if (!data) {
         throw new Error('No se recibió respuesta del servidor');
       }
 
+
       console.log('📦 Respuesta recibida:', JSON.stringify(data, null, 2));
+
 
       if (data.success) {
         this._logSuccessfulProcessing(data);
@@ -68,11 +77,13 @@ export class TechnicalNoteService {
         }
       }
 
+
       return data;
     } catch (error: any) {
       return this._handleProcessingError(error, 'desde red');
     }
   }
+
 
   /**
    * Procesa archivos NT RPMS desde una carpeta local del servidor
@@ -86,9 +97,11 @@ export class TechnicalNoteService {
       console.log('='.repeat(60));
       console.log(`📁 Carpeta local: ${folderPath}`);
 
+
       const requestBody = {
         folder_path: folderPath
       };
+
 
       const response = await api.post<NTRPMSProcessResponse>(
         '/technical-note/nt-rpms/process-local',
@@ -101,13 +114,17 @@ export class TechnicalNoteService {
         }
       );
 
+
       const data = response.data;
+
 
       if (!data) {
         throw new Error('No se recibió respuesta del servidor');
       }
 
+
       console.log('📦 Respuesta recibida:', JSON.stringify(data, null, 2));
+
 
       if (data.success) {
         this._logSuccessfulProcessing(data);
@@ -119,11 +136,13 @@ export class TechnicalNoteService {
         }
       }
 
+
       return data;
     } catch (error: any) {
       return this._handleProcessingError(error, 'local');
     }
   }
+
 
   /**
    * [DEPRECATED] Usar processNTRPMSFromNetwork o processNTRPMSFromLocal
@@ -139,6 +158,7 @@ export class TechnicalNoteService {
     }
   }
 
+
   /**
    * Método auxiliar para loggear procesamiento exitoso
    */
@@ -148,6 +168,7 @@ export class TechnicalNoteService {
     const totalColumns = data.total_columns || 0;
     const timing = data.timing;
 
+
     console.log('✓ Procesamiento exitoso:');
     console.log(`  - Archivos procesados: ${filesProcessed}`);
     console.log(`  - Registros totales: ${totalRows.toLocaleString()}`);
@@ -155,11 +176,13 @@ export class TechnicalNoteService {
     console.log(`  - CSV: ${data.csv_path || 'N/A'}`);
     console.log(`  - Parquet: ${data.parquet_path || 'N/A'}`);
 
+
     if (timing) {
       console.log(`  - Tiempo extracción: ${timing.extraction_time?.toFixed(2)}s`);
       console.log(`  - Tiempo conversión: ${timing.conversion_time?.toFixed(2)}s`);
       console.log(`  - Tiempo total: ${timing.total_time?.toFixed(2)}s`);
     }
+
 
     // Info de red si está disponible
     if (data.network_info) {
@@ -168,12 +191,14 @@ export class TechnicalNoteService {
       console.log(`  - Archivos Excel encontrados: ${data.network_info.excel_files_found}`);
     }
 
+
     // Info de compresión
     if (data.compression_info) {
       console.log(`  - Tamaño CSV: ${data.compression_info.original_size_mb?.toFixed(2)} MB`);
       console.log(`  - Tamaño Parquet: ${data.compression_info.parquet_size_mb?.toFixed(2)} MB`);
       console.log(`  - Ratio compresión: ${data.compression_info.compression_ratio?.toFixed(1)}%`);
     }
+
 
     if (data.extraction_summary) {
       const summary = data.extraction_summary;
@@ -187,6 +212,7 @@ export class TechnicalNoteService {
     }
   }
 
+
   /**
    * Método auxiliar para manejar errores de procesamiento
    */
@@ -196,8 +222,10 @@ export class TechnicalNoteService {
     console.error('✗ Error.response.data:', error.response?.data);
     console.error('✗ Error.message:', error.message);
 
+
     let errorMessage = `Error desconocido al procesar archivos ${source}`;
     let suggestion: string | undefined;
+
 
     // Extraer mensaje de error y sugerencias
     if (error.response?.data?.detail) {
@@ -235,6 +263,7 @@ export class TechnicalNoteService {
       console.error('📌 Error como string:', errorMessage);
     }
 
+
     console.error('✗ Mensaje final de error:', errorMessage);
     
     // Construir mensaje completo con sugerencia si existe
@@ -245,6 +274,7 @@ export class TechnicalNoteService {
     throw new Error(fullMessage);
   }
 
+
   /**
    * Obtiene información del archivo NT RPMS consolidado disponible
    */
@@ -252,10 +282,12 @@ export class TechnicalNoteService {
     try {
       console.log('🔍 Verificando archivo NT RPMS consolidado...');
 
+
       const response = await api.get<NTRPMSFileInfo>(
         '/technical-note/nt-rpms/file-info',
         { timeout: 10000 }
       );
+
 
       if (response.data.is_available) {
         console.log('✓ Archivo NT RPMS disponible:');
@@ -263,6 +295,7 @@ export class TechnicalNoteService {
         console.log(`  - ${response.data.total_columns} columnas`);
         return response.data;
       }
+
 
       console.log('⚠️ No hay archivo NT RPMS consolidado disponible');
       return null;
@@ -272,10 +305,12 @@ export class TechnicalNoteService {
         return null;
       }
 
+
       console.error('Error verificando NT RPMS:', error);
       throw error;
     }
   }
+
 
   /**
    * Elimina el archivo NT RPMS consolidado
@@ -284,14 +319,17 @@ export class TechnicalNoteService {
     try {
       console.log('🗑️ Eliminando archivo NT RPMS...');
 
+
       const response = await api.delete<{ success: boolean; message: string }>(
         '/technical-note/nt-rpms/delete',
         { timeout: 15000 }
       );
 
+
       if (response.data.success) {
         console.log('✓ Archivo NT RPMS eliminado exitosamente');
       }
+
 
       return response.data;
     } catch (error: any) {
@@ -301,6 +339,7 @@ export class TechnicalNoteService {
       );
     }
   }
+
 
   /**
    * Obtiene lista de archivos NT RPMS procesados
@@ -321,12 +360,15 @@ export class TechnicalNoteService {
     try {
       console.log('📋 Listando archivos NT RPMS procesados...');
 
+
       const response = await api.get(
         '/technical-note/nt-rpms/list-processed',
         { timeout: 10000 }
       );
 
+
       console.log(`✓ ${response.data.count} archivos procesados encontrados`);
+
 
       return response.data;
     } catch (error: any) {
@@ -335,23 +377,28 @@ export class TechnicalNoteService {
     }
   }
 
+
   // ========================================
   // 🔥 MÉTODOS DE LIMPIEZA ELIMINADOS
   // La limpieza es 100% automática desde el backend
   // ========================================
 
+
   // ========================================
   // FILE MANAGEMENT METHODS
   // ========================================
+
 
   static async getAvailableFiles(): Promise<TechnicalFileInfo[]> {
     try {
       console.log('📂 GET /technical-note/available');
 
+
       const response = await api.get<TechnicalFileInfo[]>(
         '/technical-note/available',
         { timeout: 10000 }
       );
+
 
       console.log(`✓ ${response.data?.length || 0} archivos disponibles`);
       return response.data;
@@ -360,6 +407,7 @@ export class TechnicalNoteService {
       throw error;
     }
   }
+
 
   static async getFileData(
     filename: string,
@@ -382,18 +430,22 @@ export class TechnicalNoteService {
         ...(filters && filters.length > 0 && { filters: JSON.stringify(filters) })
       });
 
+
       console.log(`📄 GET /technical-note/data/${filename}?${params}`);
+
 
       const response = await api.get<TechnicalFileData>(
         `/technical-note/data/${filename}?${params}`,
         { timeout: 45000 }
       );
 
+
       console.log('✓ Datos obtenidos:', {
         status: response.status,
         rowsInPage: response.data?.pagination?.rows_in_page,
         totalFiltered: response.data?.pagination?.total_rows
       });
+
 
       return response.data;
     } catch (error) {
@@ -402,16 +454,20 @@ export class TechnicalNoteService {
     }
   }
 
+
   static async getFileMetadata(filename: string): Promise<TechnicalFileMetadata> {
     try {
       console.log(`📋 Obteniendo metadatos: ${filename}`);
+
 
       const response = await api.get<TechnicalFileMetadata>(
         `/technical-note/metadata/${filename}`,
         { timeout: 15000 }
       );
 
+
       console.log(`✓ Metadatos obtenidos: ${response.data.total_rows?.toLocaleString()} filas`);
+
 
       return response.data;
     } catch (error) {
@@ -419,6 +475,7 @@ export class TechnicalNoteService {
       throw error;
     }
   }
+
 
   static async getFileColumns(filename: string): Promise<{
     filename: string;
@@ -429,10 +486,12 @@ export class TechnicalNoteService {
     try {
       console.log(`📊 Obteniendo columnas: ${filename}`);
 
+
       const response = await api.get(
         `/technical-note/columns/${filename}`,
         { timeout: 10000 }
       );
+
 
       return response.data;
     } catch (error) {
@@ -441,9 +500,11 @@ export class TechnicalNoteService {
     }
   }
 
+
   // ========================================
   // COLUMN VALUES METHODS
   // ========================================
+
 
   static async getColumnUniqueValues(
     filename: string,
@@ -457,14 +518,18 @@ export class TechnicalNoteService {
         limit: limit.toString()
       });
 
+
       console.log(`🔍 Obteniendo valores únicos: ${filename} - ${columnName}`);
+
 
       const response = await api.get<ColumnUniqueValues>(
         `/technical-note/unique-values/${filename}/${columnName}?${params}`,
         { timeout: 15000 }
       );
 
+
       console.log(`✓ ${response.data.total_unique} valores únicos para ${columnName}`);
+
 
       return response.data;
     } catch (error) {
@@ -473,9 +538,11 @@ export class TechnicalNoteService {
     }
   }
 
+
   // ========================================
   // GEOGRAPHIC METHODS
   // ========================================
+
 
   static async getGeographicValues(
     filename: string,
@@ -485,6 +552,7 @@ export class TechnicalNoteService {
     try {
       const params = new URLSearchParams();
 
+
       if (filters.departamento) {
         params.append('departamento', filters.departamento);
       }
@@ -492,15 +560,20 @@ export class TechnicalNoteService {
         params.append('municipio', filters.municipio);
       }
 
+
       const url = `/technical-note/geographic/${filename}/${geoType}${
         params.toString() ? `?${params}` : ''
       }`;
 
+
       console.log(`🗺️ Obteniendo ${geoType}: GET ${url}`);
+
 
       const response = await api.get<GeographicValuesResponse>(url, { timeout: 15000 });
 
+
       console.log(`✓ ${geoType} obtenidos: ${response.data?.values?.length || 0} valores`);
+
 
       return response.data;
     } catch (error) {
@@ -508,6 +581,7 @@ export class TechnicalNoteService {
       throw error;
     }
   }
+
 
   static async getDepartamentos(filename: string): Promise<string[]> {
     try {
@@ -519,6 +593,7 @@ export class TechnicalNoteService {
     }
   }
 
+
   static async getMunicipios(filename: string, departamento: string): Promise<string[]> {
     try {
       const result = await this.getGeographicValues(filename, 'municipios', { departamento });
@@ -528,6 +603,7 @@ export class TechnicalNoteService {
       return [];
     }
   }
+
 
   static async getIps(filename: string, departamento: string, municipio: string): Promise<string[]> {
     try {
@@ -542,21 +618,36 @@ export class TechnicalNoteService {
     }
   }
 
+
   // ========================================
-  // REPORT METHODS
+  // REPORT METHODS - CON FILTRO DE RÉGIMEN
   // ========================================
 
+
+  /**
+   * Genera reporte de keywords por edad con filtros geográficos y de régimen
+   * 
+   * @param filename - Nombre del archivo a procesar
+   * @param cutoffDate - Fecha de corte (YYYY-MM-DD)
+   * @param keywords - Array de keywords para filtrar
+   * @param minCount - Conteo mínimo
+   * @param includeTemporal - Incluir análisis temporal
+   * @param geographicFilters - Filtros geográficos (departamento, municipio, ips)
+   * @param regimen - Filtro por régimen: 'Subsidiado' o 'Contributivo' (opcional)
+   */
   static async getKeywordAgeReport(
     filename: string,
     cutoffDate: string,
     keywords?: string[],
     minCount: number = 0,
     includeTemporal: boolean = true,
-    geographicFilters: GeographicFilters = {}
+    geographicFilters: GeographicFilters = {},
+    regimen?: 'Subsidiado' | 'Contributivo'
   ): Promise<KeywordAgeReport> {
     if (!cutoffDate) {
       throw new Error('Fecha de corte es obligatoria');
     }
+
 
     try {
       const params = new URLSearchParams({
@@ -565,6 +656,7 @@ export class TechnicalNoteService {
         min_count: minCount.toString(),
         include_temporal: includeTemporal.toString()
       });
+
 
       if (geographicFilters.departamento) {
         params.append('departamento', geographicFilters.departamento);
@@ -575,13 +667,25 @@ export class TechnicalNoteService {
       if (geographicFilters.ips) {
         params.append('ips', geographicFilters.ips);
       }
+      
+      // ← NUEVO: Agregar filtro de régimen
+      if (regimen) {
+        params.append('regimen', regimen);
+        console.log(`🏥 Filtro de régimen aplicado: ${regimen}`);
+      }
+
 
       console.log(`📊 Generando reporte con fecha: ${cutoffDate}`);
+      if (regimen) {
+        console.log(`   Régimen: ${regimen}`);
+      }
+
 
       const response = await api.get<KeywordAgeReport>(
         `/technical-note/report/${filename}?${params}`,
         { timeout: 45000 }
       );
+
 
       return response.data;
     } catch (error) {
@@ -590,9 +694,11 @@ export class TechnicalNoteService {
     }
   }
 
+
   // ========================================
   // AGE METHODS
   // ========================================
+
 
   static async getAgeRanges(
     filename: string,
@@ -602,22 +708,28 @@ export class TechnicalNoteService {
       throw new Error('Fecha de corte es obligatoria');
     }
 
+
     try {
       console.log(`👶 Obteniendo rangos de edades: ${filename} con corte ${cutoffDate}`);
+
 
       const params = new URLSearchParams({
         corte_fecha: cutoffDate
       });
+
 
       const response = await api.get<AgeRangesResponse>(
         `/technical-note/age-ranges/${filename}?${params}`,
         { timeout: 30000 }
       );
 
+
       const yearsCount = response.data.age_ranges?.years?.length || 0;
       const monthsCount = response.data.age_ranges?.months?.length || 0;
 
+
       console.log(`✓ Rangos obtenidos: ${yearsCount} años, ${monthsCount} meses (corte: ${cutoffDate})`);
+
 
       return response.data;
     } catch (error) {
@@ -626,19 +738,32 @@ export class TechnicalNoteService {
     }
   }
 
+
   // ========================================
-  // ABSENT USERS METHODS
+  // ABSENT USERS METHODS - CON FILTRO DE RÉGIMEN
   // ========================================
 
+
+  /**
+   * Genera reporte de inasistentes con filtros geográficos y de régimen
+   * 
+   * @param filename - Nombre del archivo a procesar
+   * @param cutoffDate - Fecha de corte (YYYY-MM-DD)
+   * @param keywords - Array de keywords para filtrar (default: ['medicina'])
+   * @param geographicFilters - Filtros geográficos (departamento, municipio, ips)
+   * @param regimen - Filtro por régimen: 'Subsidiado' o 'Contributivo' (opcional)
+   */
   static async getInasistentesReport(
     filename: string,
     cutoffDate: string,
     keywords: string[] = ['medicina'],
-    geographicFilters: GeographicFilters = {}
+    geographicFilters: GeographicFilters = {},
+    regimen?: 'Subsidiado' | 'Contributivo'
   ): Promise<InasistentesReportResponse> {
     if (!cutoffDate) {
       throw new Error('Fecha de corte es obligatoria');
     }
+
 
     try {
       console.log('📋 Generando reporte de inasistentes...');
@@ -646,10 +771,15 @@ export class TechnicalNoteService {
       console.log(`   - Fecha corte: ${cutoffDate}`);
       console.log(`   - Keywords:`, keywords);
       console.log(`   - Filtros geográficos:`, geographicFilters);
+      if (regimen) {
+        console.log(`   - Régimen: ${regimen}`);
+      }
+
 
       const requestBody: any = {
         selectedKeywords: keywords
       };
+
 
       if (geographicFilters.departamento) {
         requestBody.departamento = geographicFilters.departamento;
@@ -661,11 +791,19 @@ export class TechnicalNoteService {
         requestBody.ips = geographicFilters.ips;
       }
 
+
       const params = new URLSearchParams({
         corte_fecha: cutoffDate
       });
+      
+      // ← NUEVO: Agregar filtro de régimen
+      if (regimen) {
+        params.append('regimen', regimen);
+      }
+
 
       console.log('📤 Request body:', JSON.stringify(requestBody, null, 2));
+
 
       const response = await api.post<InasistentesReportResponse>(
         `/technical-note/inasistentes-report/${filename}?${params}`,
@@ -673,19 +811,26 @@ export class TechnicalNoteService {
         { timeout: 60000 }
       );
 
+
       const data = response.data;
+
 
       if (data.success) {
         const totalInasistentes = data.resumen_general?.total_inasistentes_global || 0;
         const totalActividades = data.resumen_general?.total_actividades_evaluadas || 0;
 
+
         console.log('✓ Reporte generado exitosamente:');
         console.log(`  - Total inasistentes: ${totalInasistentes}`);
         console.log(`  - Total actividades: ${totalActividades}`);
         console.log(`  - Fecha corte: ${cutoffDate}`);
+        if (regimen) {
+          console.log(`  - Régimen: ${regimen}`);
+        }
       } else {
         console.warn('⚠️ Reporte generado con advertencias');
       }
+
 
       return data;
     } catch (error: any) {
@@ -695,25 +840,42 @@ export class TechnicalNoteService {
     }
   }
 
+
+  /**
+   * Exporta reporte de inasistentes a CSV con filtros geográficos y de régimen
+   * 
+   * @param filename - Nombre del archivo a procesar
+   * @param cutoffDate - Fecha de corte (YYYY-MM-DD)
+   * @param keywords - Array de keywords para filtrar (default: ['medicina'])
+   * @param geographicFilters - Filtros geográficos (departamento, municipio, ips)
+   * @param regimen - Filtro por régimen: 'Subsidiado' o 'Contributivo' (opcional)
+   */
   static async exportInasistentesCSV(
     filename: string,
     cutoffDate: string,
     keywords: string[] = ['medicina'],
-    geographicFilters: GeographicFilters = {}
+    geographicFilters: GeographicFilters = {},
+    regimen?: 'Subsidiado' | 'Contributivo'
   ): Promise<Blob> {
     if (!cutoffDate) {
       throw new Error('Fecha de corte es obligatoria');
     }
+
 
     try {
       console.log('📥 Exportando CSV de inasistentes...');
       console.log(`   - Archivo: ${filename}`);
       console.log(`   - Fecha corte: ${cutoffDate}`);
       console.log(`   - Keywords:`, keywords);
+      if (regimen) {
+        console.log(`   - Régimen: ${regimen}`);
+      }
+
 
       const requestBody: any = {
         selectedKeywords: keywords
       };
+
 
       if (geographicFilters.departamento) {
         requestBody.departamento = geographicFilters.departamento;
@@ -725,9 +887,16 @@ export class TechnicalNoteService {
         requestBody.ips = geographicFilters.ips;
       }
 
+
       const params = new URLSearchParams({
         corte_fecha: cutoffDate
       });
+      
+      // ← NUEVO: Agregar filtro de régimen
+      if (regimen) {
+        params.append('regimen', regimen);
+      }
+
 
       const response = await api.post(
         `/technical-note/inasistentes-report/${filename}/export-csv?${params}`,
@@ -741,6 +910,7 @@ export class TechnicalNoteService {
         }
       );
 
+
       console.log(`✓ CSV exportado exitosamente (${response.data.size} bytes)`);
       return response.data;
     } catch (error: any) {
@@ -750,9 +920,11 @@ export class TechnicalNoteService {
     }
   }
 
+
   // ========================================
   // UTILITY METHODS
   // ========================================
+
 
   static formatFileSize(bytes: number): string {
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
@@ -761,9 +933,11 @@ export class TechnicalNoteService {
     return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
   }
 
+
   static isLargeFile(totalRows: number): boolean {
     return totalRows > 10000;
   }
+
 
   static getRecommendedPageSize(totalRows: number): number {
     if (totalRows <= 1000) return 100;
@@ -772,9 +946,11 @@ export class TechnicalNoteService {
     return 1500;
   }
 
+
   static calculateTotalPages(totalRows: number, pageSize: number): number {
     return Math.ceil(totalRows / pageSize);
   }
+
 
   static downloadBlobAsFile(blob: Blob, filename: string): void {
     try {
@@ -793,17 +969,21 @@ export class TechnicalNoteService {
     }
   }
 
+
   static async downloadFromLink(downloadLink: string, filename?: string): Promise<void> {
     try {
       console.log(`📥 Descargando desde enlace: ${downloadLink}`);
+
 
       const response = await api.get(downloadLink, {
         responseType: 'blob',
         timeout: 60000
       });
 
+
       const contentDisposition = response.headers['content-disposition'];
       let finalFilename = filename;
+
 
       if (!finalFilename && contentDisposition) {
         const match = contentDisposition.match(/filename[^;=\n]*=(['"]?)([^'"\n]*?)\1/);
@@ -812,9 +992,11 @@ export class TechnicalNoteService {
         }
       }
 
+
       if (!finalFilename) {
         finalFilename = `archivo_${new Date().getTime()}`;
       }
+
 
       this.downloadBlobAsFile(response.data, finalFilename);
     } catch (error) {
@@ -822,6 +1004,7 @@ export class TechnicalNoteService {
       throw error;
     }
   }
+
 
   static getSemaforoColor(estado: string): string {
     const colores = {
@@ -834,12 +1017,14 @@ export class TechnicalNoteService {
     return colores[estado as keyof typeof colores] || '#9E9E9E';
   }
 
+
   /**
    * Valida si una ruta es de red (UNC)
    */
   static isNetworkPath(path: string): boolean {
     return path.startsWith('\\\\') || path.startsWith('//');
   }
+
 
   /**
    * Normaliza una ruta de red para el formato correcto
@@ -861,7 +1046,8 @@ export class TechnicalNoteService {
   }
 }
 
-// Exportar helpers (SIN métodos de limpieza)
+
+// Exportar helpers - CON FILTRO DE RÉGIMEN
 export const TechnicalNoteHelpers = {
   formatFileSize: TechnicalNoteService.formatFileSize,
   isLargeFile: TechnicalNoteService.isLargeFile,
@@ -883,5 +1069,6 @@ export const TechnicalNoteHelpers = {
   isNetworkPath: TechnicalNoteService.isNetworkPath,
   normalizeNetworkPath: TechnicalNoteService.normalizeNetworkPath
 };
+
 
 export default TechnicalNoteService;

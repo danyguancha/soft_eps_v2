@@ -1,9 +1,11 @@
+# controllers/technical_note_controller/absent_user/absent_calculator.py
 from typing import Dict, List, Any, Optional
 from services.duckdb_service.duckdb_service import duckdb_service
 from utils.text_normalizer import normalize_text
 from utils.age_ranges import get_edad_manager
 import json
 from pathlib import Path
+
 
 
 class AbsentCalculator:
@@ -62,6 +64,7 @@ class AbsentCalculator:
             traceback.print_exc()
             return {}
 
+
     
     @property
     def conn(self):
@@ -85,6 +88,7 @@ class AbsentCalculator:
         """
         print(f"\n      📊 Calculando inasistentes para: {column_name}")
         print(f"         Rango edad: '{edad_label}'")
+        print(f"         WHERE clause: {where_clause}")  # ← LOG DEL WHERE
         
         # Determinar si es rango de meses o años
         es_rango_meses = self._es_rango_meses(edad_label)
@@ -166,12 +170,13 @@ class AbsentCalculator:
             
             fecha_inicio, fecha_fin = date_ranges[mes_num]
             
-            # Query ORIGINAL que ya funcionaba
+            # ← MODIFICADO: Agregar "Régimen" al SELECT
             query = f"""
             SELECT 
                 "Departamento",
                 "Municipio",
                 "Nombre IPS",
+                "Régimen",
                 "Nro Identificación",
                 "Primer Apellido",
                 "Segundo Apellido",
@@ -207,6 +212,8 @@ class AbsentCalculator:
             
             except Exception as e:
                 print(f"         ✗ Error mes {mes_num}: {str(e)[:100]}")
+                import traceback
+                traceback.print_exc()
                 inasistentes_mensuales[mes_num] = []
         
         total = sum(len(v) for v in inasistentes_mensuales.values())
@@ -248,12 +255,13 @@ class AbsentCalculator:
         
         col_escaped = f'"{column_name}"'
         
-        # Query para años usando columna Edad
+        # ← MODIFICADO: Agregar "Régimen" al SELECT
         query = f"""
         SELECT 
             "Departamento",
             "Municipio",
             "Nombre IPS",
+            "Régimen",
             "Nro Identificación",
             "Primer Apellido",
             "Segundo Apellido",
@@ -271,6 +279,9 @@ class AbsentCalculator:
         ORDER BY "Primer Apellido", "Primer Nombre"
         LIMIT 10000
         """
+        
+        print(f"         🔍 Query completa:")
+        print(f"         {query[:500]}...")  # ← LOG PARA DEBUG
         
         try:
             result = self.conn.execute(query).fetchall()
@@ -290,6 +301,10 @@ class AbsentCalculator:
             
             if inasistentes:
                 print(f"         ✓ Total inasistentes (años): {len(inasistentes)}")
+                # ← LOG: Verificar que traigan régimen
+                if inasistentes:
+                    primer_reg = inasistentes[0].get('regimen', 'NO TIENE')
+                    print(f"         ✓ Primer registro régimen: {primer_reg}")
         
         except Exception as e:
             print(f"         ✗ Error: {str(e)[:100]}")
@@ -353,19 +368,23 @@ class AbsentCalculator:
         column_name: str,
         mes_num: int
     ) -> Dict[str, Any]:
-        """Procesa una fila de resultado y la convierte en diccionario de inasistente."""
+        """
+        Procesa una fila de resultado y la convierte en diccionario de inasistente.
+        ← MODIFICADO: Ahora incluye régimen (índice 3)
+        """
         return {
             "departamento": str(row[0]).strip() if row[0] else "",
             "municipio": str(row[1]).strip() if row[1] else "",
             "nombre_ips": str(row[2]).strip() if row[2] else "",
-            "nro_identificacion": str(row[3]).strip() if row[3] else "",
-            "primer_apellido": str(row[4]).strip() if row[4] else "",
-            "segundo_apellido": str(row[5]).strip() if row[5] else "",
-            "primer_nombre": str(row[6]).strip() if row[6] else "",
-            "segundo_nombre": str(row[7]).strip() if row[7] else "",
-            "fecha_nacimiento": str(row[8]).strip() if row[8] else "",
-            "edad_anos": int(row[9]) if row[9] is not None else 0,
-            "actividad_valor": str(row[10]).strip() if row[10] else "VACÍO",
+            "regimen": str(row[3]).strip() if row[3] else "",  # ← NUEVO: índice 3
+            "nro_identificacion": str(row[4]).strip() if row[4] else "",
+            "primer_apellido": str(row[5]).strip() if row[5] else "",
+            "segundo_apellido": str(row[6]).strip() if row[6] else "",
+            "primer_nombre": str(row[7]).strip() if row[7] else "",
+            "segundo_nombre": str(row[8]).strip() if row[8] else "",
+            "fecha_nacimiento": str(row[9]).strip() if row[9] else "",
+            "edad_anos": int(row[10]) if row[10] is not None else 0,
+            "actividad_valor": str(row[11]).strip() if row[11] else "VACÍO",
             "columna_evaluada": column_name,
             "mes_correspondiente": mes_num
         }

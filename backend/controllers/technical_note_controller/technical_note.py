@@ -4,10 +4,12 @@ import shutil
 from typing import Dict, Any, List, Optional
 from fastapi import HTTPException
 
+
 from controllers.technical_note_controller.absent_user_controller import AbsentUserController
 from controllers.technical_note_controller.age_controller import AgeController
 from services.duckdb_service.duckdb_service import duckdb_service
 from services.aux_duckdb_services.query_pagination import QueryPagination
+
 
 from services.technical_note_services.data_source_service import DataSourceService
 from services.technical_note_services.geographic_service import GeographicService
@@ -15,8 +17,10 @@ from services.technical_note_services.report_service import ReportService
 from utils.technical_note_utils.file_utils import generate_file_key, is_supported_file
 from utils.technical_note_utils.display_utils import generate_display_name, generate_description
 
+
 # 🔥 IMPORTAR CONFIG LOADER
 from utils.config_loader import config_loader
+
 
 
 class TechnicalNoteController:
@@ -149,6 +153,7 @@ class TechnicalNoteController:
             traceback.print_exc()
             raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
     
+    # ← MODIFICADO: Agregado parámetro regimen
     def get_keyword_age_report(
         self,
         filename: str,
@@ -159,6 +164,7 @@ class TechnicalNoteController:
         municipio: Optional[str] = None,
         ips: Optional[str] = None,
         corte_fecha: str = None,
+        regimen: Optional[str] = None,  # ← NUEVO PARÁMETRO
     ) -> Dict[str, Any]:
         try:
             if not corte_fecha:
@@ -172,6 +178,7 @@ class TechnicalNoteController:
             print(f"{'='*60}")
             print(f"Filename: {filename}")
             print(f"Fecha corte: {corte_fecha}")
+            print(f"Régimen: {regimen if regimen else 'Todos'}")  # ← NUEVO LOG
             
             # Obtener data_source del archivo principal
             file_key = generate_file_key(filename)
@@ -197,6 +204,7 @@ class TechnicalNoteController:
             column_mappings = config_loader.get_column_mappings(filename=filename)
             print(f"✓ Mapeo de columnas cargado: {len(column_mappings.get('mappings', []))} mapeos")
             
+            # ← MODIFICADO: Pasar régimen al servicio
             # Generar reporte
             report_result = self.report_service.generate_keyword_age_report(
                 data_source=data_source,
@@ -205,7 +213,8 @@ class TechnicalNoteController:
                 geographic_filters=geographic_filters,
                 corte_fecha=corte_fecha,
                 nt_rpms_data_source=nt_rpms_data_source,
-                column_mappings=column_mappings
+                column_mappings=column_mappings,
+                regimen=regimen  # ← NUEVO PARÁMETRO
             )
             
             # ADAPTER: Convertir 'data' → 'items'
@@ -263,8 +272,8 @@ class TechnicalNoteController:
                 print(f"\n   📦 Keys finales: {list(report_result.keys())}")
             
             # Agregar metadatos
-            report_result['metodo'] = 'numerador_denominador_rpms_dinamico'  # 🔥 MODIFICADO
-            report_result['version'] = '3.1'  # 🔥 MODIFICADO
+            report_result['metodo'] = 'numerador_denominador_rpms_dinamico'
+            report_result['version'] = '3.1'
             
             # Logging final
             total_items = report_result.get('total_items', 0)
@@ -275,8 +284,9 @@ class TechnicalNoteController:
             print(f"  - Items totales: {total_items}")
             print(f"  - Cobertura global: {global_stats.get('cobertura_global_porcentaje', 0):.2f}%")
             print(f"  - Fecha corte: {corte_fecha}")
+            print(f"  - Régimen: {regimen if regimen else 'Todos'}")  # ← NUEVO LOG
             print(f"  - Usa datos RPMS: {'Sí' if nt_rpms_data_source else 'No'}")
-            print(f"  - Mappings: Dinámicos por curso de vida")  # 🔥 NUEVO
+            print(f"  - Mappings: Dinámicos por curso de vida")
             print(f"{'='*60}\n")
             
             return report_result
@@ -290,6 +300,7 @@ class TechnicalNoteController:
             import traceback
             traceback.print_exc()
             raise HTTPException(status_code=500, detail=f"Error generando reporte: {str(e)}")
+
 
 
     def _find_nt_rpms_parquet(self) -> Optional[str]:
@@ -372,6 +383,7 @@ class TechnicalNoteController:
             import traceback
             traceback.print_exc()
             return None
+
 
     
     def get_technical_file_metadata(self, filename: str) -> Dict[str, Any]:
@@ -595,6 +607,7 @@ class TechnicalNoteController:
         """MODIFICADO: Pasar fecha dinámica al controlador de edad"""
         return AgeController().get_age_ranges(filename, corte_fecha, self.static_files_dir)
 
+
     def get_inasistentes_report(
         self,
         filename: str,
@@ -602,7 +615,8 @@ class TechnicalNoteController:
         corte_fecha: str = None,
         departamento: Optional[str] = None,
         municipio: Optional[str] = None,
-        ips: Optional[str] = None
+        ips: Optional[str] = None,
+        regimen: Optional[str] = None  # ← NUEVO PARÁMETRO
     ):
         """Genera reporte de inasistentes mes a mes"""
         try:
@@ -611,6 +625,7 @@ class TechnicalNoteController:
             print(f"{'='*60}")
             print(f"Filename: {filename}")
             print(f"Fecha corte: {corte_fecha}")
+            print(f"Régimen: {regimen if regimen else 'Todos'}")  # ← NUEVO LOG
             
             # Validar fecha de corte
             if not corte_fecha:
@@ -635,7 +650,7 @@ class TechnicalNoteController:
                 'ips': ips
             }
             
-            # Llamar al controlador de inasistentes con la nueva firma
+            # ← MODIFICADO: Llamar al controlador de inasistentes con régimen
             result = AbsentUserController().get_inasistentes_report(
                 filename=filename,
                 keywords=keywords,
@@ -644,7 +659,8 @@ class TechnicalNoteController:
                 municipio=municipio,
                 ips=ips,
                 path_technical_note=self.static_files_dir,
-                column_mappings=column_mappings
+                column_mappings=column_mappings,
+                regimen=regimen  # ← NUEVO PARÁMETRO
             )
             
             print(f"{'='*60}")
@@ -670,6 +686,7 @@ class TechnicalNoteController:
         departamento: Optional[str] = None,
         municipio: Optional[str] = None,
         ips: Optional[str] = None,
+        regimen: Optional[str] = None,  # ← NUEVO PARÁMETRO
         encoding: str = "utf-8-sig"
     ):
         """Exporta reporte de inasistentes a CSV"""
@@ -678,6 +695,7 @@ class TechnicalNoteController:
             print(f"CONTROLLER: export_inasistentes_csv")
             print(f"{'='*60}")
             print(f"Filename: {filename}")
+            print(f"Régimen: {regimen if regimen else 'Todos'}")  # ← NUEVO LOG
             
             # Validar fecha de corte
             if not corte_fecha:
@@ -689,7 +707,7 @@ class TechnicalNoteController:
             # Obtener column_mappings dinámicamente
             column_mappings = config_loader.get_column_mappings(filename=filename)
             
-            # Llamar al exportador con la nueva firma
+            # ← MODIFICADO: Llamar al exportador con régimen
             return AbsentUserController().export_inasistentes_to_csv(
                 filename=filename,
                 keywords=keywords,
@@ -699,6 +717,7 @@ class TechnicalNoteController:
                 ips=ips,
                 path_technical_note=self.static_files_dir,
                 column_mappings=column_mappings,
+                regimen=regimen,  # ← NUEVO PARÁMETRO
                 encoding=encoding
             )
             
@@ -712,10 +731,13 @@ class TechnicalNoteController:
 
 
 
+
+
 # Función factory para mantener compatibilidad
 def get_technical_note_controller():
     from controllers.files_controllers.storage_manager import storage_manager
     return TechnicalNoteController(storage_manager)
+
 
 
 technical_note_controller = get_technical_note_controller()

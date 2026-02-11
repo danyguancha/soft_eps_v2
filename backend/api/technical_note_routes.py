@@ -1,4 +1,4 @@
-# api/technical_note_routes.py - SIN ENDPOINTS DE LIMPIEZA MANUAL
+# api/technical_note_routes.py - CON FILTRO DE RÉGIMEN
 from datetime import datetime
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from typing import Any, Dict, Optional
@@ -12,18 +12,14 @@ from models.schemas import LocalPathRequest, NTRPMSProcessRequest, NetworkPathRe
 from services.technical_note_services.report_service_aux.report_exporter import ReportExporter
 from services.technical_note_services.cache_cleanup_service import cache_access_tracker
 
+
 report_exporter = ReportExporter()
 router = APIRouter()
 
 
+
 mandatory_date = "Fecha de corte OBLIGATORIA (YYYY-MM-DD)"
 
-
-# 🔥 NOTA: Los endpoints de limpieza manual fueron ELIMINADOS
-# La limpieza ahora es 100% automática desde el backend basada en TTL
-
-
-# ========== ENDPOINTS NT RPMS - RED COMPARTIDA ==========
 
 @router.post("/nt-rpms/process-network", tags=["NT RPMS"])
 async def process_network_nt_rpms(request: NetworkPathRequest) -> Dict[str, Any]:
@@ -90,6 +86,7 @@ async def process_network_nt_rpms(request: NetworkPathRequest) -> Dict[str, Any]
             status_code=500,
             detail=f"Error inesperado: {str(e)}"
         )
+
 
 
 @router.post("/nt-rpms/process-local", tags=["NT RPMS"])
@@ -164,7 +161,9 @@ async def process_local_nt_rpms(request: LocalPathRequest) -> Dict[str, Any]:
         )
 
 
+
 # ========== ENDPOINT ANTIGUO (MANTENER POR COMPATIBILIDAD) ==========
+
 
 @router.post("/nt-rpms/process", tags=["NT RPMS"])
 async def process_nt_rpms_folder(request: NTRPMSProcessRequest) -> Dict[str, Any]:
@@ -239,6 +238,7 @@ async def process_nt_rpms_folder(request: NTRPMSProcessRequest) -> Dict[str, Any
         )
 
 
+
 @router.get("/nt-rpms/status/{file_hash}", tags=["NT RPMS"])
 async def get_nt_rpms_processing_status(file_hash: str) -> Dict[str, Any]:
     """
@@ -270,6 +270,7 @@ async def get_nt_rpms_processing_status(file_hash: str) -> Dict[str, Any]:
         )
 
 
+
 @router.get("/nt-rpms/list-processed", tags=["NT RPMS"])
 async def list_processed_nt_rpms() -> Dict[str, Any]:
     """
@@ -298,7 +299,9 @@ async def list_processed_nt_rpms() -> Dict[str, Any]:
         )
 
 
+
 # ========== ENDPOINTS PRINCIPALES ==========
+
 
 @router.get("/available")
 def get_available_technical_files():
@@ -308,6 +311,7 @@ def get_available_technical_files():
     except Exception as e:
         print(f"Error en /available: {e}")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
 
 
 @router.get("/data/{filename}")
@@ -357,6 +361,7 @@ def get_technical_file_data_with_excel_filters(
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 
+
 @router.get("/metadata/{filename}")
 def get_technical_file_metadata(filename: str):
     """Metadatos del archivo"""
@@ -372,6 +377,7 @@ def get_technical_file_metadata(filename: str):
     except Exception as e:
         print(f"Error en /metadata/{filename}: {e}")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
 
 
 @router.get("/columns/{filename}")
@@ -392,7 +398,9 @@ def get_file_columns(filename: str):
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 
+
 # ========== ENDPOINTS GEOGRÁFICOS ==========
+
 
 @router.get("/geographic/{filename}/departamentos")
 def get_departamentos(filename: str):
@@ -407,6 +415,7 @@ def get_departamentos(filename: str):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
 
 
 @router.get("/geographic/{filename}/municipios")
@@ -426,6 +435,7 @@ def get_municipios(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
 
 
 @router.get("/geographic/{filename}/ips")
@@ -449,7 +459,9 @@ def get_ips(
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 
+
 # ========== ENDPOINT DE REPORTE PRINCIPAL ==========
+
 
 @router.get("/report/{filename}")
 def get_keyword_age_report(
@@ -460,12 +472,28 @@ def get_keyword_age_report(
     departamento: Optional[str] = Query(None),
     municipio: Optional[str] = Query(None),
     ips: Optional[str] = Query(None),
-    corte_fecha: str = Query(..., description=mandatory_date)
+    corte_fecha: str = Query(..., description=mandatory_date),
+    regimen: Optional[str] = Query(None, description="Régimen: 'Subsidiado' o 'Contributivo'. Si no se especifica, incluye ambos.")
 ):
+    """
+    Genera reporte con filtros geográficos y de régimen
+    
+    Args:
+        filename: Nombre del archivo a procesar
+        keywords: Keywords separadas por comas para filtrar
+        min_count: Conteo mínimo
+        include_temporal: Incluir análisis temporal
+        departamento: Filtro por departamento
+        municipio: Filtro por municipio
+        ips: Filtro por IPS
+        corte_fecha: Fecha de corte (YYYY-MM-DD)
+        regimen: Filtro por régimen ('Subsidiado' o 'Contributivo')
+    """
     try:
         print(f"\n{'='*60}")
         print(f"GET /report/{filename}")
         print(f"Fecha corte: {corte_fecha}")
+        print(f"Régimen: {regimen if regimen else 'Todos'}")
         print(f"{'='*60}")
         
         # Validar formato de fecha
@@ -476,6 +504,17 @@ def get_keyword_age_report(
                 status_code=400, 
                 detail=f"Formato de fecha inválido: {corte_fecha}. Use YYYY-MM-DD"
             )
+        
+        # Validar régimen si se proporciona
+        if regimen:
+            regimen_clean = regimen.strip()
+            if regimen_clean.upper() not in ['SUBSIDIADO', 'CONTRIBUTIVO']:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Régimen inválido: '{regimen}'. Valores permitidos: 'Subsidiado' o 'Contributivo'"
+                )
+        else:
+            regimen_clean = None
         
         # Procesar keywords
         kw_list = None
@@ -490,7 +529,8 @@ def get_keyword_age_report(
             departamento=departamento,
             municipio=municipio,
             ips=ips,
-            corte_fecha=corte_fecha
+            corte_fecha=corte_fecha,
+            regimen=regimen_clean
         )
         
         # Convertir a formato JSON-serializable
@@ -538,7 +578,9 @@ def get_keyword_age_report(
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 
+
 # ========== ENDPOINTS DE VALORES ÚNICOS ==========
+
 
 @router.get("/unique-values/{filename}/{column_name}")
 def get_column_unique_values(
@@ -559,7 +601,9 @@ def get_column_unique_values(
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 
+
 # ========== ENDPOINTS DE RANGOS DE EDAD ==========
+
 
 @router.get("/age-ranges/{filename}")
 def get_age_ranges(
@@ -595,18 +639,30 @@ def get_age_ranges(
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 
+
 # ========== ENDPOINTS DE INASISTENTES ==========
+
 
 @router.post("/inasistentes-report/{filename}")
 def get_inasistentes_report(
     filename: str,
     request: Dict[str, Any],
-    corte_fecha: str = Query(..., description="Fecha de corte en formato YYYY-MM-DD")
+    corte_fecha: str = Query(..., description="Fecha de corte en formato YYYY-MM-DD"),
+    regimen: Optional[str] = Query(None, description="Régimen: 'Subsidiado' o 'Contributivo'")
 ):
-    """Genera reporte de inasistentes mes a mes"""
+    """
+    Genera reporte de inasistentes mes a mes con filtro de régimen
+    
+    Args:
+        filename: Nombre del archivo
+        request: Body con selectedKeywords, departamento, municipio, ips
+        corte_fecha: Fecha de corte (YYYY-MM-DD)
+        regimen: Filtro opcional por régimen
+    """
     try:
         print(f"POST /inasistentes-report/{filename}")
         print(f"Fecha de corte: {corte_fecha}")
+        print(f"Régimen: {regimen if regimen else 'Todos'}")
         
         # Validar formato de fecha
         try:
@@ -616,6 +672,17 @@ def get_inasistentes_report(
                 status_code=400,
                 detail="Fecha debe tener formato YYYY-MM-DD"
             )
+        
+        # Validar régimen si se proporciona
+        if regimen:
+            regimen_clean = regimen.strip()
+            if regimen_clean.upper() not in ['SUBSIDIADO', 'CONTRIBUTIVO']:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Régimen inválido: '{regimen}'. Valores permitidos: 'Subsidiado' o 'Contributivo'"
+                )
+        else:
+            regimen_clean = None
         
         # Extraer keywords del request
         selected_keywords = request.get("selectedKeywords", ["medicina"])
@@ -627,7 +694,8 @@ def get_inasistentes_report(
             corte_fecha=corte_fecha,
             departamento=request.get("departamento"),
             municipio=request.get("municipio"),
-            ips=request.get("ips")
+            ips=request.get("ips"),
+            regimen=regimen_clean
         )
         
         if not result.get("success"):
@@ -644,17 +712,29 @@ def get_inasistentes_report(
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 
+
 @router.post("/inasistentes-report/{filename}/export-csv")
 def export_inasistentes_csv(
     filename: str,
     request: Dict[str, Any],
     corte_fecha: str = Query(..., description="Fecha de corte en formato YYYY-MM-DD"),
-    encoding: str = Query(default="utf-8-sig", description="Encoding del CSV")
+    encoding: str = Query(default="utf-8-sig", description="Encoding del CSV"),
+    regimen: Optional[str] = Query(None, description="Régimen: 'Subsidiado' o 'Contributivo'")
 ):
-    """Exporta reporte de inasistentes a CSV"""
+    """
+    Exporta reporte de inasistentes a CSV con filtro de régimen
+    
+    Args:
+        filename: Nombre del archivo
+        request: Body con selectedKeywords, departamento, municipio, ips
+        corte_fecha: Fecha de corte (YYYY-MM-DD)
+        encoding: Encoding del CSV (default: utf-8-sig)
+        regimen: Filtro opcional por régimen
+    """
     try:
         print(f"POST /inasistentes-report/{filename}/export-csv")
         print(f"Fecha de corte: {corte_fecha}")
+        print(f"Régimen: {regimen if regimen else 'Todos'}")
         
         # Validar formato de fecha
         try:
@@ -664,6 +744,17 @@ def export_inasistentes_csv(
                 status_code=400,
                 detail="Fecha debe tener formato YYYY-MM-DD"
             )
+        
+        # Validar régimen si se proporciona
+        if regimen:
+            regimen_clean = regimen.strip()
+            if regimen_clean.upper() not in ['SUBSIDIADO', 'CONTRIBUTIVO']:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Régimen inválido: '{regimen}'. Valores permitidos: 'Subsidiado' o 'Contributivo'"
+                )
+        else:
+            regimen_clean = None
         
         # Extraer keywords del request
         selected_keywords = request.get("selectedKeywords", ["medicina"])
@@ -676,7 +767,8 @@ def export_inasistentes_csv(
             departamento=request.get("departamento"),
             municipio=request.get("municipio"),
             ips=request.get("ips"),
-            encoding=encoding
+            encoding=encoding,
+            regimen=regimen_clean
         )
         
         return csv_response
@@ -690,7 +782,9 @@ def export_inasistentes_csv(
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 
+
 # ========== ENDPOINTS DE EXPORTACIÓN ==========
+
 
 @router.get("/reports/download/{file_id}")
 async def download_report_file(file_id: str):
@@ -720,6 +814,7 @@ async def download_report_file(file_id: str):
     except Exception as e:
         print(f"Error descargando archivo: {e}")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
 
 
 @router.post("/reports/export-current")

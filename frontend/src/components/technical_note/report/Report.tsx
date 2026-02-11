@@ -1,12 +1,15 @@
-// components/technical-note/report/Report.tsx - VERSIÓN SIMPLIFICADA SIN SELECCIÓN DE EDADES
+// components/technical-note/report/Report.tsx - CON FILTRO DE RÉGIMEN
+
 
 import React, { memo, useCallback, useState } from 'react';
-import { Card, Typography, Button, message, Space } from 'antd';
+import { Card, Typography, Button, message, Space, Select } from 'antd';
 import {
   BarChartOutlined,
   CalendarOutlined,
-  UserDeleteOutlined
+  UserDeleteOutlined,
+  MedicineBoxOutlined
 } from '@ant-design/icons';
+
 
 // Componentes
 import { GeographicFilters } from './GeographicFilters';
@@ -22,6 +25,7 @@ import {
   NoReportState
 } from './ReportAuxiliaryComponents';
 
+
 // Hooks y configuración
 import { useReportData } from '../../../hooks/useReportData';
 import { DEFAULT_KEYWORDS } from '../../../config/reportKeywords.config';
@@ -29,12 +33,18 @@ import type { TemporalReportProps } from './interfaces/ReportInterfaz';
 import { TechnicalNoteService } from '../../../services/TechnicalNoteService';
 import type { InasistentesReportResponse } from '../../../interfaces/IAbsentUser';
 
-const { Text } = Typography;
 
-// INTERFAZ EXTENDIDA
+const { Text } = Typography;
+const { Option } = Select;
+
+
+// INTERFAZ EXTENDIDA CON RÉGIMEN
 interface ReportPropsExtended extends TemporalReportProps {
   cutoffDate?: string; // Fecha de corte desde componente padre (formato YYYY-MM-DD)
+  selectedRegimen?: 'Subsidiado' | 'Contributivo' | null; // ← NUEVO
+  onRegimenChange?: (regimen: 'Subsidiado' | 'Contributivo' | null) => void; // ← NUEVO
 }
+
 
 export const Report: React.FC<ReportPropsExtended> = memo(({
   keywordReport,
@@ -51,7 +61,8 @@ export const Report: React.FC<ReportPropsExtended> = memo(({
   municipiosOptions,
   ipsOptions,
   loadingGeoFilters,
-  cutoffDate, // PROP RECIBIDA
+  cutoffDate,
+  selectedRegimen, // ← NUEVO
   onToggleReportVisibility,
   onSetReportKeywords,
   onSetShowTemporalData,
@@ -59,24 +70,41 @@ export const Report: React.FC<ReportPropsExtended> = memo(({
   onDepartamentoChange,
   onMunicipioChange,
   onIpsChange,
+  onRegimenChange, // ← NUEVO
   resetGeographicFilters,
 }) => {
   // DEBUG: Log inmediato al recibir props
   console.log('🔍 Report recibió cutoffDate:', cutoffDate);
   console.log('🔍 Report recibió selectedFile:', selectedFile);
+  console.log('🔍 Report recibió selectedRegimen:', selectedRegimen); // ← NUEVO
+
 
   const { keywordStats, reportTitle } = useReportData(keywordReport, reportKeywords);
+
 
   // ESTADOS: Manejo de reporte de inasistentes
   const [inasistentesReport, setInasistentesReport] = useState<InasistentesReportResponse | null>(null);
   const [loadingInasistentes, setLoadingInasistentes] = useState(false);
   const [showInasistentesReport, setShowInasistentesReport] = useState(false);
 
+
+  // ← NUEVO: HANDLER para cambio de régimen
+  const handleRegimenChange = useCallback((value: 'Subsidiado' | 'Contributivo' | 'todos') => {
+    console.log('🏥 Cambio de régimen:', value);
+    
+    if (onRegimenChange) {
+      onRegimenChange(value === 'todos' ? null : value);
+    }
+  }, [onRegimenChange]);
+
+
   // HANDLER: Generar reporte de cobertura
   const handleLoadReport = useCallback(() => {
     console.log('📊 handleLoadReport ejecutado');
     console.log('   - selectedFile:', selectedFile);
     console.log('   - cutoffDate:', cutoffDate);
+    console.log('   - selectedRegimen:', selectedRegimen); // ← NUEVO
+
 
     if (!selectedFile) {
       console.error('❌ No hay archivo seleccionado');
@@ -84,19 +112,23 @@ export const Report: React.FC<ReportPropsExtended> = memo(({
       return;
     }
 
+
     if (!cutoffDate) {
       console.error('❌ No hay fecha de corte');
       message.error('Debe seleccionar una fecha de corte antes de generar el reporte');
       return;
     }
 
+
     console.log('✅ Generando reporte de cobertura con:', {
       selectedFile,
       cutoffDate,
       reportKeywords,
       reportMinCount,
-      geographicFilters
+      geographicFilters,
+      selectedRegimen // ← NUEVO
     });
+
 
     onLoadKeywordAgeReport(
       selectedFile,
@@ -104,30 +136,37 @@ export const Report: React.FC<ReportPropsExtended> = memo(({
       reportKeywords.length > 0 ? reportKeywords : DEFAULT_KEYWORDS,
       reportMinCount,
       true,
-      geographicFilters
+      geographicFilters,
+      selectedRegimen // ← NUEVO
     );
-  }, [selectedFile, cutoffDate, reportKeywords, reportMinCount, geographicFilters, onLoadKeywordAgeReport]);
+  }, [selectedFile, cutoffDate, reportKeywords, reportMinCount, geographicFilters, selectedRegimen, onLoadKeywordAgeReport]);
+
 
   // HANDLER: Regenerar reporte de cobertura
   const handleRegenerateReport = useCallback(() => {
     console.log('🔄 handleRegenerateReport ejecutado');
+
 
     if (!selectedFile) {
       message.error('No hay archivo seleccionado');
       return;
     }
 
+
     if (!cutoffDate) {
       message.error('Debe seleccionar una fecha de corte antes de regenerar el reporte');
       return;
     }
 
+
     console.log('✅ Regenerando reporte con:', {
       selectedFile,
       cutoffDate,
       reportKeywords,
-      geographicFilters
+      geographicFilters,
+      selectedRegimen // ← NUEVO
     });
+
 
     onLoadKeywordAgeReport(
       selectedFile,
@@ -135,9 +174,11 @@ export const Report: React.FC<ReportPropsExtended> = memo(({
       reportKeywords,
       reportMinCount,
       showTemporalData,
-      geographicFilters
+      geographicFilters,
+      selectedRegimen // ← NUEVO
     );
-  }, [selectedFile, cutoffDate, reportKeywords, reportMinCount, showTemporalData, geographicFilters, onLoadKeywordAgeReport]);
+  }, [selectedFile, cutoffDate, reportKeywords, reportMinCount, showTemporalData, geographicFilters, selectedRegimen, onLoadKeywordAgeReport]);
+
 
   // HANDLER: Generar reporte de inasistentes
   const handleGenerateInasistentesReport = useCallback(async () => {
@@ -146,13 +187,16 @@ export const Report: React.FC<ReportPropsExtended> = memo(({
       return;
     }
 
+
     if (!cutoffDate) {
       message.error('Debe seleccionar una fecha de corte antes de generar el reporte de inasistentes');
       return;
     }
 
+
     setLoadingInasistentes(true);
     setShowInasistentesReport(true);
+
 
     try {
       console.log('🏥 Generando reporte de inasistentes...');
@@ -160,8 +204,10 @@ export const Report: React.FC<ReportPropsExtended> = memo(({
       console.log('   - Fecha corte:', cutoffDate);
       console.log('   - Keywords:', reportKeywords);
       console.log('   - Filtros geográficos:', geographicFilters);
+      console.log('   - Régimen:', selectedRegimen); // ← NUEVO
 
-      // Llamada actualizada con la nueva firma
+
+      // ← MODIFICADO: Llamada con régimen
       const response = await TechnicalNoteService.getInasistentesReport(
         selectedFile,
         cutoffDate,
@@ -170,12 +216,16 @@ export const Report: React.FC<ReportPropsExtended> = memo(({
           departamento: geographicFilters.departamento,
           municipio: geographicFilters.municipio,
           ips: geographicFilters.ips
-        }
+        },
+        selectedRegimen || undefined // ← NUEVO
       );
+
 
       console.log('✅ Reporte de inasistentes generado:', response);
 
+
       setInasistentesReport(response);
+
 
       if (response.success && response.resumen_general) {
         const total = response.resumen_general.total_inasistentes_global;
@@ -183,6 +233,7 @@ export const Report: React.FC<ReportPropsExtended> = memo(({
       } else {
         message.warning('Reporte generado sin inasistentes');
       }
+
 
     } catch (error) {
       console.error('❌ Error generando reporte de inasistentes:', error);
@@ -192,7 +243,8 @@ export const Report: React.FC<ReportPropsExtended> = memo(({
     } finally {
       setLoadingInasistentes(false);
     }
-  }, [selectedFile, cutoffDate, reportKeywords, geographicFilters]);
+  }, [selectedFile, cutoffDate, reportKeywords, geographicFilters, selectedRegimen]);
+
 
   // HANDLER: Ocultar reporte de inasistentes
   const handleHideInasistentesReport = useCallback(() => {
@@ -200,19 +252,23 @@ export const Report: React.FC<ReportPropsExtended> = memo(({
     setInasistentesReport(null);
   }, []);
 
+
   // VALIDACIÓN: Puede generar reportes
   const canGenerateReport = Boolean(cutoffDate && selectedFile);
+
 
   // LOG DE DEBUG
   React.useEffect(() => {
     console.log('🔍 ====== Estado actual del componente Report ======');
     console.log('   cutoffDate:', cutoffDate);
     console.log('   selectedFile:', selectedFile);
+    console.log('   selectedRegimen:', selectedRegimen); // ← NUEVO
     console.log('   canGenerateReport:', canGenerateReport);
     console.log('   hasReport:', hasReport);
     console.log('   showReport:', showReport);
     console.log('================================================');
-  }, [cutoffDate, selectedFile, canGenerateReport, hasReport, showReport]);
+  }, [cutoffDate, selectedFile, selectedRegimen, canGenerateReport, hasReport, showReport]);
+
 
   // Estado inicial - sin reporte
   if (!hasReport && !loadingReport && !showReport) {
@@ -225,6 +281,7 @@ export const Report: React.FC<ReportPropsExtended> = memo(({
             <Text type="secondary" className="temporal-empty-description">
               Analiza las columnas con palabras clave y filtros geográficos
             </Text>
+
 
             {!cutoffDate && (
               <Text type="danger" style={{ display: 'block', marginTop: 8, fontSize: 12 }}>
@@ -253,11 +310,14 @@ export const Report: React.FC<ReportPropsExtended> = memo(({
     );
   }
 
+
   const hasGeoFilters = Boolean(
     geographicFilters.departamento ||
     geographicFilters.municipio ||
-    geographicFilters.ips
+    geographicFilters.ips ||
+    selectedRegimen // ← NUEVO
   );
+
 
   return (
     <Card
@@ -301,6 +361,69 @@ export const Report: React.FC<ReportPropsExtended> = memo(({
             disabled={loadingReport}
           />
 
+
+          {/* ← NUEVO: Selector de Régimen */}
+          <Card
+            size="small"
+            title={
+              <Space>
+                <MedicineBoxOutlined />
+                <span>Filtro de Régimen</span>
+              </Space>
+            }
+            style={{ marginBottom: 16 }}
+          >
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                Filtre el reporte por tipo de régimen de afiliación
+              </Text>
+              
+              <Select
+                value={selectedRegimen || 'todos'}
+                onChange={handleRegimenChange}
+                style={{ width: '100%' }}
+                disabled={loadingReport}
+                size="large"
+              >
+                <Option value="todos">
+                  <Space>
+                    <MedicineBoxOutlined />
+                    <span>Todos los regímenes</span>
+                  </Space>
+                </Option>
+                <Option value="Subsidiado">
+                  <Space>
+                    <MedicineBoxOutlined style={{ color: '#52c41a' }} />
+                    <span>Subsidiado</span>
+                  </Space>
+                </Option>
+                <Option value="Contributivo">
+                  <Space>
+                    <MedicineBoxOutlined style={{ color: '#1890ff' }} />
+                    <span>Contributivo</span>
+                  </Space>
+                </Option>
+              </Select>
+
+
+              {selectedRegimen && (
+                <div style={{
+                  padding: '8px 12px',
+                  backgroundColor: selectedRegimen === 'Subsidiado' ? '#f6ffed' : '#e6f7ff',
+                  borderLeft: `3px solid ${selectedRegimen === 'Subsidiado' ? '#52c41a' : '#1890ff'}`,
+                  borderRadius: 4,
+                  marginTop: 8
+                }}>
+                  <Text style={{ fontSize: 12 }}>
+                    <MedicineBoxOutlined style={{ marginRight: 6 }} />
+                    Filtrando por régimen: <Text strong>{selectedRegimen}</Text>
+                  </Text>
+                </div>
+              )}
+            </Space>
+          </Card>
+
+
           <KeywordControls
             reportKeywords={reportKeywords}
             hasReport={hasReport}
@@ -309,6 +432,7 @@ export const Report: React.FC<ReportPropsExtended> = memo(({
             onRegenerateReport={handleRegenerateReport}
           />
 
+
           {!hasReport && (
             <NoResultsAlert
               onRetry={handleRegenerateReport}
@@ -316,7 +440,9 @@ export const Report: React.FC<ReportPropsExtended> = memo(({
             />
           )}
 
+
           <KeywordStatistics stats={keywordStats} />
+
 
           {hasReport ? (
             <>
@@ -328,6 +454,7 @@ export const Report: React.FC<ReportPropsExtended> = memo(({
                 geographicFilters={geographicFilters}
                 cutoffDate={cutoffDate}
               />
+
 
               {/* Botón para generar reporte de inasistentes */}
               {selectedFile && cutoffDate && (
@@ -350,6 +477,7 @@ export const Report: React.FC<ReportPropsExtended> = memo(({
                       <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 16 }}>
                         Genera un reporte detallado mes a mes de personas que no han asistido a consultas
                       </Text>
+
 
                       <Space>
                         {!showInasistentesReport ? (
@@ -383,17 +511,32 @@ export const Report: React.FC<ReportPropsExtended> = memo(({
                         )}
                       </Space>
 
-                      {cutoffDate && (
-                        <div style={{ marginTop: 12 }}>
-                          <Text type="secondary" style={{ fontSize: 11 }}>
-                            📅 Fecha de corte: <Text strong>{cutoffDate}</Text>
-                          </Text>
-                        </div>
-                      )}
+
+                      {/* ← MODIFICADO: Mostrar fecha de corte y régimen */}
+                      <div style={{ marginTop: 12 }}>
+                        <Space split="|" size="small">
+                          {cutoffDate && (
+                            <Text type="secondary" style={{ fontSize: 11 }}>
+                              📅 Fecha: <Text strong>{cutoffDate}</Text>
+                            </Text>
+                          )}
+                          {selectedRegimen && (
+                            <Text type="secondary" style={{ fontSize: 11 }}>
+                              🏥 Régimen: <Text strong>{selectedRegimen}</Text>
+                            </Text>
+                          )}
+                          {!selectedRegimen && (
+                            <Text type="secondary" style={{ fontSize: 11 }}>
+                              🏥 Régimen: <Text strong>Todos</Text>
+                            </Text>
+                          )}
+                        </Space>
+                      </div>
                     </div>
                   </Space>
                 </Card>
               )}
+
 
               {/* Validación de fecha de corte */}
               {selectedFile && !cutoffDate && (
@@ -416,6 +559,7 @@ export const Report: React.FC<ReportPropsExtended> = memo(({
                 </Card>
               )}
 
+
               {/* Tabla de inasistentes */}
               {selectedFile && showInasistentesReport && cutoffDate && (
                 <div style={{ marginTop: 24 }}>
@@ -423,6 +567,7 @@ export const Report: React.FC<ReportPropsExtended> = memo(({
                     reportData={inasistentesReport}
                     loading={loadingInasistentes}
                     cutoffDate={cutoffDate}
+                    selectedRegimen={selectedRegimen}
                   />
                 </div>
               )}
@@ -439,6 +584,7 @@ export const Report: React.FC<ReportPropsExtended> = memo(({
     </Card>
   );
 });
+
 
 Report.displayName = 'Report';
 export default Report;

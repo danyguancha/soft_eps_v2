@@ -1,8 +1,10 @@
+# controllers/technical_note_controller/absent_user/absent_exporter.py
 import io
 import csv
 from typing import List, Dict, Any
 import pandas as pd
 from fastapi.responses import StreamingResponse
+
 
 
 class AbsentExporter:
@@ -26,7 +28,19 @@ class AbsentExporter:
         if not report_data.get("success"):
             raise ValueError(report_data.get("error", "Error en reporte"))
         
-        rows = AbsentExporter._extract_all_records(report_data)
+        # ← NUEVO: Obtener filtros aplicados incluyendo régimen
+        filtros = report_data.get("filtros_aplicados", {})
+        regimen_filtrado = filtros.get("regimen")
+        
+        print(f"📄 Exportando CSV con filtros:")
+        print(f"   - Keywords: {filtros.get('keywords')}")
+        print(f"   - Departamento: {filtros.get('departamento')}")
+        print(f"   - Municipio: {filtros.get('municipio')}")
+        print(f"   - IPS: {filtros.get('ips')}")
+        print(f"   - Régimen: {regimen_filtrado if regimen_filtrado else 'Todos'}")
+        
+        # ← MODIFICADO: Pasar régimen filtrado
+        rows = AbsentExporter._extract_all_records(report_data, regimen_filtrado)
         
         df = AbsentExporter._create_dataframe(rows)
         
@@ -34,21 +48,34 @@ class AbsentExporter:
             df, encoding, use_excel_sep_hint, sep
         )
         
+        # ← MODIFICADO: Pasar régimen para nombre de archivo
         csv_filename = AbsentExporter._build_filename(
             filename,
-            report_data.get("filtros_aplicados", {}).get("keywords", []),
-            report_data.get("filtros_aplicados", {}).get("departamento"),
-            report_data.get("corte_fecha", "")
+            filtros.get("keywords", []),
+            filtros.get("departamento"),
+            report_data.get("corte_fecha", ""),
+            regimen_filtrado  # ← NUEVO
         )
+        
+        print(f"✅ CSV generado: {len(rows)} registros")
+        if regimen_filtrado:
+            print(f"   (Filtrado por régimen: {regimen_filtrado})")
         
         return AbsentExporter._create_streaming_response(
             buf, csv_filename, encoding
         )
     
     @staticmethod
-    def _extract_all_records(report_data: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """Extrae todos los registros individuales del reporte"""
+    def _extract_all_records(
+        report_data: Dict[str, Any],
+        regimen_filtrado: str = None  # ← NUEVO PARÁMETRO
+    ) -> List[Dict[str, Any]]:
+        """
+        Extrae todos los registros individuales del reporte.
+        Filtra por régimen si está especificado.
+        """
         all_records = []
+        registros_filtrados = 0  # ← NUEVO: Contador
         
         for activity in report_data.get("inasistentes_por_actividad", []):
             consulta = activity.get("actividad", "")
@@ -60,10 +87,19 @@ class AbsentExporter:
                     inasistentes = mes_data.get("inasistentes", [])
                     
                     for inasistente in inasistentes:
+                        # ← NUEVO: Obtener régimen de la persona
+                        regimen_persona = inasistente.get("regimen", "")
+                        
+                        # ← NUEVO: Filtrar por régimen si está especificado
+                        if regimen_filtrado and regimen_persona != regimen_filtrado:
+                            registros_filtrados += 1
+                            continue
+                        
                         record = {
                             "Departamento": inasistente.get("departamento", ""),
                             "Municipio": inasistente.get("municipio", ""),
                             "Nombre IPS": inasistente.get("nombre_ips", ""),
+                            "Regimen": regimen_persona,  # ← NUEVO: Incluir régimen
                             "Numero Identificacion": inasistente.get("nro_identificacion", ""),
                             "Primer Apellido": inasistente.get("primer_apellido", ""),
                             "Segundo Apellido": inasistente.get("segundo_apellido", ""),
@@ -79,17 +115,22 @@ class AbsentExporter:
                         }
                         all_records.append(record)
         
+        # ← NUEVO: Log de registros filtrados
+        if regimen_filtrado and registros_filtrados > 0:
+            print(f"   ⚠️ {registros_filtrados} registros excluidos por filtro de régimen")
+        
         return all_records
     
     @staticmethod
     def _create_dataframe(rows: List[Dict[str, Any]]) -> pd.DataFrame:
-        """Crea DataFrame con columnas predefinidas"""
+        """Crea DataFrame con columnas predefinidas incluyendo régimen"""
         if not rows:
             return pd.DataFrame(columns=[
-                "Departamento", "Municipio", "Nombre IPS", "Numero Identificacion",
-                "Primer Apellido", "Segundo Apellido", "Primer Nombre", "Segundo Nombre",
-                "Fecha Nacimiento", "Edad Anos", "Mes Correspondiente",
-                "Consulta Faltante", "Rango Edad", "Estado Actividad", "Fecha Corte"
+                "Departamento", "Municipio", "Nombre IPS", "Regimen",  # ← NUEVO: Régimen
+                "Numero Identificacion", "Primer Apellido", "Segundo Apellido",
+                "Primer Nombre", "Segundo Nombre", "Fecha Nacimiento", "Edad Anos",
+                "Mes Correspondiente", "Consulta Faltante", "Rango Edad",
+                "Estado Actividad", "Fecha Corte"
             ])
         return pd.DataFrame(rows)
     
@@ -120,9 +161,10 @@ class AbsentExporter:
         filename: str,
         keywords: List[str],
         departamento: str,
-        corte_fecha: str
+        corte_fecha: str,
+        regimen: str = None  # ← NUEVO PARÁMETRO
     ) -> str:
-        """Construye nombre del archivo CSV"""
+        """Construye nombre del archivo CSV incluyendo régimen"""
         
         def sanitize(text):
             if not text:
@@ -142,6 +184,10 @@ class AbsentExporter:
         
         if departamento:
             filters.append("dept-" + sanitize(departamento))
+        
+        # ← NUEVO: Agregar régimen al nombre del archivo
+        if regimen:
+            filters.append("regimen-" + sanitize(regimen))
         
         suffix = "_" + "_".join(filters) if filters else ""
         base_name = filename.replace('.csv', '').replace(' ', '-')

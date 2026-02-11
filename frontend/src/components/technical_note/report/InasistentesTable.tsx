@@ -1,5 +1,4 @@
-// components/report/InasistentesTable.tsx - SIN ESTILOS INLINE
-
+// components/report/InasistentesTable.tsx
 import React, { memo, useState, useMemo } from 'react';
 import { Table, Typography, Tag, Card, Button, Space, message, Badge, Empty } from 'antd';
 import {
@@ -23,9 +22,12 @@ import { TechnicalNoteService } from '../../../services/TechnicalNoteService';
 import dayjs from 'dayjs';
 import 'dayjs/locale/es';
 
+
 dayjs.locale('es');
 
+
 const { Text } = Typography;
+
 
 const MESES_INFO = [
     { key: 'enero', nombre: 'Enero', num: 1 },
@@ -42,16 +44,20 @@ const MESES_INFO = [
     { key: 'diciembre', nombre: 'Diciembre', num: 12 }
 ];
 
+
 interface InasistentesTableProps {
     reportData: InasistentesReportResponse | null;
     loading: boolean;
     cutoffDate?: string;
+    selectedRegimen?: 'Subsidiado' | 'Contributivo' | null;  // ← NUEVO PROP
 }
+
 
 export const InasistentesTable: React.FC<InasistentesTableProps> = memo(({ 
     reportData, 
     loading,
-    cutoffDate 
+    cutoffDate,
+    selectedRegimen  // ← NUEVO PROP
 }) => {
     // ========================================
     // HOOKS
@@ -59,7 +65,9 @@ export const InasistentesTable: React.FC<InasistentesTableProps> = memo(({
     const [selectedRangoEdad, setSelectedRangoEdad] = useState<string>('todos');
     const [selectedMes, setSelectedMes] = useState<string | null>(null);
 
+
     const displayCutoffDate = cutoffDate || reportData?.corte_fecha;
+
 
     // Extraer rangos de edad únicos
     const rangosEdad = useMemo(() => {
@@ -67,13 +75,16 @@ export const InasistentesTable: React.FC<InasistentesTableProps> = memo(({
             return [];
         }
 
+
         const rangos = new Set<string>();
         reportData.inasistentes_por_actividad.forEach(activity => {
             rangos.add(activity.rango_edad);
         });
 
+
         return Array.from(rangos).sort();
     }, [reportData]);
+
 
     // Filtrar actividades por rango de edad
     const actividadesFiltradas = useMemo(() => {
@@ -81,22 +92,27 @@ export const InasistentesTable: React.FC<InasistentesTableProps> = memo(({
             return [];
         }
 
+
         if (selectedRangoEdad === 'todos') {
             return reportData.inasistentes_por_actividad;
         }
+
 
         return reportData.inasistentes_por_actividad.filter(
             activity => activity.rango_edad === selectedRangoEdad
         );
     }, [reportData, selectedRangoEdad]);
 
+
     // Calcular totales por mes (según filtro de rango de edad)
     const totalesPorMes = useMemo(() => {
         const totales: { [key: string]: number } = {};
 
+
         MESES_INFO.forEach(mes => {
             totales[mes.key] = 0;
         });
+
 
         actividadesFiltradas.forEach(activity => {
             MESES_INFO.forEach(mes => {
@@ -107,8 +123,10 @@ export const InasistentesTable: React.FC<InasistentesTableProps> = memo(({
             });
         });
 
+
         return totales;
     }, [actividadesFiltradas]);
+
 
     // Obtener inasistentes del mes seleccionado
     const inasistentesDelMes = useMemo(() => {
@@ -116,7 +134,9 @@ export const InasistentesTable: React.FC<InasistentesTableProps> = memo(({
             return [];
         }
 
+
         const inasistentes: InasistenteRecord[] = [];
+
 
         actividadesFiltradas.forEach(activity => {
             const mesData = activity[selectedMes as keyof ActivityReport] as MesData | undefined;
@@ -129,12 +149,15 @@ export const InasistentesTable: React.FC<InasistentesTableProps> = memo(({
             }
         });
 
+
         return inasistentes;
     }, [selectedMes, actividadesFiltradas]);
+
 
     // ========================================
     // VALIDACIONES
     // ========================================
+
 
     if (loading) {
         return (
@@ -150,6 +173,7 @@ export const InasistentesTable: React.FC<InasistentesTableProps> = memo(({
         );
     }
 
+
     if (!reportData || !reportData.success) {
         return (
             <Card className="loading-card">
@@ -164,9 +188,11 @@ export const InasistentesTable: React.FC<InasistentesTableProps> = memo(({
         );
     }
 
+
     // ========================================
     // COLUMNAS DE LA TABLA
     // ========================================
+
 
     const columns: ColumnsType<InasistenteRecord> = [
         {
@@ -274,9 +300,11 @@ export const InasistentesTable: React.FC<InasistentesTableProps> = memo(({
         }
     ];
 
+
     // ========================================
     // HANDLERS
     // ========================================
+
 
     const handleExportCSV = async () => {
         if (!reportData || !displayCutoffDate) {
@@ -284,8 +312,13 @@ export const InasistentesTable: React.FC<InasistentesTableProps> = memo(({
             return;
         }
 
+
         try {
             const { filtros_aplicados, filename } = reportData;
+
+            // ← LOG para debugging
+            console.log('📥 Exportando CSV con régimen:', selectedRegimen);
+
 
             const csvBlob = await TechnicalNoteService.exportInasistentesCSV(
                 filename,
@@ -295,23 +328,31 @@ export const InasistentesTable: React.FC<InasistentesTableProps> = memo(({
                     departamento: filtros_aplicados.departamento,
                     municipio: filtros_aplicados.municipio,
                     ips: filtros_aplicados.ips
-                }
+                },
+                selectedRegimen || undefined  // ← NUEVO: Pasar régimen
             );
+
 
             const now = new Date();
             const timestamp = now.toISOString().replace(/[:.]/g, '-').slice(0, -5);
+            
+            // ← NUEVO: Incluir régimen en nombre del archivo
+            const regimenSuffix = selectedRegimen ? `_${selectedRegimen}` : '';
+            const fileName = `inasistentes_${filename.replace('.csv', '')}${regimenSuffix}_${timestamp}.csv`;
             
             const url = window.URL.createObjectURL(
                 new Blob([csvBlob], { type: 'text/csv; charset=utf-8' })
             );
             const link = document.createElement('a');
             link.href = url;
-            link.download = `inasistentes_${filename.replace('.csv', '')}_${timestamp}.csv`;
+            link.download = fileName;
+
 
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
             window.URL.revokeObjectURL(url);
+
 
             message.success('CSV exportado correctamente');
         } catch (error) {
@@ -320,10 +361,12 @@ export const InasistentesTable: React.FC<InasistentesTableProps> = memo(({
         }
     };
 
+
     const handleRangoEdadChange = (rango: string) => {
         setSelectedRangoEdad(rango);
         setSelectedMes(null);
     };
+
 
     const handleMesClick = (mesKey: string) => {
         if (totalesPorMes[mesKey] > 0) {
@@ -333,9 +376,11 @@ export const InasistentesTable: React.FC<InasistentesTableProps> = memo(({
         }
     };
 
+
     // ========================================
     // RENDER
     // ========================================
+
 
     return (
         <Card
@@ -352,6 +397,12 @@ export const InasistentesTable: React.FC<InasistentesTableProps> = memo(({
                     {displayCutoffDate && (
                         <Tag color="blue" icon={<CalendarOutlined />}>
                             Corte: {dayjs(displayCutoffDate).format('DD/MM/YYYY')}
+                        </Tag>
+                    )}
+                    {/* ← NUEVO: Mostrar régimen seleccionado */}
+                    {selectedRegimen && (
+                        <Tag color="green">
+                            Régimen: {selectedRegimen}
                         </Tag>
                     )}
                 </Space>
@@ -385,6 +436,7 @@ export const InasistentesTable: React.FC<InasistentesTableProps> = memo(({
                 </Space>
             </div>
 
+
             {/* SECCIÓN 1: Filtros de Rango de Edad */}
             <div className="filter-section">
                 <div className="filter-section-header">
@@ -403,12 +455,11 @@ export const InasistentesTable: React.FC<InasistentesTableProps> = memo(({
                     >
                         <Space size={4}>
                             <span>Todos</span>
-                            
                         </Space>
                     </Button>
 
-                    {rangosEdad.map(rango => {
 
+                    {rangosEdad.map(rango => {
                         return (
                             <Button
                                 key={rango}
@@ -417,7 +468,6 @@ export const InasistentesTable: React.FC<InasistentesTableProps> = memo(({
                             >
                                 <Space size={4}>
                                     <span>{rango}</span>
-                                    
                                 </Space>
                             </Button>
                         );
@@ -425,7 +475,9 @@ export const InasistentesTable: React.FC<InasistentesTableProps> = memo(({
                 </Space>
             </div>
 
+
             <div className="section-divider" />
+
 
             {/* SECCIÓN 2: Filtros de Meses */}
             <div className="filter-section">
@@ -445,6 +497,7 @@ export const InasistentesTable: React.FC<InasistentesTableProps> = memo(({
                         const isDisabled = total === 0;
                         const isActive = selectedMes === mes.key;
 
+
                         return (
                             <Button
                                 key={mes.key}
@@ -462,7 +515,6 @@ export const InasistentesTable: React.FC<InasistentesTableProps> = memo(({
                                     >
                                         {mes.nombre}
                                     </Text>
-                                    
                                 </Space>
                             </Button>
                         );
@@ -470,12 +522,13 @@ export const InasistentesTable: React.FC<InasistentesTableProps> = memo(({
                 </Space>
             </div>
 
+
             <div className="section-divider" />
+
 
             {/* TABLA DE INASISTENTES */}
             {selectedMes ? (
                 <div>
-
                     <Table
                         className="inasistentes-detail-table"
                         dataSource={inasistentesDelMes}
@@ -509,6 +562,7 @@ export const InasistentesTable: React.FC<InasistentesTableProps> = memo(({
                     }
                 />
             )}
+
 
             {/* Resumen inferior */}
             <div className="summary-box">
@@ -556,5 +610,6 @@ export const InasistentesTable: React.FC<InasistentesTableProps> = memo(({
         </Card>
     );
 });
+
 
 InasistentesTable.displayName = 'InasistentesTable';

@@ -1,6 +1,9 @@
+# controllers/technical_note_controller/absent_user_controller.py
 from typing import Any, Dict, List, Optional
 from datetime import datetime
 from fastapi.responses import StreamingResponse
+
+
 
 from services.technical_note_services.data_source_service import DataSourceService
 from controllers.technical_note_controller.absent_user.absent_calculator import AbsentCalculator
@@ -8,6 +11,8 @@ from controllers.technical_note_controller.absent_user.absent_report_builder imp
 from controllers.technical_note_controller.absent_user.absent_exporter import AbsentExporter
 from controllers.technical_note_controller.absent_user.report_helper import ReportHelper
 from services.technical_note_services.report_service_aux.column_matcher import ColumnMatcher
+
+
 
 
 class AbsentUserController:
@@ -35,7 +40,8 @@ class AbsentUserController:
         municipio: Optional[str] = None,
         ips: Optional[str] = None,
         path_technical_note: str = '',
-        column_mappings: Optional[Dict[str, Any]] = None
+        column_mappings: Optional[Dict[str, Any]] = None,
+        regimen: Optional[str] = None  # ← PARÁMETRO
     ) -> Dict[str, Any]:
         """
         Genera reporte de inasistentes mes a mes usando columna 'Edad'.
@@ -49,6 +55,7 @@ class AbsentUserController:
             ips: Filtro por IPS
             path_technical_note: Path base de archivos
             column_mappings: Mappings de columnas
+            regimen: Filtro por régimen (Subsidiado/Contributivo)
         
         Returns:
             Diccionario con reporte completo
@@ -59,6 +66,10 @@ class AbsentUserController:
             print(f"{'='*80}")
             print(f"Archivo: {filename}")
             print(f"Fecha de corte: {corte_fecha}")
+            print(f"Régimen RECIBIDO: '{regimen}' (tipo: {type(regimen)})")  # ← LOG DETALLADO
+            print(f"Departamento: {departamento}")
+            print(f"Municipio: {municipio}")
+            print(f"IPS: {ips}")
             
             # Parse fecha de corte
             corte_dt = datetime.strptime(corte_fecha, '%Y-%m-%d')
@@ -88,11 +99,31 @@ class AbsentUserController:
             
             # Preparar parámetros
             keywords = keywords or ['medicina']
+            
+            # ← NUEVO: LOG ANTES DE CREAR geographic_info
+            print(f"\n{'🚨'*40}")
+            print(f"CREANDO geographic_info:")
+            print(f"   departamento (param): {departamento}")
+            print(f"   municipio (param): {municipio}")
+            print(f"   ips (param): {ips}")
+            print(f"   regimen (param): '{regimen}'")
+            print(f"{'🚨'*40}")
+            
             geographic_info = {
                 'depto': departamento, 
                 'muni': municipio, 
-                'ips_name': ips
+                'ips_name': ips,
+                'regimen': regimen  # ← Agregar régimen
             }
+            
+            # ← NUEVO: LOG DESPUÉS DE CREAR geographic_info
+            print(f"\n{'✅'*40}")
+            print(f"geographic_info CREADO:")
+            print(f"   Contenido completo: {geographic_info}")
+            print(f"   Tiene 'regimen'?: {'regimen' in geographic_info}")
+            print(f"   Valor de 'regimen': '{geographic_info.get('regimen')}'")
+            print(f"   Tipo: {type(geographic_info.get('regimen'))}")
+            print(f"{'✅'*40}\n")
             
             # Validar filtros geográficos
             if not ReportHelper.has_geographic_filters(geographic_info):
@@ -101,8 +132,19 @@ class AbsentUserController:
                     filename, corte_fecha, keywords, geographic_info
                 )
             
+            # ← NUEVO: LOG ANTES DE build_where_clause
+            print(f"\n{'📋'*40}")
+            print(f"LLAMANDO A build_where_clause con:")
+            print(f"   {geographic_info}")
+            print(f"{'📋'*40}\n")
+            
             where_clause = ReportHelper.build_where_clause(geographic_info)
-            print(f"✓ WHERE clause: {where_clause}")
+            
+            print(f"\n{'✓'*40}")
+            print(f"WHERE CLAUSE RESULTANTE:")
+            print(f"   {where_clause}")
+            print(f"   Contiene 'Régimen'?: {'Régimen' in where_clause}")
+            print(f"{'✓'*40}\n")
             
             print(f"Dataset: {len(all_columns)} columnas")
             
@@ -154,7 +196,8 @@ class AbsentUserController:
                     "keywords": keywords,
                     "departamento": departamento,
                     "municipio": municipio,
-                    "ips": ips
+                    "ips": ips,
+                    "regimen": regimen  # ← Incluir en respuesta
                 },
                 "inasistentes_por_actividad": report_items,
                 "resumen_general": {
@@ -192,33 +235,19 @@ class AbsentUserController:
         ips: Optional[str] = None,
         path_technical_note: str = '',
         column_mappings: Optional[Dict[str, Any]] = None,
+        regimen: Optional[str] = None,  # ← PARÁMETRO
         encoding: str = "utf-8-sig",
         use_excel_sep_hint: bool = False,
         sep: str = ";"
     ) -> StreamingResponse:
         """
         Exporta reporte de inasistentes a CSV.
-        
-        Args:
-            filename: Nombre del archivo
-            keywords: Keywords para filtrar
-            corte_fecha: Fecha de corte
-            departamento: Filtro departamento
-            municipio: Filtro municipio
-            ips: Filtro IPS
-            path_technical_note: Path base
-            column_mappings: Mappings de columnas
-            encoding: Encoding del CSV
-            use_excel_sep_hint: Si agregar hint para Excel
-            sep: Separador de columnas
-        
-        Returns:
-            StreamingResponse con CSV
         """
         try:
             print(f"\n{'='*80}")
             print("EXPORTANDO REPORTE DE INASISTENTES A CSV")
             print(f"{'='*80}")
+            print(f"Régimen para export: '{regimen}'")
             
             # Generar reporte
             report_data = self.get_inasistentes_report(
@@ -229,7 +258,8 @@ class AbsentUserController:
                 municipio=municipio,
                 ips=ips,
                 path_technical_note=path_technical_note,
-                column_mappings=column_mappings
+                column_mappings=column_mappings,
+                regimen=regimen  # ← Pasar régimen
             )
             
             if not report_data.get("success"):
@@ -258,17 +288,7 @@ class AbsentUserController:
         filename: str,
         path_technical_note: str = ''
     ) -> Dict[str, Any]:
-        """
-        Valida que el archivo tenga estructura válida para reportes.
-        Específicamente valida la columna 'Edad'.
-        
-        Args:
-            filename: Nombre del archivo
-            path_technical_note: Path base
-        
-        Returns:
-            Diccionario con resultado de validación
-        """
+        """Valida que el archivo tenga estructura válida para reportes."""
         try:
             file_key = f"technical_{filename.replace('.', '_').replace(' ', '_').replace('-', '_')}"
             data_source = DataSourceService(path_technical_note).ensure_data_source_available(
@@ -328,21 +348,10 @@ class AbsentUserController:
         path_technical_note: str = '',
         departamento: Optional[str] = None,
         municipio: Optional[str] = None,
-        ips: Optional[str] = None
+        ips: Optional[str] = None,
+        regimen: Optional[str] = None  # ← PARÁMETRO
     ) -> Dict[str, Any]:
-        """
-        Obtiene distribución de edades en el dataset.
-        
-        Args:
-            filename: Nombre del archivo
-            path_technical_note: Path base
-            departamento: Filtro departamento
-            municipio: Filtro municipio
-            ips: Filtro IPS
-        
-        Returns:
-            Diccionario con distribución y estadísticas
-        """
+        """Obtiene distribución de edades en el dataset."""
         try:
             file_key = f"technical_{filename.replace('.', '_').replace(' ', '_').replace('-', '_')}"
             data_source = DataSourceService(path_technical_note).ensure_data_source_available(
@@ -352,7 +361,8 @@ class AbsentUserController:
             geographic_info = {
                 'depto': departamento,
                 'muni': municipio,
-                'ips_name': ips
+                'ips_name': ips,
+                'regimen': regimen
             }
             
             where_clause = ReportHelper.build_where_clause(geographic_info)

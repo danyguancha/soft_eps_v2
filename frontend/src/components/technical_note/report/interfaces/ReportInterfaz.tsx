@@ -1,6 +1,8 @@
-// components/technical-note/report/interfaces/ReportInterfaz.ts - ✅ ACTUALIZAR
+// components/technical-note/report/interfaces/ReportInterfaz.ts - CON RÉGIMEN
+
 
 import type { GeographicFilters } from "../../../../interfaces/ITechnicalNote";
+
 
 
 
@@ -24,14 +26,15 @@ export interface TemporalReportProps {
   onSetReportKeywords: (keywords: string[]) => void;
   onSetShowTemporalData: (show: boolean) => void;
   
-  // ✅ FIRMA ACTUALIZADA CON 6 PARÁMETROS
+  // ✅ FIRMA ACTUALIZADA CON 7 PARÁMETROS (AGREGADO RÉGIMEN)
   onLoadKeywordAgeReport: (
-    filename: string,           // 1. filename
-    cutoffDate: string,         // 2. cutoffDate (OBLIGATORIO)
-    keywords?: string[],        // 3. keywords (OPCIONAL)
-    minCount?: number,          // 4. minCount (OPCIONAL)
-    includeTemporal?: boolean,  // 5. includeTemporal (OPCIONAL)
-    geoFilters?: GeographicFilters // 6. geoFilters (OPCIONAL)
+    filename: string,                                    // 1. filename
+    cutoffDate: string,                                  // 2. cutoffDate (OBLIGATORIO)
+    keywords?: string[],                                 // 3. keywords (OPCIONAL)
+    minCount?: number,                                   // 4. minCount (OPCIONAL)
+    includeTemporal?: boolean,                           // 5. includeTemporal (OPCIONAL)
+    geoFilters?: GeographicFilters,                      // 6. geoFilters (OPCIONAL)
+    regimen?: 'Subsidiado' | 'Contributivo' | null      // 7. regimen (OPCIONAL) ← NUEVO
   ) => void | Promise<any>;
   
   onDepartamentoChange: (departamento: string | null) => void;

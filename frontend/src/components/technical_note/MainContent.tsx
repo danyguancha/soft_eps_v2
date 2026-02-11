@@ -1,11 +1,14 @@
-// components/technical-note/MainContent.tsx - CORREGIDO
+// components/technical-note/MainContent.tsx - CON FILTRO DE RÉGIMEN
+
 
 import React from 'react';
 import { Card, Spin, Typography, Space, Alert, Button } from 'antd';
 import { BarChartOutlined, CloudUploadOutlined } from '@ant-design/icons';
 import { Report } from './report/Report';
 
+
 const { Title, Text } = Typography;
+
 
 interface MainContentProps {
   loading: boolean;
@@ -37,7 +40,8 @@ interface MainContentProps {
   municipiosOptions: string[];
   ipsOptions: string[];
   loadingGeoFilters: any;
-  cutoffDate?: string; 
+  cutoffDate?: string;
+  selectedRegimen?: 'Subsidiado' | 'Contributivo' | null; // ← NUEVO
   
   // Event handlers
   onPaginationChange: any;
@@ -56,9 +60,11 @@ interface MainContentProps {
   onDepartamentoChange: any;
   onMunicipioChange: any;
   onIpsChange: any;
+  onRegimenChange?: (regimen: 'Subsidiado' | 'Contributivo' | null) => void; // ← NUEVO
   resetGeographicFilters: any;
   onShowUploadModal: () => void;
 }
+
 
 export const MainContent: React.FC<MainContentProps> = (props) => {
   if (props.loading) {
@@ -86,6 +92,7 @@ export const MainContent: React.FC<MainContentProps> = (props) => {
     );
   }
 
+
   if (props.hasData) {
     return (
       <div>
@@ -102,7 +109,8 @@ export const MainContent: React.FC<MainContentProps> = (props) => {
           onSearch={props.onSearch}
         /> */}
 
-        {/* COMPONENTE REPORT SIN reportItemsCount */}
+
+        {/* COMPONENTE REPORT CON RÉGIMEN */}
         <Report
           keywordReport={props.keywordReport}
           loadingReport={props.loadingReport}
@@ -118,7 +126,8 @@ export const MainContent: React.FC<MainContentProps> = (props) => {
           municipiosOptions={props.municipiosOptions}
           ipsOptions={props.ipsOptions}
           loadingGeoFilters={props.loadingGeoFilters}
-          cutoffDate={props.cutoffDate} // PASAR FECHA DE CORTE
+          cutoffDate={props.cutoffDate}
+          selectedRegimen={props.selectedRegimen} // ← NUEVO
           onToggleReportVisibility={props.onToggleReportVisibility}
           onSetReportKeywords={props.onSetReportKeywords}
           onSetShowTemporalData={props.onSetShowTemporalData}
@@ -126,11 +135,13 @@ export const MainContent: React.FC<MainContentProps> = (props) => {
           onDepartamentoChange={props.onDepartamentoChange}
           onMunicipioChange={props.onMunicipioChange}
           onIpsChange={props.onIpsChange}
+          onRegimenChange={props.onRegimenChange} // ← NUEVO
           resetGeographicFilters={props.resetGeographicFilters}
         />
       </div>
     );
   }
+
 
   // Estado vacío
   return (

@@ -233,6 +233,41 @@
       "label": "60 a 79 Años",
       "tipo": "compuesto",
       "incluye_anios": [60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79]
+    },
+    {
+      "label": "29 a 34 Años",
+      "tipo": "compuesto",
+      "incluye_anios": [29, 30, 31, 32, 33, 34]
+    },
+    {
+      "label": "35 a 39 Años",
+      "tipo": "compuesto",
+      "incluye_anios": [35, 36, 37, 38, 39]
+    },
+    {
+      "label": "40 a 44 Años",
+      "tipo": "compuesto",
+      "incluye_anios": [40, 41, 42, 43, 44]
+    },
+    {
+      "label": "45 a 49 Años",
+      "tipo": "compuesto",
+      "incluye_anios": [45, 46, 47, 48, 49]
+    },
+    {
+      "label": "50 a 52 Años",
+      "tipo": "compuesto",
+      "incluye_anios": [50, 51, 52]
+    },
+    {
+      "label": "53 a 55 Años",
+      "tipo": "compuesto",
+      "incluye_anios": [53, 54, 55]
+    },
+    {
+      "label": "56 a 59 Años",
+      "tipo": "compuesto",
+      "incluye_anios": [56, 57, 58, 59]
     }
   ]
 }
