@@ -1,15 +1,21 @@
 # controllers/files_controllers/upload_handler.py 
 import os
 import time
+import gc
 import aiofiles
 from fastapi import UploadFile, HTTPException
 from typing import Dict, Any, Optional, List
+from concurrent.futures import ThreadPoolExecutor
 from services.csv_service import CSVService
 from services.excel_service import ExcelService
 from controllers.files_controllers.storage_manager import FileStorageManager
 from services.duckdb_service.duckdb_service import duckdb_service
 
+
 class UploadHandler:
+    # ⭐ EXECUTOR COMPARTIDO PARA EVITAR CREAR MÚLTIPLES THREADS
+    _executor = ThreadPoolExecutor(max_workers=2)
+    
     def __init__(self, storage_manager: FileStorageManager):
         self.storage_manager = storage_manager
         self.max_file_size = 5 * 1024 * 1024 * 1024  # 5GB límite
@@ -20,6 +26,7 @@ class UploadHandler:
             "xlsx": ExcelService(),
             "xls": ExcelService()
         }
+
 
     def _validate_file_upload(self, file: UploadFile) -> tuple:
         """Valida el archivo y retorna extensión y nombre"""
@@ -202,6 +209,9 @@ class UploadHandler:
             # PASO 2: Crear archivo temporal
             _, temp_file_path = await self._create_temp_file(file, original_filename)
             
+            # ⭐ CRÍTICO: Cerrar archivo inmediatamente después de guardarlo
+            await file.close()
+            
             # PASO 3: Procesar según tipo de archivo
             columns_list = []
             total_rows = 0
@@ -240,11 +250,16 @@ class UploadHandler:
                 total_rows = parquet_result["total_rows"]
             
             # PASO 7: Construir respuesta
-            return self._build_response(
+            response = self._build_response(
                 file_id, original_filename, ext, columns_list, sheets_list,
                 default_sheet, total_rows, sheet_detection_time, processing_method,
                 final_file_path, parquet_result
             )
+            
+            # ⭐ FORZAR LIBERACIÓN DE MEMORIA
+            gc.collect()
+            
+            return response
             
         except HTTPException:
             raise
@@ -252,7 +267,16 @@ class UploadHandler:
             if temp_file_path and original_filename:
                 self._cleanup_on_error(temp_file_path, original_filename)
             raise HTTPException(status_code=500, detail=f"Error procesando archivo: {str(e)}")
-
+        
+        finally:
+            # ⭐ ASEGURAR CIERRE EN TODOS LOS CASOS
+            try:
+                await file.close()
+            except Exception:
+                pass
+            
+            # ⭐ LIMPIEZA FINAL
+            gc.collect()
 
 
     async def _save_file_streaming(self, file: UploadFile, file_path: str):
@@ -308,6 +332,7 @@ class UploadHandler:
                     pass
             raise e
 
+
     def get_data_ultra_fast(
         self, 
         file_id: str, 
@@ -333,13 +358,16 @@ class UploadHandler:
             selected_columns=selected_columns
         )
 
+
     def get_file_info(self, file_id: str) -> Optional[Dict[str, Any]]:
         """Obtiene información del archivo usando nombre original como ID"""
         return self.storage_manager.get_file_info(file_id)
 
+
     def get_file_info_by_filename(self, filename: str) -> Optional[Dict[str, Any]]:
         """Obtiene información del archivo por nombre de archivo (compatibilidad)"""
         return self.storage_manager.get_file_info_by_original_name(filename)
+
 
     def delete_file(self, file_id: str) -> bool:
         """Elimina archivo usando nombre original como ID"""
@@ -353,17 +381,21 @@ class UploadHandler:
             print(f"Error eliminando archivo {file_id}: {e}")
             return False
 
+
     def list_uploaded_files(self) -> List[Dict[str, Any]]:
         """Lista todos los archivos subidos en technical_note"""
         return self.storage_manager.list_technical_files()
+
 
     def file_exists(self, filename: str) -> bool:
         """Verifica si un archivo existe en technical_note"""
         return self.storage_manager.file_exists(filename)
 
+
     def get_file_path(self, filename: str) -> str:
         """Obtiene la ruta completa de un archivo"""
         return self.storage_manager.get_file_path(filename)
+
 
     def get_data_adaptive(self, file_id: str, sheet_name: Optional[str] = None, columns_needed: Optional[List[str]] = None):
         """Redirige a método ultra-optimizado (compatibilidad)"""
@@ -374,6 +406,7 @@ class UploadHandler:
             page_size=100000  # Obtener muchos registros
         )
         return result["data"]
+
 
     def is_supported_file(self, filename: str) -> bool:
         """Verifica si el tipo de archivo es soportado"""
@@ -386,9 +419,11 @@ class UploadHandler:
         except Exception:
             return False
 
+
     def get_supported_extensions(self) -> List[str]:
         """Obtiene lista de extensiones soportadas"""
         return list(self.file_services.keys())
+
 
     def clean_filename(self, filename: str) -> str:
         """Limpia el nombre del archivo para evitar problemas del sistema operativo"""
@@ -404,6 +439,7 @@ class UploadHandler:
         
         return f"{name}{ext}"
 
+
     def generate_unique_filename(self, filename: str) -> str:
         """Genera nombre único si el archivo ya existe"""
         if not self.file_exists(filename):
@@ -416,6 +452,7 @@ class UploadHandler:
             counter += 1
         
         return f"{name}_{counter}{ext}"
+
 
     def get_upload_stats(self) -> Dict[str, Any]:
         """Obtiene estadísticas de archivos subidos"""
@@ -442,6 +479,7 @@ class UploadHandler:
                 "extensions": {}
             }
         
+
     async def _detect_encoding_async(self, file_path: str) -> tuple:
         """Detecta el encoding del archivo de forma asíncrona"""
         try:
@@ -485,10 +523,10 @@ class UploadHandler:
             
             print(f"Intentando encoding: {encoding}")
             
-            # Ejecutar pandas read_csv en thread pool (pandas es síncrono)
+            # ⭐ Ejecutar pandas read_csv en thread pool compartido
             loop = asyncio.get_event_loop()
             df_sample = await loop.run_in_executor(
-                None, 
+                self._executor,  # Usar executor compartido
                 lambda: pd.read_csv(file_path, encoding=encoding, nrows=100)
             )
             
@@ -497,10 +535,13 @@ class UploadHandler:
             # Obtener columnas
             columns_list = df_sample.columns.tolist()
             
+            # ⭐ LIBERAR DATAFRAME INMEDIATAMENTE
+            del df_sample
+            
             # Contar filas de forma asíncrona
             total_rows = await self._count_rows_async(file_path, encoding)
             if total_rows == 0:
-                total_rows = len(df_sample)
+                total_rows = 100  # Usar nrows como fallback
             
             return {
                 "success": True,

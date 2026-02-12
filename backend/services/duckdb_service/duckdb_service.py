@@ -1,8 +1,10 @@
 # services/duckdb_service/duckdb_service.py
 import os
+import gc
 import shutil
 import pandas as pd
 from typing import Dict, Any, List, Optional
+
 
 # Controladores existentes
 from controllers.duckdb_controller.file_validation_controller import FileValidationController
@@ -12,6 +14,7 @@ from controllers.duckdb_controller.excel_sheets_controller import ExcelSheetsCon
 from controllers.duckdb_controller.query_controller import QueryController
 from controllers.duckdb_controller.cross_files_controller import CrossFilesController
 
+
 # Servicios especializados
 from .connection.connection_manager import ConnectionManager
 from .file_management.file_loader_service import FileLoaderService
@@ -19,9 +22,11 @@ from .query.query_delegation_service import QueryDelegationService
 from utils.sql_utils import SQLUtils
 from utils.duckdb_utils.validation_utils import build_availability_response
 
+
 # Servicios auxiliares existentes
 from services.aux_duckdb_services.recover_cache_files import RecoverCacheFiles
 from services.aux_duckdb_services.query_pagination import QueryPagination
+
 
 
 class DuckDBService:
@@ -95,6 +100,9 @@ class DuckDBService:
                 os.makedirs(directory, exist_ok=True)
         
         print("✓ Cache limpiado completamente")
+        
+        # ⭐ FORZAR LIBERACIÓN DE MEMORIA DESPUÉS DE LIMPIAR
+        gc.collect()
     
     def _initialize_services(self):
         """Inicializa todos los controladores y servicios especializados"""
@@ -200,6 +208,56 @@ class DuckDBService:
         
         return success
     
+    # ========== ⭐ MÉTODO CRÍTICO PARA LIMPIEZA ==========
+    
+    def cleanup_file_data(self, file_id: str):
+        """Limpia datos del archivo de la memoria y libera recursos"""
+        try:
+            print(f"Limpiando datos de archivo: {file_id}")
+            
+            # 1. Eliminar de tablas cargadas
+            if file_id in self.loaded_tables:
+                table_info = self.loaded_tables[file_id]
+                table_name = table_info.get("table_name")
+                
+                # Intentar eliminar vista/tabla de DuckDB
+                if table_name and self.is_available():
+                    try:
+                        self.conn.execute(f"DROP VIEW IF EXISTS {self._sanitize_table_name(table_name)}")
+                        self.conn.execute(f"DROP TABLE IF EXISTS {self._sanitize_table_name(table_name)}")
+                    except Exception as e:
+                        print(f"Error eliminando vista/tabla {table_name}: {e}")
+                
+                # Eliminar del registro
+                del self.loaded_tables[file_id]
+                print(f"✓ Archivo {file_id} eliminado de loaded_tables")
+            
+            # 2. Limpiar cache de metadatos
+            if self.cache:
+                try:
+                    metadata_path = os.path.join(self.metadata_dir, f"{file_id}.json")
+                    if os.path.exists(metadata_path):
+                        os.remove(metadata_path)
+                        print(f"✓ Metadata eliminada: {metadata_path}")
+                except Exception as e:
+                    print(f"Error eliminando metadata: {e}")
+            
+            # 3. Limpiar archivo parquet si existe
+            try:
+                parquet_path = os.path.join(self.parquet_dir, f"{file_id}.parquet")
+                if os.path.exists(parquet_path):
+                    os.remove(parquet_path)
+                    print(f"✓ Parquet eliminado: {parquet_path}")
+            except Exception as e:
+                print(f"Error eliminando parquet: {e}")
+            
+            # ⭐ 4. FORZAR GARBAGE COLLECTION
+            gc.collect()
+            print(f"✓ Memoria liberada para {file_id}")
+            
+        except Exception as e:
+            print(f"Error en cleanup_file_data para {file_id}: {e}")
+    
     # ========== MÉTODOS DELEGADOS PRINCIPALES ==========
     
     def cross_files_ultra_fast(
@@ -244,9 +302,14 @@ class DuckDBService:
         ext: str
     ) -> Dict[str, Any]:
         """Delega conversión de archivos"""
-        return self.query_delegation_service.delegate_file_conversion(
+        result = self.query_delegation_service.delegate_file_conversion(
             file_path, file_id, original_name, ext
         )
+        
+        # ⭐ LIBERAR MEMORIA DESPUÉS DE CONVERSIÓN
+        gc.collect()
+        
+        return result
     
     # ========== MÉTODOS DELEGADOS SIMPLES ==========
     
@@ -367,16 +430,23 @@ class DuckDBService:
                 "remaining_files": 0,
                 "error": "Cache no disponible"
             }
-        return self.cache.cleanup_old_cache(days_old, min_access_count)
+        
+        result = self.cache.cleanup_old_cache(days_old, min_access_count)
+        
+        # ⭐ LIBERAR MEMORIA DESPUÉS DE LIMPIEZA
+        gc.collect()
+        
+        return result
     
     def cleanup_old_files(self, days_old: int = 7):
         """Método de compatibilidad para limpieza"""
         return self.cleanup_old_cache(days_old)
     
-    # ========== MÉTODOS DE EXCEL ==========
+    # ========== MÉTODOS DE EXCEL (CON LIBERACIÓN DE MEMORIA) ==========
     
     def get_columns_from_sheet(self, file_path: str, sheet_name: str) -> Dict[str, Any]:
         """Obtiene columnas de una hoja específica de Excel"""
+        df = None
         try:
             if not self.is_available():
                 return build_availability_response(False, True)
@@ -393,6 +463,10 @@ class DuckDBService:
             
             columns = [str(col) for col in df.columns]
             
+            # ⭐ LIBERAR DATAFRAME INMEDIATAMENTE
+            del df
+            gc.collect()
+            
             return {
                 "success": True,
                 "columns": columns,
@@ -405,9 +479,18 @@ class DuckDBService:
                 "success": False,
                 "error": f"Error obteniendo columnas de hoja: {str(e)}"
             }
+        finally:
+            # ⭐ ASEGURAR LIBERACIÓN EN TODOS LOS CASOS
+            if df is not None:
+                try:
+                    del df
+                except:
+                    pass
+            gc.collect()
     
     def get_sheet_preview(self, file_path: str, sheet_name: str, max_rows: int = 5) -> Dict[str, Any]:
         """Obtiene preview de una hoja específica"""
+        df = None
         try:
             if not self.is_available():
                 return build_availability_response(False, True)
@@ -425,6 +508,10 @@ class DuckDBService:
             columns = [str(col) for col in df.columns]
             preview_data = df.to_dict('records')
             
+            # ⭐ LIBERAR DATAFRAME INMEDIATAMENTE
+            del df
+            gc.collect()
+            
             return {
                 "success": True,
                 "columns": columns,
@@ -438,6 +525,14 @@ class DuckDBService:
                 "success": False,
                 "error": f"Error obteniendo preview: {str(e)}"
             }
+        finally:
+            # ⭐ ASEGURAR LIBERACIÓN EN TODOS LOS CASOS
+            if df is not None:
+                try:
+                    del df
+                except:
+                    pass
+            gc.collect()
     
     def validate_sheet_exists(self, file_path: str, sheet_name: str) -> bool:
         """Valida que una hoja específica existe en el archivo"""
@@ -467,7 +562,12 @@ class DuckDBService:
             return build_availability_response(False, True)
         
         if hasattr(self.file_conversion, 'convert_csv_to_parquet_robust'):
-            return self.file_conversion.convert_csv_to_parquet_robust(file_path, parquet_path)
+            result = self.file_conversion.convert_csv_to_parquet_robust(file_path, parquet_path)
+            
+            # ⭐ LIBERAR MEMORIA DESPUÉS DE CONVERSIÓN
+            gc.collect()
+            
+            return result
         else:
             return {"success": False, "error": "Método no disponible"}
     
@@ -477,7 +577,12 @@ class DuckDBService:
             return build_availability_response(False, True)
         
         if hasattr(self.file_conversion, 'convert_excel_to_parquet'):
-            return self.file_conversion.convert_excel_to_parquet(file_path, parquet_path)
+            result = self.file_conversion.convert_excel_to_parquet(file_path, parquet_path)
+            
+            # ⭐ LIBERAR MEMORIA DESPUÉS DE CONVERSIÓN
+            gc.collect()
+            
+            return result
         else:
             return {"success": False, "error": "Método no disponible"}
     
@@ -504,6 +609,9 @@ class DuckDBService:
             recover_cache_files.auto_recover_cached_files(
                 self.metadata_dir, self.controllers['cache'], self.loaded_tables
             )
+            
+            # ⭐ LIBERAR MEMORIA DESPUÉS DE RECARGA
+            gc.collect()
             
             return {
                 "success": True,
@@ -539,7 +647,23 @@ class DuckDBService:
     
     def close(self):
         """Cierra conexión DuckDB de forma segura"""
-        self.connection_manager.close()
+        try:
+            # Limpiar todas las tablas cargadas
+            for file_id in list(self.loaded_tables.keys()):
+                try:
+                    self.cleanup_file_data(file_id)
+                except Exception as e:
+                    print(f"Error limpiando {file_id}: {e}")
+            
+            # Cerrar conexión
+            self.connection_manager.close()
+            
+            # ⭐ LIBERAR MEMORIA FINAL
+            gc.collect()
+            
+            print("✓ DuckDB Service cerrado correctamente")
+        except Exception as e:
+            print(f"Error cerrando DuckDB Service: {e}")
     
     # ========== MÉTODO PRIVADO DE CARGA BAJO DEMANDA ==========
     
@@ -646,9 +770,6 @@ class DuckDBService:
                 "has_next": False,
                 "has_previous": False
             }
-
-
-    
 
 
 def get_duckdb_service():
