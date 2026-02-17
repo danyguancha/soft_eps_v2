@@ -154,6 +154,42 @@
         "edad_aplicable": "18 a 28 Años",
         "edad_NT_RPMS": "18 a 28 Años"
       }
+    },
+    {
+      "columna_usuario": "Fecha de tamizaje para Hepatitis B",
+      "keyword": "hepatitis_b",
+      "consolidado": {
+        "consulta_procedimiento": "Prueba rápida para Hepatitis B - Juventud",
+        "edad_aplicable": "18 a 28 Años",
+        "edad_NT_RPMS": "18 a 28 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha de tamizaje para Hepatitis C",
+      "keyword": "hepatitis_c",
+      "consolidado": {
+        "consulta_procedimiento": "Prueba rápida para Hepatitis C - Juventud",
+        "edad_aplicable": "18 a 28 Años",
+        "edad_NT_RPMS": "18 a 28 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha más reciente de educación Individual",
+      "keyword": "educacion_individual",
+      "consolidado": {
+        "consulta_procedimiento": "Educación a padres o cuidadores - Juventud",
+        "edad_aplicable": "18 a 28 Años",
+        "edad_NT_RPMS": "18 a 28 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha de tamizaje",
+      "keyword": "citologia",
+      "consolidado": {
+        "consulta_procedimiento": "Tamizaje de Cancer de Cuello Uterino(Citologia)- Juventud",
+        "edad_aplicable": "25 a 28 Años",
+        "edad_NT_RPMS": "25 a 28 Años"
+      }
     }
   ]
 }

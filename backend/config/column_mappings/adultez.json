@@ -199,6 +199,51 @@
         "edad_aplicable": "29 a 59 Años",
         "edad_NT_RPMS": "29 a 59 Años"
       }
+    },
+    {
+      "columna_usuario": "Fecha de tamizaje para Hepatitis B",
+      "keyword": "hepatitis_b",
+      "consolidado": {
+        "consulta_procedimiento": "Prueba rápida para Hepatitis B - Juventud",
+        "edad_aplicable": "29 a 59 Años",
+        "edad_NT_RPMS": "29 a 59 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha de tamizaje para Hepatitis C",
+      "keyword": "hepatitis_c",
+      "consolidado": {
+        "consulta_procedimiento": "Prueba rápida para Hepatitis C - Juventud",
+        "edad_aplicable": "29 a 59 Años",
+        "edad_NT_RPMS": "29 a 59 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha más reciente de educación Individual",
+      "keyword": "educacion_individual",
+      "consolidado": {
+        "consulta_procedimiento": "Educación a padres o cuidadores - Adultez",
+        "edad_aplicable": "29 a 59 Años",
+        "edad_NT_RPMS": "29 a 59 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha de tamizaje",
+      "keyword": "citologia",
+      "consolidado": {
+        "consulta_procedimiento": "Tamizaje de Cancer de Cuello Uterino(Citologia Convencional)- Adultez",
+        "edad_aplicable": "29 Años",
+        "edad_NT_RPMS": "29 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha de tamizaje",
+      "keyword": "adn-vph",
+      "consolidado": {
+        "consulta_procedimiento": "Canalizacion Efectiva del Tamizaje de Cancer de Cuello Uterino ADN - VPH - Adultez",
+        "edad_aplicable": "30 a 59 Años",
+        "edad_NT_RPMS": "30 a 59 Años"
+      }
     }
   ]
 }

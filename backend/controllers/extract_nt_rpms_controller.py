@@ -263,7 +263,7 @@ class GeographicEnricher:
 class SheetExtractor:
     """Extrae datos de hoja Excel con estructura específica."""
     
-    HEADER_ROW_GENERAL, HEADER_ROW_DATA, DATA_START_ROW = 3, 10, 11
+    HEADER_ROW_GENERAL, HEADER_ROW_DATA, DATA_START_ROW = 4, 11, 12
     
     def __init__(self, file_path: str):
         self.file_path = file_path

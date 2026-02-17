@@ -119,6 +119,35 @@ export const REPORT_KEYWORDS: KeywordConfig[] = [
     icon: SMILE_ICON,
     synonyms: ['subdermico', 'Subdermico', 'Implante subdermico', 'implante Subdérmico', 'Implante Subdérmico'],
     searchTerms: ['subdermico', 'Subdermico', 'Implante subdermico', 'implante Subdérmico', 'Implante Subdérmico']
+  },
+  {
+    key: 'lactancia',
+    label: 'lactancia materna',
+    color: 'rgb(200, 148, 3)',
+    icon: SMILE_ICON,
+    synonyms: ['lactancia'],
+    searchTerms: ['lactancia']
+  },
+  {
+    key: 'hepatitis_b',
+    label: 'hepatitis_b',
+    color: '#fa541cff',
+    icon: SMILE_ICON,
+    synonyms: ['hepatitis_b', 'Hepatitis B'],
+  },
+  {
+    key: 'hepatitis_c',
+    label: 'hepatitis_c',
+    color: '#b0c604ff',
+    icon: SMILE_ICON,
+    synonyms: ['hepatitis_c', 'Hepatitis C'],
+  },
+  {
+    key: 'anemia',
+    label: 'anemia',
+    color: 'rgb(4, 23, 198)',
+    icon: SMILE_ICON,
+    synonyms: ['anemia', 'Anemia'],
   }
 ];
 

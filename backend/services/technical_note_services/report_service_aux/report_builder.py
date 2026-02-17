@@ -61,7 +61,8 @@ class ReportBuilder:
                 data_source=data_source, 
                 where_clause=where_clause, 
                 edad_key=edad_aplicable, 
-                corte_fecha=corte_fecha
+                corte_fecha=corte_fecha,
+                keyword=keyword 
             )
             
             poblacion_obj_anual = self._calculate_poblacion_anual(poblaciones_mensuales, mes_limite)
@@ -72,6 +73,7 @@ class ReportBuilder:
 
             rpms_values = self._calculate_rpms_values(rpms_data, poblacion_obj_anual)
 
+            # 🔥 MODIFICADO: Pasar edad_aplicable al numerator_calculator
             numeradores_mensuales = self.numerator_calculator.calculate_by_month_simple(
                 data_source=data_source,
                 column_name=column_name,
@@ -79,7 +81,8 @@ class ReportBuilder:
                 anio_corte=anio_corte,
                 mes_limite=mes_limite,
                 keyword=keyword,
-                corte_fecha=corte_fecha
+                corte_fecha=corte_fecha,
+                edad_aplicable=edad_aplicable  # ← NUEVO PARÁMETRO
             )
 
             mensual_data = self._build_mensual_data(
@@ -320,14 +323,6 @@ class ReportBuilder:
     ) -> Dict:
         """
         Construye datos mensuales CON cobertura, semaforizacion y color.
-        
-        🔥 CLAVE: Cada mes debe tener:
-        - poblacion_objeto
-        - numerador
-        - denominador
-        - cobertura (calculada)
-        - semaforizacion (usando Semaforization)
-        - color (usando Semaforization)
         """
         mensual_data = {}
         
@@ -345,13 +340,13 @@ class ReportBuilder:
                 numerador = numeradores_mensuales.get(mes_num, 0)
                 denominador = round(poblacion_susceptible_mensual, 0)
                 
-                # 🔥 Calcular cobertura
+                # Calcular cobertura
                 if denominador > 0:
                     cobertura = (numerador / denominador) * 100
                 else:
                     cobertura = 0.0
                 
-                # 🔥 Obtener semaforización usando Semaforization
+                # Obtener semaforización
                 semaf_result = self.semaforization.calculate_semaforizacion(
                     numerador, 
                     denominador, 

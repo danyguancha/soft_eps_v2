@@ -37,6 +37,18 @@
       "descripcion": "12 a 18 meses de edad"
     },
     {
+      "label": "12 a 17 Meses",
+      "min_meses": 12,
+      "max_meses": 17,
+      "descripcion": "12 a 17 meses de edad"
+    },
+    {
+      "label": "18 a 24 Meses",
+      "min_meses": 18,
+      "max_meses": 24,
+      "descripcion": "18 a 24 meses de edad"
+    },
+    {
       "label": "18 a 23 Meses",
       "min_meses": 18,
       "max_meses": 23,
@@ -60,6 +72,11 @@
       "label": "3 Años",
       "anios": 3,
       "descripcion": "3 años de edad"
+    },
+    {
+      "label": "29 Años",
+      "anios": 29,
+      "descripcion": "29 años de edad"
     },
     {
       "label": "4 Años",
@@ -134,15 +151,51 @@
   ],
   "rangos_compuestos": [
     {
+      "label": "0 a 5 Años",
+      "tipo": "compuesto",
+      "incluye_meses": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      "incluye_anios": [1, 2, 3, 4, 5]
+    },
+    {
       "label": "6 Meses a 5 Años",
       "tipo": "compuesto",
       "incluye_meses": [6, 7, 8, 9, 10, 11],
       "incluye_anios": [1, 2, 3, 4, 5]
     },
     {
+      "label": "2 a 4 Años",
+      "tipo": "compuesto",
+      "incluye_anios": [2, 3, 4]
+    },
+    {
+      "label": "12 a 23 Meses",
+      "tipo": "compuesto",
+      "incluye_meses": [12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
+    },
+    {
+      "label": "3 a 5 Años",
+      "tipo": "compuesto",
+      "incluye_anios": [3, 4, 5]
+    },
+    {
       "label": "6 a 11 Años",
       "tipo": "compuesto",
       "incluye_anios": [6, 7, 8, 9, 10, 11]
+    },
+    {
+      "label": "10 a 11 Años",
+      "tipo": "compuesto",
+      "incluye_anios": [10, 11]
+    },
+    {
+      "label": "12 a 13 Años",
+      "tipo": "compuesto",
+      "incluye_anios": [12, 13]
+    },
+    {
+      "label": "14 a 17 Años",
+      "tipo": "compuesto",
+      "incluye_anios": [14, 15, 16, 17]
     },
     {
       "label": "12 a 17 Años",
@@ -155,19 +208,24 @@
       "incluye_anios": [12, 13, 14, 15]
     },
     {
-      "label": "14 a 17 Años",
-      "tipo": "compuesto",
-      "incluye_anios": [14, 15, 16, 17]
-    },
-    {
       "label": "18 a 28 Años",
       "tipo": "compuesto",
       "incluye_anios": [18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28]
     },
     {
+      "label": "25 a 28 Años",
+      "tipo": "compuesto",
+      "incluye_anios": [25, 26, 27, 28]
+    },
+    {
       "label": "29 a 59 Años",
       "tipo": "compuesto",
       "incluye_anios": [29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59]
+    },
+    {
+      "label": "30 a 59 Años",
+      "tipo": "compuesto",
+      "incluye_anios": [30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59]
     },
     {
       "label":"29 a 49 Años",
@@ -178,6 +236,11 @@
       "label": "60 a 62 Años",
       "tipo": "compuesto",
       "incluye_anios": [60, 61, 62]
+    },
+    {
+      "label": "60 a 65 Años",
+      "tipo": "compuesto",
+      "incluye_anios": [60, 61, 62, 63, 64, 65]
     },
     {
       "label": "63 a 65 Años",

@@ -187,13 +187,13 @@
       "keyword": "micronutrientes",
       "consolidado": {
         "consulta_procedimiento": "Fortificación casera con micronutrientes en polvo",
-        "edad_aplicable": "18 a 23 Meses",
-        "edad_NT_RPMS": "18 a 23 Meses"
+        "edad_aplicable": "18 a 24 Meses",
+        "edad_NT_RPMS": "18 a 24 Meses"
       }
     },
     {
       "columna_usuario": "Fecha más reciente de suministro de desparasitación antihelmántica",
-      "keyword": "desparasitación",
+      "keyword": "desparasitacion",
       "consolidado": {
         "consulta_procedimiento": "Desparasitación intestinal antihelmíntica(Albendazol suspensión Oral de 200 mg)",
         "edad_aplicable": "12 a 23 Meses",
@@ -202,11 +202,29 @@
     },
     {
       "columna_usuario": "Fecha más reciente de suministro de desparasitación antihelmántica",
-      "keyword": "desparasitación",
+      "keyword": "desparasitacion",
       "consolidado": {
         "consulta_procedimiento": "Desparasitación intestinal antihelmíntica(Albendazol suspensión Oral de 400 mg)",
         "edad_aplicable": "2 a 4 Años",
         "edad_NT_RPMS": "2 a 4 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha más reciente de asesoría de Lactancia Materna",
+      "keyword": "lactancia_materna",
+      "consolidado": {
+        "consulta_procedimiento": "Atención por profesional de enfermería, medicina general o nutrición para la promoción y apoyo de la lactancia materna *",
+        "edad_aplicable": "1 Mes",
+        "edad_NT_RPMS": "1 Mes"
+      }
+    },
+    {
+      "columna_usuario": "Fecha más reciente de educación Individual",
+      "keyword": "educacion_individual",
+      "consolidado": {
+        "consulta_procedimiento": "Educación individual(padres o cuidadores)- Primera Infancia",
+        "edad_aplicable": "0 a 5 Años",
+        "edad_NT_RPMS": "0 a 5 Años"
       }
     }
   ]

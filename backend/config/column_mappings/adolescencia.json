@@ -163,6 +163,51 @@
         "edad_aplicable": "14 a 17 Años",
         "edad_NT_RPMS": "14 a 17 Años"
       }
+    },
+    {
+      "columna_usuario": "Fecha de diagnostico de Anemia nutricional",
+      "keyword": "Anemia",
+      "consolidado": {
+        "consulta_procedimiento": "Tamizaje para Anemia (Hematocrito) - Adolescencia",
+        "edad_aplicable": "12 a 13 Años",
+        "edad_NT_RPMS": "12 a 13 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha Hemoglobina",
+      "keyword": "Anemia",
+      "consolidado": {
+        "consulta_procedimiento": "Tamizaje para Anemia (Hemoglobina) - Adolescencia",
+        "edad_aplicable": "12 a 13 Años",
+        "edad_NT_RPMS": "12 a 13 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha de diagnostico de Anemia nutricional",
+      "keyword": "Anemia",
+      "consolidado": {
+        "consulta_procedimiento": "Tamizaje para Anemia (Hematocrito) - Adolescencia",
+        "edad_aplicable": "14 a 17 Años",
+        "edad_NT_RPMS": "14 a 17 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha Hemoglobina",
+      "keyword": "Anemia",
+      "consolidado": {
+        "consulta_procedimiento": "Tamizaje para Anemia (Hemoglobina) - Adolescencia",
+        "edad_aplicable": "14 a 17 Años",
+        "edad_NT_RPMS": "14 a 17 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha más reciente de educación Individual",
+      "keyword": "educacion_individual",
+      "consolidado": {
+        "consulta_procedimiento": "Educación individual(padres o cuidadores)",
+        "edad_aplicable": "14 a 17 Años",
+        "edad_NT_RPMS": "14 a 17 Años"
+      }
     }
     
   ]

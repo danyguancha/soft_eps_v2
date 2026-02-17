@@ -27,6 +27,15 @@ DEFAULT_KEYWORDS: List[KeywordRule] = [
     KeywordRule(name="preservativo", synonyms=("preservativo", "condon", "condón", "preservativos", "condones")),
     KeywordRule(name="Asesoria Pre y Pos Test VIH", synonyms=("Asesoria Pre y Pos Test VIH", "Asesoría Pre y Pos Test VIH", "Asesoria Pre y Pos Test vih", "Asesoría Pre y Pos Test vih")),
     KeywordRule(name="Fecha de tamizaje para VIH", synonyms=("Fecha de tamizaje para VIH", "fecha de tamizaje para vih", "Fecha de tamizaje para vih", "fecha de tamizaje para VIH")),
+    KeywordRule(name="Lactancia", synonyms=("Lactancia Materna", "lactancia", "Lactancia")),
+    KeywordRule(name="Hepatitis_b", synonyms=("Hepatitis B", "hepatitis_b", "Hepatitis B")),
+    KeywordRule(name="Hepatitis_c", synonyms=("Hepatitis C", "hepatitis_c", "Hepatitis C")),
+    KeywordRule(name="Anemia", synonyms=("anemia", "anémica", "anémico", "anemia")),
+    KeywordRule(name="Educacion individual", synonyms=("Educacion individual", "educación individual")),
+    KeywordRule(name="Desparasitacion intestinal", synonyms=("Desparasitacion intestinal", "desparasitación intestinal", "desparasitacion", "desparasitación")),
+    KeywordRule(name="citologia", synonyms=("citologia", "citología", "citología")),
+    KeywordRule(name="ADN-VPH", synonyms=("ADN-VPH", "ADN VPH", "ADN-VPH", "ADN VPH")),
+
 
 ]
 

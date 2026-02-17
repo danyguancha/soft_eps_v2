@@ -26,6 +26,14 @@ const AVAILABLE_KEYWORDS = [
   { value: 'preservativo', label: 'Preservativo', color: '#b47304ff' },
   { value: 'Fecha asesoría pre y post test VIH', label: 'Asesoría Pre Test VIH', color: '#0777bcff' },
   { value: 'Fecha de tamizaje para VIH', label: 'Prueba Rápida VIH', color: '#d46b08ff' },
+  { value: 'lactancia_materna', label: 'lactancia materna', color: 'rgb(200, 148, 3)' },
+  { value: 'hepatitis_b', label: 'hepatitis_b', color: '#fa541cff' },
+  { value: 'hepatitis_c', label: 'hepatitis_c', color: '#b0c604ff' },
+  { value: 'Anemia', label: 'anemia', color: 'rgb(4, 23, 198)' },
+  { value: 'educacion_individual', label: 'Educación Individual', color: '#722ed1' },
+  { value: 'desparasitacion', label: 'Desparacitación', color: '#fa8c16' },
+  { value: 'citologia', label: 'Citología', color: '#faad14' },
+  { value: 'adn-vph', label: 'ADN-VPH', color: '#a0d911' },
 ];
 
 export const OptimizedKeywordSelect = memo<OptimizedKeywordSelectProps>(({

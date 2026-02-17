@@ -109,6 +109,33 @@
         "edad_aplicable": "6 a 11 Años",
         "edad_NT_RPMS": "6 a 11 Años"
       }
+    },
+    {
+      "columna_usuario": "Fecha de diagnostico de Anemia nutricional",
+      "keyword": "Anemia",
+      "consolidado": {
+        "consulta_procedimiento": "Tamizaje para Anemia (Hematocrito) - Infancia",
+        "edad_aplicable": "10 a 11 Años",
+        "edad_NT_RPMS": "10 a 11 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha Hemoglobina",
+      "keyword": "Anemia",
+      "consolidado": {
+        "consulta_procedimiento": "Tamizaje para Anemia (Hemoglobina) - Infancia",
+        "edad_aplicable": "10 a 11 Años",
+        "edad_NT_RPMS": "10 a 11 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha más reciente de educación Individual",
+      "keyword": "educacion_individual",
+      "consolidado": {
+        "consulta_procedimiento": "Educación individual(padres o cuidadores)",
+        "edad_aplicable": "6 a 11 Años",
+        "edad_NT_RPMS": "6 a 11 Años"
+      }
     }
   ]
 }
