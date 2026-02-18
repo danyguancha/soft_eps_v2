@@ -1,11 +1,51 @@
 // components/report/KeywordControls.tsx
 import { memo, useCallback } from 'react';
 import { Card, Space, Typography, Tag, Row, Col, Button } from 'antd';
-import { FilterOutlined, SyncOutlined } from '@ant-design/icons';
+import { FilterOutlined, SyncOutlined, CheckSquareOutlined, CloseSquareOutlined } from '@ant-design/icons';
 import { OptimizedKeywordSelect } from './OptimizedKeywordSelect';
 import './keyword_controls.css';
 
+
 const { Text } = Typography;
+
+
+const ALL_KEYWORDS = [
+  'medicina',
+  'enfermeria',
+  'odontológica',
+  'fluor',
+  'placa',
+  'detartraje',
+  'sellantes',
+  'micronutrientes',
+  'vitamina_a',
+  'sulfato_ferroso',
+  'diu',
+  'subdermico',
+  'asesoria_pre_test_vih',
+  'asesoria_post_test_vih',
+  'tamizaje_vih',
+  'lactancia_materna',
+  'hepatitis_b',
+  'hepatitis_c',
+  'hematocrito',
+  'hemoglobina',
+  'educacion_individual',
+  'desparasitacion',
+  'citologia',
+  'adn-vph',
+  'suministro_preservativos',
+  'anticonceptivo_oral',
+  'anticonceptivo_inyectable_mensual',
+  'anticonceptivo_inyectable_trimestral',
+  'sifilis',
+  'cancer_mamografia',
+  'valoracion_clinica_mama',
+  'antigeno_prostatico',
+  'cancer_colon_sangre_oculta',
+  'prueba_embarazo',
+];
+
 
 interface KeywordControlsProps {
   reportKeywords: string[];
@@ -14,6 +54,7 @@ interface KeywordControlsProps {
   onSetReportKeywords: (keywords: string[]) => void;
   onRegenerateReport: () => void;
 }
+
 
 export const KeywordControls = memo<KeywordControlsProps>(({ 
   reportKeywords, 
@@ -25,6 +66,18 @@ export const KeywordControls = memo<KeywordControlsProps>(({
   const handleKeywordsChange = useCallback((keywords: string[]) => {
     onSetReportKeywords(keywords);
   }, [onSetReportKeywords]);
+
+  const handleSelectAll = useCallback(() => {
+    onSetReportKeywords([...ALL_KEYWORDS]);
+  }, [onSetReportKeywords]);
+
+  const handleClearAll = useCallback(() => {
+    onSetReportKeywords([]);
+  }, [onSetReportKeywords]);
+
+  const allSelected = ALL_KEYWORDS.length === reportKeywords.length &&
+    ALL_KEYWORDS.every(k => reportKeywords.includes(k));
+
 
   return (
     <Card 
@@ -46,9 +99,35 @@ export const KeywordControls = memo<KeywordControlsProps>(({
       <Row gutter={[16, 12]} align="middle">
         <Col xs={24} sm={16} md={18}>
           <Space direction="vertical" style={{ width: '100%' }} size={4}>
-            <Text strong style={{ fontSize: '13px' }}>
-              Seleccionar palabras clave:
-            </Text>
+            <Space style={{ width: '100%', justifyContent: 'space-between' }} wrap={false}>
+              <Text strong style={{ fontSize: '13px' }}>
+                Seleccionar palabras clave:
+              </Text>
+              <Space size={4}>
+                <Button
+                  size="small"
+                  icon={<CheckSquareOutlined />}
+                  onClick={handleSelectAll}
+                  disabled={loadingReport || allSelected}
+                  type="link"
+                  style={{ fontSize: '14px', padding: '0 4px' }}
+                >
+                  Seleccionar todos
+                </Button>
+                <Text type="secondary" style={{ fontSize: '14px' }}>|</Text>
+                <Button
+                  size="small"
+                  icon={<CloseSquareOutlined />}
+                  onClick={handleClearAll}
+                  disabled={loadingReport || reportKeywords.length === 0}
+                  type="link"
+                  danger
+                  style={{ fontSize: '12px', padding: '0 4px' }}
+                >
+                  Limpiar
+                </Button>
+              </Space>
+            </Space>
             <OptimizedKeywordSelect
               value={reportKeywords}
               onChange={handleKeywordsChange}
@@ -61,7 +140,7 @@ export const KeywordControls = memo<KeywordControlsProps>(({
                   ⚠️ Sin resultados. Intenta con diferentes palabras clave.
                 </span>
               ) : (
-                'Selecciona una o más palabras clave para el análisis.'
+                `${reportKeywords.length} de ${ALL_KEYWORDS.length} palabras clave seleccionadas.`
               )}
             </Text>
           </Space>
@@ -83,5 +162,6 @@ export const KeywordControls = memo<KeywordControlsProps>(({
     </Card>
   );
 });
+
 
 KeywordControls.displayName = 'KeywordControls';
