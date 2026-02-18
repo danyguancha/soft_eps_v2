@@ -14,7 +14,9 @@
       "prueba_embarazo",
       "cancer_mamografia",
       "valoracion_clinica_mama",
-      "prueba_embarazo"
+      "prueba_embarazo",
+      "hematocrito",
+      "hemoglobina"
     ]
   },
   
