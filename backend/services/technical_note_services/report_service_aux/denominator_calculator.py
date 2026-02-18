@@ -4,6 +4,7 @@ from typing import Dict, Any
 import re
 from utils.text_normalizer import normalize_text
 from services.duckdb_service.duckdb_service import duckdb_service
+from services.technical_note_services.report_service_aux.sex_filter_loader import sex_filter_config
 
 
 class PopulationCalculator:
@@ -34,12 +35,12 @@ class PopulationCalculator:
         where_clause: str,
         edad_key: str,
         corte_fecha: str = None,
-        keyword: str = None  # ← NUEVO PARÁMETRO
+        keyword: str = None
     ) -> Dict[int, int]:
         """
         Calcula población (DENOMINADOR) con filtro de edad.
         Soporta rangos compuestos con normalización.
-        Aplica filtro de sexo para tamizajes de cáncer de cuello uterino.
+        Aplica filtro de sexo según configuración externa.
         """
         if not edad_key:
             print("   edad_key está vacío")
@@ -50,7 +51,7 @@ class PopulationCalculator:
         if edad_norm in self.rangos_compuestos:
             print(f"   Rango compuesto detectado: {edad_key}")
             return self._get_population_for_composite_range(
-                data_source, where_clause, edad_norm, corte_fecha, keyword  # ← PASAR keyword
+                data_source, where_clause, edad_norm, corte_fecha, keyword
             )
         
         edad_lower = edad_key.lower().strip()
@@ -67,14 +68,14 @@ class PopulationCalculator:
                 anios_valor = int(numeros[0])
                 print(f"   DETECTADO: {anios_valor} años (único)")
                 return self._get_population_for_years(
-                    data_source, where_clause, anios_valor, corte_fecha, keyword  # ← PASAR keyword
+                    data_source, where_clause, anios_valor, corte_fecha, keyword
                 )
             elif len(numeros) == 2:
                 anio_min = int(numeros[0])
                 anio_max = int(numeros[1])
                 print(f"   DETECTADO: {anio_min} a {anio_max} años (rango)")
                 return self._get_population_for_year_range(
-                    data_source, where_clause, anio_min, anio_max, corte_fecha, keyword  # ← PASAR keyword
+                    data_source, where_clause, anio_min, anio_max, corte_fecha, keyword
                 )
             else:
                 print(f"   ⚠️ Formato de años no reconocido: {numeros}")
@@ -84,7 +85,6 @@ class PopulationCalculator:
         return self._get_population_for_months(
             data_source, where_clause, edad_key
         )
-
     
     def _get_population_for_months(
         self,
@@ -107,7 +107,6 @@ class PopulationCalculator:
             
             print(f"      🔍 Buscando variaciones del rango:")
             edad_norm_input = normalize_text(edad_key)
-            # Extraer números del input
             numeros_input = re.findall(r'\d+', edad_key)
             if numeros_input:
                 for key in self.birth_date_ranges_den.keys():
@@ -157,21 +156,23 @@ class PopulationCalculator:
         anio_min: int,
         anio_max: int,
         corte_fecha: str,
-        keyword: str = None  # ← NUEVO PARÁMETRO
+        keyword: str = None
     ) -> Dict[int, int]:
         """
-        Calcula población para un RANGO DE AÑOS con filtro de sexo si es tamizaje.
+        Calcula población para un RANGO DE AÑOS con filtro de sexo si aplica.
         """
         print(f"      BUSCANDO POBLACIÓN DE {anio_min} A {anio_max} AÑOS")
         
-        # 🔥 NUEVO: Detectar si es tamizaje y construir filtro de sexo
+        # 🔥 Construir filtro de sexo usando configuración externa
         sex_filter = ""
+        sex_type = None
         if keyword:
-            keyword_lower = keyword.lower().strip()
-            if self._is_tamizaje_keyword(keyword_lower):
-                sex_filter = self._build_sex_filter(data_source)
+            sex_type = sex_filter_config.get_sex_filter_for_keyword(keyword)
+            if sex_type:
+                sex_filter = self._build_sex_filter(data_source, keyword)
                 if sex_filter:
-                    print(f"      👩 Aplicando filtro de sexo en DENOMINADOR: SOLO MUJERES")
+                    sex_label = "MUJERES" if sex_type == 'F' else "HOMBRES"
+                    print(f"      {'👩' if sex_type == 'F' else '👨'} Aplicando filtro de sexo en DENOMINADOR: SOLO {sex_label}")
         
         edad_field = self.corrected_years.get_age_years_field_corrected(data_source)
         
@@ -189,17 +190,17 @@ class PopulationCalculator:
         SELECT COUNT(DISTINCT {document_field})
         FROM {data_source}
         WHERE {where_clause}
-        {sex_filter}
-        AND "Fecha Nacimiento" IS NOT NULL
-        AND {edad_field} IS NOT NULL
-        AND CAST({edad_field} AS INTEGER) IN ({anios_str})
+          {sex_filter}
+          AND "Fecha Nacimiento" IS NOT NULL
+          AND {edad_field} IS NOT NULL
+          AND CAST({edad_field} AS INTEGER) IN ({anios_str})
         """
         
         try:
             result = self.conn.execute(query).fetchone()
             count = int(result[0]) if result else 0
             
-            sex_msg = " (SOLO MUJERES)" if sex_filter else ""
+            sex_msg = f" (SOLO {'MUJERES' if sex_type == 'F' else 'HOMBRES'})" if sex_filter else ""
             print(f"      POBLACIÓN {anio_min}-{anio_max} AÑOS{sex_msg}: {count}")
             print(f"         Edades incluidas: {anios_list}")
             
@@ -208,7 +209,6 @@ class PopulationCalculator:
         except Exception as e:
             print(f"      Error: {e}")
             return {-1: 0}
-
     
     def _get_population_for_composite_range(
         self,
@@ -216,11 +216,11 @@ class PopulationCalculator:
         where_clause: str,
         edad_key_norm: str,
         corte_fecha: str,
-        keyword: str = None  # ← NUEVO PARÁMETRO
+        keyword: str = None
     ) -> Dict[int, int]:
         """
         Calcula población para rangos compuestos (meses + años).
-        Aplica filtro de sexo si es tamizaje de cáncer de cuello uterino.
+        Aplica filtro de sexo según configuración externa.
         """
         
         rango_info = self.rangos_compuestos[edad_key_norm]
@@ -229,14 +229,16 @@ class PopulationCalculator:
         print(f"         Meses: {rango_info.get('incluye_meses', [])[:5] if rango_info.get('incluye_meses') else 'Ninguno'}...")
         print(f"         Años: {rango_info.get('incluye_anios', [])}")
         
-        # 🔥 NUEVO: Detectar si es tamizaje y construir filtro de sexo
+        # 🔥 Construir filtro de sexo usando configuración externa
         sex_filter = ""
+        sex_type = None
         if keyword:
-            keyword_lower = keyword.lower().strip()
-            if self._is_tamizaje_keyword(keyword_lower):
-                sex_filter = self._build_sex_filter(data_source)
+            sex_type = sex_filter_config.get_sex_filter_for_keyword(keyword)
+            if sex_type:
+                sex_filter = self._build_sex_filter(data_source, keyword)
                 if sex_filter:
-                    print(f"      👩 Aplicando filtro de sexo en DENOMINADOR: SOLO MUJERES")
+                    sex_label = "MUJERES" if sex_type == 'F' else "HOMBRES"
+                    print(f"      {'👩' if sex_type == 'F' else '👨'} Aplicando filtro de sexo en DENOMINADOR: SOLO {sex_label}")
         
         poblacion_total = 0
         
@@ -253,9 +255,9 @@ class PopulationCalculator:
             SELECT COUNT(DISTINCT "Nro Identificación")
             FROM {data_source}
             WHERE {where_clause}
-            {sex_filter}
-            AND "Fecha Nacimiento" IS NOT NULL
-            AND ({edad_meses_expr}) IN ({meses_str})
+              {sex_filter}
+              AND "Fecha Nacimiento" IS NOT NULL
+              AND ({edad_meses_expr}) IN ({meses_str})
             """
             
             try:
@@ -263,7 +265,7 @@ class PopulationCalculator:
                 pob_meses = int(result[0]) if result else 0
                 poblacion_total += pob_meses
                 
-                sex_msg = " (SOLO MUJERES)" if sex_filter else ""
+                sex_msg = f" (SOLO {'MUJERES' if sex_type == 'F' else 'HOMBRES'})" if sex_filter else ""
                 print(f"         Población (meses){sex_msg}: {pob_meses}")
             except Exception as e:
                 print(f"         Error calculando población de meses: {e}")
@@ -281,9 +283,9 @@ class PopulationCalculator:
                 SELECT COUNT(DISTINCT "Nro Identificación")
                 FROM {data_source}
                 WHERE {where_clause}
-                {sex_filter}
-                AND "Fecha Nacimiento" IS NOT NULL
-                AND CAST({edad_field} AS INTEGER) IN ({anios_str})
+                  {sex_filter}
+                  AND "Fecha Nacimiento" IS NOT NULL
+                  AND CAST({edad_field} AS INTEGER) IN ({anios_str})
                 """
                 
                 try:
@@ -291,17 +293,16 @@ class PopulationCalculator:
                     pob_anios = int(result[0]) if result else 0
                     poblacion_total += pob_anios
                     
-                    sex_msg = " (SOLO MUJERES)" if sex_filter else ""
+                    sex_msg = f" (SOLO {'MUJERES' if sex_type == 'F' else 'HOMBRES'})" if sex_filter else ""
                     print(f"         Población (años){sex_msg}: {pob_anios}")
                 except Exception as e:
                     print(f"         Error calculando población de años: {e}")
                     pob_anios = 0
         
-        sex_msg = " (SOLO MUJERES)" if sex_filter else ""
+        sex_msg = f" (SOLO {'MUJERES' if sex_type == 'F' else 'HOMBRES'})" if sex_filter else ""
         print(f"      Población total (compuesto){sex_msg}: {poblacion_total}")
         
         return {-1: poblacion_total}
-
     
     def _get_population_for_years(
         self,
@@ -309,22 +310,24 @@ class PopulationCalculator:
         where_clause: str,
         anios_valor: int,
         corte_fecha: str,
-        keyword: str = None  # ← NUEVO PARÁMETRO
+        keyword: str = None
     ) -> Dict[int, int]:
         """
         Calcula población para UN AÑO específico.
-        Aplica filtro de sexo si es tamizaje de cáncer de cuello uterino.
+        Aplica filtro de sexo según configuración externa.
         """
         print(f"      BUSCANDO POBLACIÓN DE {anios_valor} AÑOS")
         
-        # 🔥 NUEVO: Detectar si es tamizaje y construir filtro de sexo
+        # 🔥 Construir filtro de sexo usando configuración externa
         sex_filter = ""
+        sex_type = None
         if keyword:
-            keyword_lower = keyword.lower().strip()
-            if self._is_tamizaje_keyword(keyword_lower):
-                sex_filter = self._build_sex_filter(data_source)
+            sex_type = sex_filter_config.get_sex_filter_for_keyword(keyword)
+            if sex_type:
+                sex_filter = self._build_sex_filter(data_source, keyword)
                 if sex_filter:
-                    print(f"      👩 Aplicando filtro de sexo en DENOMINADOR: SOLO MUJERES")
+                    sex_label = "MUJERES" if sex_type == 'F' else "HOMBRES"
+                    print(f"      {'👩' if sex_type == 'F' else '👨'} Aplicando filtro de sexo en DENOMINADOR: SOLO {sex_label}")
         
         edad_field = self.corrected_years.get_age_years_field_corrected(data_source)
         
@@ -340,17 +343,17 @@ class PopulationCalculator:
         SELECT COUNT(DISTINCT {document_field})
         FROM {data_source}
         WHERE {where_clause}
-        {sex_filter}
-        AND "Fecha Nacimiento" IS NOT NULL
-        AND {edad_field} IS NOT NULL
-        AND CAST({edad_field} AS INTEGER) = {anios_valor}
+          {sex_filter}
+          AND "Fecha Nacimiento" IS NOT NULL
+          AND {edad_field} IS NOT NULL
+          AND CAST({edad_field} AS INTEGER) = {anios_valor}
         """
         
         try:
             result = self.conn.execute(query).fetchone()
             count = int(result[0]) if result else 0
             
-            sex_msg = " (SOLO MUJERES)" if sex_filter else ""
+            sex_msg = f" (SOLO {'MUJERES' if sex_type == 'F' else 'HOMBRES'})" if sex_filter else ""
             print(f"      POBLACIÓN {anios_valor} AÑOS{sex_msg}: {count}")
             
             return {-1: count}
@@ -358,26 +361,31 @@ class PopulationCalculator:
         except Exception as e:
             print(f"      Error: {e}")
             return {-1: 0}
-
+    
+    # ============================================================
+    # FILTRO DE SEXO - USA CONFIGURACIÓN EXTERNA
+    # ============================================================
+    
+    def _build_sex_filter(self, data_source: str, keyword: str = None) -> str:
+        """
+        Construye filtro SQL de sexo basado en keyword.
+        USA CONFIGURACIÓN EXTERNA (sex_filter_config.json).
         
-    def _is_tamizaje_keyword(self, keyword: str) -> bool:
-        """Detecta si la keyword es de tamizaje de cáncer de cuello uterino"""
-        from utils.text_normalizer import normalize_text
-        keyword_norm = normalize_text(keyword)
+        Args:
+            data_source: Fuente de datos
+            keyword: Keyword para determinar tipo de filtro
         
-        tamizaje_indicators = [
-            'TAMIZAJE',
-            'CITOLOGIA',
-            'ADN-VPH',
-            'CANALIZACION',
-            'CUELLO UTERINO'
-        ]
+        Returns:
+            Filtro SQL o cadena vacía
+        """
+        if not keyword:
+            return ""
         
-        return any(indicator in keyword_norm for indicator in tamizaje_indicators)
-
-    def _build_sex_filter(self, data_source: str) -> str:
-        """Construye filtro SQL para SEXO = 'F' (solo mujeres)"""
-        from utils.text_normalizer import normalize_text
+        # 🔥 Usar configuración externa para determinar tipo de filtro
+        sex_type = sex_filter_config.get_sex_filter_for_keyword(keyword)
+        
+        if not sex_type:
+            return ""
         
         try:
             describe_query = f"DESCRIBE SELECT * FROM {data_source}"
@@ -392,14 +400,15 @@ class PopulationCalculator:
             
             if not sex_col:
                 cols_norm = {normalize_text(c): c for c in cols}
-                for candidate in ["Sexo", "Genero", "Género"]:
+                for candidate in ["Sexo", "Genero", "Género", "Sexo Biológico", "Sexo Biologico"]:
                     cand_norm = normalize_text(candidate)
                     if cand_norm in cols_norm:
                         sex_col = cols_norm[cand_norm]
                         break
             
             if sex_col:
-                return f"""
+                if sex_type == 'F':
+                    return f"""
                 AND "{sex_col}" IS NOT NULL
                 AND (
                     UPPER(CAST("{sex_col}" AS VARCHAR)) = 'F'
@@ -407,13 +416,26 @@ class PopulationCalculator:
                     OR UPPER(CAST("{sex_col}" AS VARCHAR)) LIKE '%MUJER%'
                 )
                 """
-            else:
-                return ""
+                elif sex_type == 'M':
+                    return f"""
+                AND "{sex_col}" IS NOT NULL
+                AND (
+                    UPPER(CAST("{sex_col}" AS VARCHAR)) = 'M'
+                    OR UPPER(CAST("{sex_col}" AS VARCHAR)) LIKE '%MASCULINO%'
+                    OR UPPER(CAST("{sex_col}" AS VARCHAR)) LIKE '%HOMBRE%'
+                    OR UPPER(CAST("{sex_col}" AS VARCHAR)) LIKE '%VARON%'
+                )
+                """
+            
+            return ""
         
         except Exception as e:
-            print(f"      ⚠️ Error construyendo filtro de sexo: {e}")
+            print(f"      ❌ Error construyendo filtro de sexo: {e}")
             return ""
-
+    
+    # ============================================================
+    # UTILIDADES
+    # ============================================================
     
     def _normalize_age_key(self, edad_str: str) -> str:
         """
@@ -436,26 +458,21 @@ class PopulationCalculator:
                 return key
         
         # Estrategia 2: Coincidencia por números
-        # Extraer números del input
         numeros_input = re.findall(r'\d+', edad_str)
         
         if numeros_input:
             for key in self.birth_date_ranges_den.keys():
                 numeros_key = re.findall(r'\d+', key)
                 
-                # Si los números coinciden exactamente
                 if numeros_input == numeros_key:
-                    # Verificar que ambos hablen de la misma unidad (meses)
                     input_lower = edad_str.lower()
                     key_lower = key.lower()
                     
-                    # Ambos deben tener "mes" o "meses"
                     if ('mes' in input_lower and 'mes' in key_lower):
                         print(f"      🔍 Fuzzy match: '{edad_str}' → '{key}' (por números)")
                         return key
         
         # Estrategia 3: Variaciones comunes
-        # Normalizar variaciones: "1 mes" → "1 mes", "1 Mes" → "1 mes"
         edad_variations = [
             edad_str,
             edad_str.lower(),

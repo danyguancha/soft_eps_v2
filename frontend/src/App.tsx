@@ -2,7 +2,7 @@
 import '@ant-design/v5-patch-for-react-19';
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
-import { Layout, Alert, Spin, Drawer, Modal, message, Grid } from 'antd';
+import { Layout, Alert, Spin, Drawer, Modal, Grid } from 'antd';
 
 import { AppHeader } from './components/layout/AppHeader';
 import { NavigationMenu } from './components/navigation/NavigationMenu';
@@ -13,7 +13,6 @@ import { DynamicTabRouter } from './components/routing/DynamicTabRouter';
 import { useFileOperations } from './hooks/useFileOperations';
 import { CrossDataProvider, useCrossDataContext } from './contexts/CrossDataContext';
 // import { healthMonitor } from './services/HealthMonitor';
-import { TechnicalNoteService } from './services/TechnicalNoteService';
 import type { TabKey } from './types/api.types';
 
 import 'antd/dist/reset.css';

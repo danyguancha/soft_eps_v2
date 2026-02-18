@@ -139,11 +139,11 @@
     },
     {
       "columna_usuario": "Fecha prueba embarazo",
-      "keyword": "embarazo",
+      "keyword": "prueba_embarazo",
       "consolidado": {
         "consulta_procedimiento": "Prueba de embarazo - Adultez",
-        "edad_aplicable": "29 a 59 Años",
-        "edad_NT_RPMS": "29 a 59 Años"
+        "edad_aplicable": "29 a 49 Años",
+        "edad_NT_RPMS": "29 a 49 Años"
       }
     },
     {
@@ -162,15 +162,6 @@
         "consulta_procedimiento": "Insercion de Anticonceptivo Subdermico - Adultez",
         "edad_aplicable": "29 a 49 Años",
         "edad_NT_RPMS": "29 a 49 Años"
-      }
-    },
-    {
-      "columna_usuario": "Fecha más reciente de Suministro de Método Anticonceptivo",
-      "keyword": "preservativo",
-      "consolidado": {
-        "consulta_procedimiento": "Suministro de Preservativos",
-        "edad_aplicable": "29 a 59 Años",
-        "edad_NT_RPMS": "29 a 59 Años"
       }
     },
     {
@@ -243,6 +234,87 @@
         "consulta_procedimiento": "Canalizacion Efectiva del Tamizaje de Cancer de Cuello Uterino ADN - VPH - Adultez",
         "edad_aplicable": "30 a 59 Años",
         "edad_NT_RPMS": "30 a 59 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha más reciente de Suministro de Método Anticonceptivo",
+      "keyword": "suministro_preservativos",
+      "consolidado": {
+        "consulta_procedimiento": "Suministro de Preservativos",
+        "edad_aplicable": "29 a 59 Años",
+        "edad_NT_RPMS": "29 a 59 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha más reciente de Suministro de Método Anticonceptivo",
+      "keyword": "anticonceptivo_oral",
+      "consolidado": {
+        "consulta_procedimiento": "Suministro de Anticoncepcion Oral - Adultez",
+        "edad_aplicable": "29 a 49 Años",
+        "edad_NT_RPMS": "29 a 49 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha más reciente de Suministro de Método Anticonceptivo",
+      "keyword": "anticonceptivo_inyectable_mensual",
+      "consolidado": {
+        "consulta_procedimiento": "Suministro de Anticoncepcion Inyectable Mensual - Adultez",
+        "edad_aplicable": "29 a 49 Años",
+        "edad_NT_RPMS": "29 a 49 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha más reciente de Suministro de Método Anticonceptivo",
+      "keyword": "anticonceptivo_inyectable_trimestral",
+      "consolidado": {
+        "consulta_procedimiento": "Suministro de Anticoncepcion inyectables trimestrales - Adultez",
+        "edad_aplicable": "29 a 49 Años",
+        "edad_NT_RPMS": "29 a 49 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha de tamizaje para sífilis",
+      "keyword": "sifilis",
+      "consolidado": {
+        "consulta_procedimiento": "Prueba rápida treponémica para sífilis - Adultez",
+        "edad_aplicable": "29 a 59 Años",
+        "edad_NT_RPMS": "29 a 59 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha Mamografía",
+      "keyword": "cancer_mamografia",
+      "consolidado": {
+        "consulta_procedimiento": "Canalizacion Efectiva del Tamizaje para cancer de mama(Mamografia)- Adultez",
+        "edad_aplicable": "50 a 59 Años",
+        "edad_NT_RPMS": "50 a 59 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha examen clínico mama",
+      "keyword": "valoracion_clinica_mama",
+      "consolidado": {
+        "consulta_procedimiento": "Tamizaje para cancer de mama(valoracion clinica de la mama)- Adultez",
+        "edad_aplicable": "40 a 59 Años",
+        "edad_NT_RPMS": "40 a 59 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha Antígeno Prostático (PSA)",
+      "keyword": "antigeno_prostatico",
+      "consolidado": {
+        "consulta_procedimiento": "Tamizaje para cancer de Prostata(PSA)- Adultez",
+        "edad_aplicable": "50 a 59 Años",
+        "edad_NT_RPMS": "50 a 59 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha prueba Sangre Oculta en Materia Fecal (SOMF)",
+      "keyword": "cancer_colon_sangre_oculta",
+      "consolidado": {
+        "consulta_procedimiento": "Tamizaje para cáncer de colon(sangre oculta en materia fecal)- Adultez",
+        "edad_aplicable": "50 a 59 Años",
+        "edad_NT_RPMS": "50 a 59 Años"
       }
     }
   ]

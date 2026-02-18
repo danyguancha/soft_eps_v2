@@ -66,24 +66,6 @@
       }
     },
     {
-      "columna_usuario": "Fecha de diagnostico de Anemia nutricional",
-      "keyword": "anemia",
-      "consolidado": {
-        "consulta_procedimiento": "Tamizaje para Anemia(Hematocrito)- Infancia",
-        "edad_aplicable": "10 a 11 Años",
-        "edad_NT_RPMS": "10 a 11 Años"
-      }
-    },
-    {
-      "columna_usuario": "Fecha Hemoglobina",
-      "keyword": "anemia",
-      "consolidado": {
-        "consulta_procedimiento": "Tamizaje para Anemia(Hemoglobina)- Infancia",
-        "edad_aplicable": "10 a 11 Años",
-        "edad_NT_RPMS": "10 a 11 Años"
-      }
-    },
-    {
       "columna_usuario": "Fecha más reciente de aplicación flúor",
       "keyword": "flúor",
       "consolidado": {
@@ -112,18 +94,18 @@
     },
     {
       "columna_usuario": "Fecha de diagnostico de Anemia nutricional",
-      "keyword": "Anemia",
+      "keyword": "hematocrito",
       "consolidado": {
-        "consulta_procedimiento": "Tamizaje para Anemia (Hematocrito) - Infancia",
+        "consulta_procedimiento": "Tamizaje para Anemia(Hematocrito)- Infancia",
         "edad_aplicable": "10 a 11 Años",
         "edad_NT_RPMS": "10 a 11 Años"
       }
     },
     {
       "columna_usuario": "Fecha Hemoglobina",
-      "keyword": "Anemia",
+      "keyword": "hemoglobina",
       "consolidado": {
-        "consulta_procedimiento": "Tamizaje para Anemia (Hemoglobina) - Infancia",
+        "consulta_procedimiento": "Tamizaje para Anemia(Hemoglobina)- Infancia",
         "edad_aplicable": "10 a 11 Años",
         "edad_NT_RPMS": "10 a 11 Años"
       }

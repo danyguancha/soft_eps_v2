@@ -141,6 +141,49 @@ interface ExportControlsProps {
   onExportError?: (error: string) => void;
 }
 
+/* ──────────────────────────── UTILIDADES ──────────────────────────── */
+
+/**
+ * 🔥 Genera el nombre del archivo basado en filtros geográficos
+ */
+const generateFilename = (geographicFilters?: GeographicFilters): string => {
+  const parts: string[] = [];
+
+  if (geographicFilters?.departamento) {
+    // Limpiar y normalizar departamento
+    parts.push(geographicFilters.departamento.toUpperCase().replace(/\s+/g, '_'));
+  }
+
+  if (geographicFilters?.municipio) {
+    // Limpiar y normalizar municipio
+    parts.push(geographicFilters.municipio.toUpperCase().replace(/\s+/g, '_'));
+  }
+
+  if (geographicFilters?.ips) {
+    // Limpiar y normalizar IPS
+    parts.push(geographicFilters.ips.toUpperCase().replace(/\s+/g, '_'));
+  }
+
+  // Si no hay filtros geográficos, usar nombre genérico
+  if (parts.length === 0) {
+    return 'REPORTE_GENERAL';
+  }
+
+  // Unir con guiones
+  return parts.join('-');
+};
+
+/**
+ * Limpia caracteres especiales que no son válidos en nombres de archivo
+ */
+const sanitizeFilename = (filename: string): string => {
+  return filename
+    .replace(/[<>:"/\\|?*]/g, '_')  // Reemplazar caracteres inválidos
+    .replace(/\s+/g, '_')            // Espacios a guiones bajos
+    .replace(/_+/g, '_')             // Múltiples guiones bajos a uno solo
+    .replace(/^_|_$/g, '');          // Eliminar guiones bajos al inicio/fin
+};
+
 /* ──────────────────────────── EXPORTACIÓN ──────────────────────────── */
 const ExportControls = memo<ExportControlsProps>(({
   keywordReport,
@@ -157,6 +200,12 @@ const ExportControls = memo<ExportControlsProps>(({
 
   const effectiveCutoffDate = cutoffDate || keywordReport.corte_fecha || "2025-07-31";
 
+  // 🔥 Generar nombre base del archivo
+  const baseFilename = useMemo(() => {
+    const geoName = generateFilename(geographicFilters);
+    return sanitizeFilename(geoName);
+  }, [geographicFilters]);
+
   const handleExportExcel = useCallback(async () => {
     try {
       setExcelLoading(true);
@@ -164,8 +213,11 @@ const ExportControls = memo<ExportControlsProps>(({
 
       message.loading({ content: 'Exportando Excel...', key: 'export-excel', duration: 0 });
 
-      const cleanFilename = filename?.replace(/\.csv$/, '') || 'reporte';
-      const timestampedFilename = `${cleanFilename}_${new Date().toISOString().split('T')[0]}`;
+      // 🔥 Usar nombre personalizado basado en filtros geográficos
+      const timestamp = new Date().toISOString().split('T')[0];
+      const timestampedFilename = `${baseFilename}_${timestamp}`;
+
+      console.log('📊 Exportando con nombre:', timestampedFilename);
 
       const exportData = {
         report_data: keywordReport,
@@ -187,7 +239,6 @@ const ExportControls = memo<ExportControlsProps>(({
       const result = response.data;
 
       if (result.success && result.download_links) {
-        // 🔥 Buscar 'excel' en lugar de 'csv'
         const excelLink = result.download_links.excel;
 
         if (excelLink) {
@@ -214,7 +265,7 @@ const ExportControls = memo<ExportControlsProps>(({
     } finally {
       setExcelLoading(false);
     }
-  }, [keywordReport, filename, onExportStart, onExportComplete, onExportError]);
+  }, [keywordReport, baseFilename, onExportStart, onExportComplete, onExportError]);
 
   const handleExportPDF = useCallback(async () => {
     try {
@@ -223,8 +274,11 @@ const ExportControls = memo<ExportControlsProps>(({
 
       message.loading({ content: 'Generando PDF...', key: 'export-pdf', duration: 0 });
 
-      const cleanFilename = filename?.replace(/\.csv$/, '') || 'reporte';
-      const timestampedFilename = `${cleanFilename}_${new Date().toISOString().split('T')[0]}`;
+      // 🔥 Usar nombre personalizado basado en filtros geográficos
+      const timestamp = new Date().toISOString().split('T')[0];
+      const timestampedFilename = `${baseFilename}_${timestamp}`;
+
+      console.log('📄 Exportando PDF con nombre:', timestampedFilename);
 
       const exportData = {
         report_data: keywordReport,
@@ -265,7 +319,7 @@ const ExportControls = memo<ExportControlsProps>(({
     } finally {
       setPdfLoading(false);
     }
-  }, [keywordReport, filename, onExportStart, onExportComplete, onExportError]);
+  }, [keywordReport, baseFilename, onExportStart, onExportComplete, onExportError]);
 
   const totalItems = keywordReport.items?.length || 0;
 
@@ -302,11 +356,16 @@ const ExportControls = memo<ExportControlsProps>(({
             </Space>
 
             {geographicFilters?.departamento && (
-              <Text type="secondary" className="export-controls-geo-text">
-                🗺️ {geographicFilters.departamento}
-                {geographicFilters.municipio && ` → ${geographicFilters.municipio}`}
-                {geographicFilters.ips && ` → ${geographicFilters.ips}`}
-              </Text>
+              <Space direction="vertical" size={2}>
+                <Text type="secondary" className="export-controls-geo-text">
+                  🗺️ {geographicFilters.departamento}
+                  {geographicFilters.municipio && ` → ${geographicFilters.municipio}`}
+                  {geographicFilters.ips && ` → ${geographicFilters.ips}`}
+                </Text>
+                <Text type="secondary" style={{ fontSize: 11, fontStyle: 'italic' }}>
+                  📄 Archivo: {baseFilename}.xlsx
+                </Text>
+              </Space>
             )}
           </Space>
         </Col>
@@ -421,7 +480,7 @@ export const ReportTable = memo<Props>(({
 
   // 🔥 Función helper para crear columna de trimestre
   const createTrimestreColumn = (trimNum: number): ColumnGroupType<ReportItem> => {
-    const trimKey = `trim${trimNum}`;  // 🔥 trim1, trim2, trim3, trim4
+    const trimKey = `trim${trimNum}`;
 
     return {
       title: `Trimestre ${trimNum}`,
@@ -459,10 +518,9 @@ export const ReportTable = memo<Props>(({
             const data = record[trimKey] as ConsolidadoData | undefined;
             if (!data) return '-';
 
-            // 🔥 Si denominador = 0, mostrar 0.0%
             const cobertura = data.cobertura || 0;
             const color = data.denominador === 0
-              ? '#808080'  // Gris si denominador = 0
+              ? '#808080'
               : cobertura >= 70 ? '#52c41a' : cobertura >= 50 ? '#fa8c16' : '#ff4d4f';
 
             return <Text strong style={{ color }}>{cobertura.toFixed(1)}%</Text>;
@@ -486,7 +544,7 @@ export const ReportTable = memo<Props>(({
 
   // 🔥 Función helper para crear columna de semestre
   const createSemestreColumn = (semNum: number): ColumnGroupType<ReportItem> => {
-    const semKey = `sem${semNum}`;  // 🔥 sem1, sem2
+    const semKey = `sem${semNum}`;
 
     return {
       title: `Semestre ${semNum}`,
@@ -524,10 +582,9 @@ export const ReportTable = memo<Props>(({
             const data = record[semKey] as ConsolidadoData | undefined;
             if (!data) return '-';
 
-            // 🔥 Si denominador = 0, mostrar 0.0%
             const cobertura = data.cobertura || 0;
             const color = data.denominador === 0
-              ? '#808080'  // Gris si denominador = 0
+              ? '#808080'
               : cobertura >= 70 ? '#52c41a' : cobertura >= 50 ? '#fa8c16' : '#ff4d4f';
 
             return <Text strong style={{ color }}>{cobertura.toFixed(1)}%</Text>;
@@ -548,6 +605,7 @@ export const ReportTable = memo<Props>(({
       ]
     };
   };
+
   // 🔥 Generar columnas
   const columns: ColumnsType<ReportItem> = useMemo(() => {
     const cols: ColumnsType<ReportItem> = [];
@@ -706,7 +764,6 @@ export const ReportTable = memo<Props>(({
       )
     });
 
-
     // ✨ COLUMNAS MENSUALES Y CONSOLIDADOS
     if (showTemporalData) {
       // Enero, Febrero, Marzo → Trimestre 1
@@ -727,7 +784,7 @@ export const ReportTable = memo<Props>(({
       cols.push(createTrimestreColumn(4));
       cols.push(createSemestreColumn(2));
 
-      // Consolidado Anual (CORREGIDO)
+      // Consolidado Anual
       cols.push({
         title: 'Consolidado Anual',
         className: 'consolidado-anual-header',
@@ -764,10 +821,9 @@ export const ReportTable = memo<Props>(({
               const data = record.anual;
               if (!data) return '-';
 
-              // 🔥 Si denominador = 0, mostrar 0.0%
               const cobertura = data.cobertura || 0;
               const color = data.denominador === 0
-                ? '#808080'  // Gris si denominador = 0
+                ? '#808080'
                 : cobertura >= 70 ? '#52c41a' : cobertura >= 50 ? '#fa8c16' : '#ff4d4f';
 
               return <Text strong style={{ color, fontSize: '11px' }}>{cobertura.toFixed(1)}%</Text>;
@@ -787,7 +843,6 @@ export const ReportTable = memo<Props>(({
           }
         ]
       } as ColumnGroupType<ReportItem>);
-
     }
 
     return cols;

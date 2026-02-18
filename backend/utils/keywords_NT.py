@@ -21,7 +21,6 @@ DEFAULT_KEYWORDS: List[KeywordRule] = [
     KeywordRule(name="vitamina_a", synonyms=("Vitamina A",  " Vit A")),
     KeywordRule(name="sulfato_ferroso", synonyms=("Sulfato ferroso", "sulfato_ferroso", "sulfato ferroso", "ferroso")),
     
-    # Keywords especiales - NO necesitan metodo_anticonceptivo aquí
     KeywordRule(name="diu", synonyms=("diu", "DIU", "dispositivo intrauterino")),
     KeywordRule(name="subdermico", synonyms=("subdermico", "subdérmico", "implante subdermico", "implante subdérmico")),
     KeywordRule(name="preservativo", synonyms=("preservativo", "condon", "condón", "preservativos", "condones")),
@@ -35,6 +34,7 @@ DEFAULT_KEYWORDS: List[KeywordRule] = [
     KeywordRule(name="Desparasitacion intestinal", synonyms=("Desparasitacion intestinal", "desparasitación intestinal", "desparasitacion", "desparasitación")),
     KeywordRule(name="citologia", synonyms=("citologia", "citología", "citología")),
     KeywordRule(name="ADN-VPH", synonyms=("ADN-VPH", "ADN VPH", "ADN-VPH", "ADN VPH")),
+    KeywordRule(name="suministro_preservativos", synonyms=("suministro_preservativos", "suministro de preservativos", "suministro de condones", "suministro_condones")),
 
 
 ]

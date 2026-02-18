@@ -1,0 +1,48 @@
+{
+  "description": "Configuración de filtros de sexo por keyword. Define qué keywords requieren filtro de sexo específico.",
+  
+  "female_only": {
+    "description": "Keywords que SOLO aplican para mujeres (sexo F)",
+    "keywords": [
+      "citologia",
+      "adn-vph",
+      "diu",
+      "subdermico",
+      "anticonceptivo_oral",
+      "anticonceptivo_inyectable_mensual",
+      "anticonceptivo_inyectable_trimestral",
+      "prueba_embarazo",
+      "cancer_mamografia",
+      "valoracion_clinica_mama",
+      "prueba_embarazo"
+    ]
+  },
+  
+  "male_only": {
+    "description": "Keywords que SOLO aplican para hombres (sexo M)",
+    "keywords": [
+      "suministro_preservativos",
+      "antigeno_prostatico",
+      "antígeno prostático"
+    ]
+  },
+  
+  "no_filter": {
+    "description": "Keywords que NO requieren filtro de sexo (ambos sexos)",
+    "keywords": [
+      "esterilizacion",
+      "esterilización",
+      "vasectomia",
+      "vasectomía",
+      "ligadura",
+      "no se suministra",
+      "registro no evaluado",
+      "vacunas",
+      "tuberculosis",
+      "vih",
+      "diabetes",
+      "hipertension",
+      "hipertensión"
+    ]
+  }
+}
