@@ -2,22 +2,41 @@
 
 from typing import Dict, Any, List, Optional
 from services.technical_note_services.report_service_aux.semaforization import Semaforization
+from utils.text_normalizer import normalize_text
+
+
+# ============================================================
+# KEYWORDS DE PLANIFICACIÓN FAMILIAR
+# ============================================================
+
+_PLANIFICACION_KEYWORDS = {
+    'DIU', 'INTRAUTERINO', 'SUBDERMICO', 'IMPLANTE',
+    'ORAL', 'INYECTABLE', 'PRESERVATIVO', 'EMERGENCIA',
+    'ANTICONCEPTIVO', 'PLANIFICACION', 'PLANIFICACIÓN'
+}
+
+def _is_planificacion_keyword(keyword: str) -> bool:
+    """Detecta si el keyword corresponde a un método de planificación familiar"""
+    if not keyword:
+        return False
+    keyword_norm = normalize_text(keyword).upper()
+    return any(k in keyword_norm for k in _PLANIFICACION_KEYWORDS)
 
 
 class ReportBuilder:
     """Responsable de construir items individuales del reporte"""
-    
+
     def __init__(
         self,
         numerator_calculator,
         population_calculator,
         aggregation_calculator
     ):
-        self.numerator_calculator = numerator_calculator
+        self.numerator_calculator  = numerator_calculator
         self.population_calculator = population_calculator
         self.aggregation_calculator = aggregation_calculator
-        self.semaforization = Semaforization()  
-    
+        self.semaforization = Semaforization()
+
     def process_single_mapping(
         self,
         mapping: Dict[str, Any],
@@ -36,14 +55,17 @@ class ReportBuilder:
     ) -> Optional[Dict[str, Any]]:
         try:
             consolidado_info = mapping.get('consolidado', {})
-            consulta_proc = consolidado_info.get('consulta_procedimiento', '')
-            edad_aplicable = consolidado_info.get('edad_aplicable', '')
-            edad_NT_RPMS = consolidado_info.get('edad_NT_RPMS', '')
+            consulta_proc    = consolidado_info.get('consulta_procedimiento', '')
+            edad_aplicable   = consolidado_info.get('edad_aplicable', '')
+            edad_NT_RPMS     = consolidado_info.get('edad_NT_RPMS', '')
 
             # PASO 1: Obtener datos RPMS
-            rpms_data = self._get_rpms_data(nt_rpms_integration, consulta_proc, edad_NT_RPMS, depto, muni, ips_name)
-            
-            # PASO 2: VERIFICAR SI ESTÁ DESHABILITADO ANTES DE CALCULAR NADA
+            rpms_data = self._get_rpms_data(
+                nt_rpms_integration, consulta_proc, edad_NT_RPMS,
+                depto, muni, ips_name
+            )
+
+            # PASO 2: Verificar si está DESHABILITADO
             if rpms_data and rpms_data.get('habilitado') == False:
                 print(f"      🚫 Servicio DESHABILITADO - Generando item con numerador/denominador en 0")
                 return self._create_disabled_service_item(
@@ -53,27 +75,35 @@ class ReportBuilder:
                     meses_nombres,
                     mes_limite
                 )
-            
+
             # PASO 3: Servicio habilitado - Continuar con cálculos normales
             print(f"Servicio HABILITADO - Calculando poblaciones y numeradores")
-            
+
             poblaciones_mensuales = self.population_calculator.get_population_by_predefined_dates(
-                data_source=data_source, 
-                where_clause=where_clause, 
-                edad_key=edad_aplicable, 
+                data_source=data_source,
+                where_clause=where_clause,
+                edad_key=edad_aplicable,
                 corte_fecha=corte_fecha,
-                keyword=keyword 
+                keyword=keyword
             )
-            
-            poblacion_obj_anual = self._calculate_poblacion_anual(poblaciones_mensuales, mes_limite)
-            
+
+            poblacion_obj_anual = self._calculate_poblacion_anual(
+                poblaciones_mensuales, mes_limite
+            )
+
             if poblacion_obj_anual == 0:
                 print(f"      ⚠️ Población = 0, omitiendo item")
                 return None
 
-            rpms_values = self._calculate_rpms_values(rpms_data, poblacion_obj_anual)
+            # 🔥 Pasar keyword para detectar planificación
+            rpms_values = self._calculate_rpms_values(rpms_data, poblacion_obj_anual, keyword)
 
-            # 🔥 MODIFICADO: Pasar edad_aplicable al numerator_calculator
+            # Extraer proyeccion_tiempo y calcular mes_inicio
+            proyeccion_tiempo = int(rpms_values.get('proyeccion_tiempo', 12) or 12)
+            mes_inicio = max(1, 13 - proyeccion_tiempo)
+
+            print(f"      📆 proyeccion_tiempo={proyeccion_tiempo} → meses contratados: {mes_inicio} al {mes_limite}")
+
             numeradores_mensuales = self.numerator_calculator.calculate_by_month_simple(
                 data_source=data_source,
                 column_name=column_name,
@@ -82,43 +112,55 @@ class ReportBuilder:
                 mes_limite=mes_limite,
                 keyword=keyword,
                 corte_fecha=corte_fecha,
-                edad_aplicable=edad_aplicable  # ← NUEVO PARÁMETRO
+                edad_aplicable=edad_aplicable,
+                proyeccion_tiempo=proyeccion_tiempo
             )
 
             mensual_data = self._build_mensual_data(
-                meses_nombres, mes_limite, poblaciones_mensuales,
-                poblacion_obj_anual, numeradores_mensuales,
-                rpms_values['poblacion_susceptible_mensual']
+                meses_nombres=meses_nombres,
+                mes_inicio=mes_inicio,
+                mes_limite=mes_limite,
+                poblaciones_mensuales=poblaciones_mensuales,
+                poblacion_obj_anual=poblacion_obj_anual,
+                numeradores_mensuales=numeradores_mensuales,
+                poblacion_susceptible_mensual=rpms_values['poblacion_susceptible_mensual']
             )
 
-            trimestres = self.aggregation_calculator.calculate_trimestres(mensual_data, meses_nombres, mes_limite)
-            semestres = self.aggregation_calculator.calculate_semestres(trimestres)
-            anual = self.aggregation_calculator.calculate_anual(semestres)
+            trimestres = self.aggregation_calculator.calculate_trimestres(
+                mensual_data, meses_nombres, mes_limite
+            )
+            semestres  = self.aggregation_calculator.calculate_semestres(trimestres)
+            anual      = self.aggregation_calculator.calculate_anual(semestres)
 
             return {
-                "consulta_procedimiento": consulta_proc or column_name,
-                "rango_edad": edad_aplicable,
-                "cups": rpms_values['cups'],
-                "frecuencia_indicada": rpms_values['frecuencia_indicada'],
-                "poblacion_objeto": poblacion_obj_anual,
-                "periodo": rpms_values['periodo'],
-                "frecuencia_uso_ips": rpms_values['frecuencia_uso_ips'],
-                "fecuencia_ajustada_anual": rpms_values['frecuencia_ajustada_anual'],
-                "meta": rpms_values['meta'],
-                "poblacion_susceptible_anual": rpms_values['poblacion_susceptible_anual'],
+                "consulta_procedimiento":        consulta_proc or column_name,
+                "rango_edad":                    edad_aplicable,
+                "cups":                          rpms_values['cups'],
+                "frecuencia_indicada":           rpms_values['frecuencia_indicada'],
+                "poblacion_objeto":              poblacion_obj_anual,
+                "periodo":                       rpms_values['periodo'],
+                "frecuencia_uso_ips":            rpms_values['frecuencia_uso_ips'],
+                "fecuencia_ajustada_anual":      rpms_values['frecuencia_ajustada_anual'],
+                "meta":                          rpms_values['meta'],
+                "poblacion_susceptible_anual":   rpms_values['poblacion_susceptible_anual'],
                 "poblacion_susceptible_mensual": rpms_values['poblacion_susceptible_mensual'],
-                "proyeccion_tiempo": rpms_values['proyeccion_tiempo'],
-                "habilitado": True,
+                "proyeccion_tiempo":             proyeccion_tiempo,
+                "habilitado":                    True,
                 **{mes: mensual_data[mes] for mes in meses_nombres},
-                **trimestres, 
-                **semestres, 
+                **trimestres,
+                **semestres,
                 "anual": anual
             }
+
         except Exception:
             import traceback
             traceback.print_exc()
             return None
-    
+
+    # ============================================================
+    # ITEM PARA SERVICIO DESHABILITADO
+    # ============================================================
+
     def _create_disabled_service_item(
         self,
         consulta_proc: str,
@@ -127,76 +169,46 @@ class ReportBuilder:
         meses_nombres: List[str],
         mes_limite: int
     ) -> Dict[str, Any]:
-        """
-        Crea item para servicio DESHABILITADO con semaforización NA (gris).
-        """
-        # Mensual con todo en 0 y NA
-        mensual_data = {}
-        for mes_num in range(1, 13):
-            mes_nombre = meses_nombres[mes_num - 1]
-            mensual_data[mes_nombre] = {
-                "poblacion_objeto": 0,
-                "numerador": 0,
-                "denominador": 0,
-                "cobertura": 0.0,
-                "semaforizacion": "NA",
-                "color": "#808080"  # Gris
-            }
-        
-        # Trimestres con todo en 0 y NA
-        trimestres = {}
-        for trim_key in ["trim1", "trim2", "trim3", "trim4"]:
-            trimestres[trim_key] = {
-                "poblacion_objeto": 0,
-                "numerador": 0,
-                "denominador": 0,
-                "cobertura": 0.0,
-                "semaforizacion": "NA",
-                "color": "#808080"  # Gris
-            }
-        
-        # Semestres con todo en 0 y NA
-        semestres = {}
-        for sem_key in ["sem1", "sem2"]:
-            semestres[sem_key] = {
-                "poblacion_objeto": 0,
-                "numerador": 0,
-                "denominador": 0,
-                "cobertura": 0.0,
-                "semaforizacion": "NA",
-                "color": "#808080"  # Gris
-            }
-        
-        # Anual con todo en 0 y NA
-        anual = {
-            "poblacion_objeto": 0,
-            "numerador": 0,
-            "denominador": 0,
-            "cobertura": 0.0,
-            "semaforizacion": "NA",
-            "color": "#808080"  # Gris
+        mensual_data = {
+            mes: {"poblacion_objeto": 0, "numerador": 0, "denominador": 0,
+                  "cobertura": 0.0, "semaforizacion": "NA", "color": "#808080"}
+            for mes in meses_nombres
         }
-        
+        trimestres = {
+            t: {"poblacion_objeto": 0, "numerador": 0, "denominador": 0,
+                "cobertura": 0.0, "semaforizacion": "NA", "color": "#808080"}
+            for t in ["trim1", "trim2", "trim3", "trim4"]
+        }
+        semestres = {
+            s: {"poblacion_objeto": 0, "numerador": 0, "denominador": 0,
+                "cobertura": 0.0, "semaforizacion": "NA", "color": "#808080"}
+            for s in ["sem1", "sem2"]
+        }
         return {
-            "consulta_procedimiento": consulta_proc,
-            "rango_edad": edad_aplicable,
-            "cups": rpms_data.get('cups', ''),
-            "frecuencia_indicada": 0,
-            "poblacion_objeto": 0,
-            "periodo": rpms_data.get('periodo', 'ANUAL'),
-            "frecuencia_uso_ips": 0,
-            "fecuencia_ajustada_anual": 0,
-            "meta": 0,
-            "poblacion_susceptible_anual": 0,
+            "consulta_procedimiento":        consulta_proc,
+            "rango_edad":                    edad_aplicable,
+            "cups":                          rpms_data.get('cups', ''),
+            "frecuencia_indicada":           0,
+            "poblacion_objeto":              0,
+            "periodo":                       rpms_data.get('periodo', 'ANUAL'),
+            "frecuencia_uso_ips":            0,
+            "fecuencia_ajustada_anual":      0,
+            "meta":                          0,
+            "poblacion_susceptible_anual":   0,
             "poblacion_susceptible_mensual": 0,
-            "proyeccion_tiempo": 0,
-            "habilitado": False,
+            "proyeccion_tiempo":             0,
+            "habilitado":                    False,
             **{mes: mensual_data[mes] for mes in meses_nombres},
             **trimestres,
             **semestres,
-            "anual": anual
+            "anual": {"poblacion_objeto": 0, "numerador": 0, "denominador": 0,
+                      "cobertura": 0.0, "semaforizacion": "NA", "color": "#808080"}
         }
-    
+
+    # ============================================================
+    # RPMS
+    # ============================================================
+
     def _get_rpms_data(
         self,
         nt_rpms_integration,
@@ -206,10 +218,8 @@ class ReportBuilder:
         muni: str,
         ips_name: str
     ) -> Optional[Dict]:
-        """Busca datos RPMS"""
         if not nt_rpms_integration:
             return None
-        
         return nt_rpms_integration.find_matching_row(
             consulta_procedimiento=consulta_proc,
             edad_nt_rpms=edad_NT_RPMS,
@@ -217,13 +227,12 @@ class ReportBuilder:
             municipio=muni,
             nombre_ips=ips_name
         )
-    
+
     def _calculate_poblacion_anual(
         self,
         poblaciones_mensuales: Dict[int, int],
         mes_limite: int
     ) -> int:
-        """Calcula población objeto anual"""
         if -1 in poblaciones_mensuales:
             poblacion = poblaciones_mensuales[-1]
             print(f"      Población objeto (años - conteo único): {poblacion}")
@@ -233,143 +242,164 @@ class ReportBuilder:
                 for i in range(1, mes_limite + 1)
             )
             print(f"      Población objeto (meses - suma): {poblacion}")
-        
         return poblacion
-    
+
     def _calculate_rpms_values(
         self,
         rpms_data: Optional[Dict],
-        poblacion_obj_anual: int
+        poblacion_obj_anual: int,
+        keyword: str = None          # 🔥 NUEVO
     ) -> Dict:
-        """Calcula valores derivados de RPMS"""
+        """
+        Calcula valores derivados de RPMS.
+        
+        🔥 Para métodos de planificación familiar:
+            poblacion_susceptible_anual = atenciones_realizar_anual  (directo del CSV)
+        Para todas las demás atenciones:
+            poblacion_susceptible_anual = (poblacion_obj - historico) * frecuencia_ajustada
+        """
         if rpms_data and rpms_data.get('habilitado', True):
-            cups = rpms_data.get('cups', '')
-            periodo = rpms_data.get('periodo', 'ANUAL')
-            frecuencia_indicada = rpms_data.get('frecuencia_indicada', 0)
-            proyeccion_tiempo = rpms_data.get('proyeccion_tiempo', 12)
-            frecuencia_uso_ips = self._get_frecuencia_uso_ips(
+            cups                = rpms_data.get('cups', '')
+            periodo             = rpms_data.get('periodo', 'ANUAL')
+            frecuencia_indicada = float(rpms_data.get('frecuencia_indicada') or 0)
+            proyeccion_tiempo   = int(rpms_data.get('proyeccion_tiempo') or 12)
+            meta                = float(rpms_data.get('meta') or 0)
+
+            historico_raw = rpms_data.get('intervenciones_realizadas')
+            historico = float(historico_raw) if historico_raw not in (None, '', 'NULL', 'null') else 0.0
+            print(f"      📋 Histórico (intervenciones_realizadas): raw={repr(historico_raw)} → usado={historico}")
+
+            frecuencia_uso_ips        = self._get_frecuencia_uso_ips(
                 frecuencia_indicada, periodo, proyeccion_tiempo
             )
-            meta = rpms_data.get('meta', 0)
             frecuencia_ajustada_anual = frecuencia_uso_ips * meta
-            poblacion_susceptible_anual = (poblacion_obj_anual * frecuencia_uso_ips) * meta
-            poblacion_susceptible_mensual = (
-                poblacion_susceptible_anual / proyeccion_tiempo
-                if proyeccion_tiempo > 0 else 0
-            )
-            
+
+            # 🔥 Bifurcación según tipo de atención
+            es_planificacion = _is_planificacion_keyword(keyword)
+
+            if es_planificacion:
+                # Para planificación: usar atenciones_realizar_anual directamente
+                atenciones_raw = rpms_data.get('atenciones_realizar_anual')
+                atenciones_realizar_anual = float(atenciones_raw) if atenciones_raw not in (None, '', 'NULL', 'null') else 0.0
+
+                poblacion_susceptible_anual   = atenciones_realizar_anual
+                poblacion_susceptible_mensual = (
+                    atenciones_realizar_anual / proyeccion_tiempo
+                    if proyeccion_tiempo > 0 else 0
+                )
+                print(f"      🔵 PLANIFICACIÓN FAMILIAR → pob_susceptible_anual = atenciones_realizar_anual")
+                print(f"         atenciones_realizar_anual: {atenciones_realizar_anual}")
+                print(f"         Pob susceptible mensual: {poblacion_susceptible_mensual:.2f}")
+
+            else:
+                # Para las demás atenciones: fórmula estándar
+                poblacion_neta                = max(0, poblacion_obj_anual - historico)
+                poblacion_susceptible_anual   = poblacion_neta * frecuencia_ajustada_anual
+                poblacion_susceptible_mensual = (
+                    poblacion_susceptible_anual / proyeccion_tiempo
+                    if proyeccion_tiempo > 0 else 0
+                )
+                print(f"      🟢 ATENCIÓN NORMAL → pob_susceptible_anual = (pob_objeto - histórico) * freq_ajustada")
+                print(f"         Pob objeto: {poblacion_obj_anual} - Histórico: {historico} = Neta: {poblacion_neta}")
+                print(f"         Freq ajustada anual: {frecuencia_ajustada_anual:.2f}")
+                print(f"         Pob susceptible anual: {poblacion_susceptible_anual:.2f}")
+                print(f"         Pob susceptible mensual: {poblacion_susceptible_mensual:.2f}")
+
             print("      RPMS encontrado:")
             print(f"         Meta: {meta}, Freq: {frecuencia_uso_ips}, Proy: {proyeccion_tiempo}")
-            print(f"         Pob susceptible anual: {poblacion_susceptible_anual:.2f}")
-            print(f"         Pob susceptible mensual: {poblacion_susceptible_mensual:.2f}")
-            
+
             return {
-                'cups': cups,
-                'periodo': periodo,
-                'frecuencia_indicada': frecuencia_indicada,
-                'proyeccion_tiempo': proyeccion_tiempo,
-                'frecuencia_uso_ips': frecuencia_uso_ips,
-                'meta': meta,
-                'frecuencia_ajustada_anual': round(frecuencia_ajustada_anual, 1),
-                'poblacion_susceptible_anual': round(poblacion_susceptible_anual, 0),
+                'cups':                          cups,
+                'periodo':                       periodo,
+                'frecuencia_indicada':           frecuencia_indicada,
+                'proyeccion_tiempo':             proyeccion_tiempo,
+                'frecuencia_uso_ips':            frecuencia_uso_ips,
+                'meta':                          meta,
+                'frecuencia_ajustada_anual':     round(frecuencia_ajustada_anual, 1),
+                'poblacion_susceptible_anual':   round(poblacion_susceptible_anual, 0),
                 'poblacion_susceptible_mensual': round(poblacion_susceptible_mensual, 0)
             }
+
         else:
             print("      RPMS NO encontrado o deshabilitado - valores en 0")
             return {
-                'cups': rpms_data.get('cups', '') if rpms_data else '',
-                'periodo': rpms_data.get('periodo', '') if rpms_data else '',
-                'frecuencia_indicada': 0,
-                'proyeccion_tiempo': 0,
-                'frecuencia_uso_ips': 0,
-                'meta': 0,
-                'frecuencia_ajustada_anual': 0,
-                'poblacion_susceptible_anual': 0,
+                'cups':                          rpms_data.get('cups', '') if rpms_data else '',
+                'periodo':                       rpms_data.get('periodo', '') if rpms_data else '',
+                'frecuencia_indicada':           0,
+                'proyeccion_tiempo':             12,
+                'frecuencia_uso_ips':            0,
+                'meta':                          0,
+                'frecuencia_ajustada_anual':     0,
+                'poblacion_susceptible_anual':   0,
                 'poblacion_susceptible_mensual': 0
             }
-    
+
     def _get_frecuencia_uso_ips(
         self,
         frecuencia_indicada: float,
         periodo: str,
         proyeccion_tiempo: int
     ) -> float:
-        """Obtiene frecuencia de uso según periodo"""
         periodos = {
-            'anual': 12,
-            'semestral': 6,
-            'trimestral': 4,
-            'mensual': 12,
-            'bienal': 24,
-            'quinquenal': 60,
-            'trienal': 36
+            'anual': 12, 'semestral': 6, 'trimestral': 4,
+            'mensual': 1, 'bienal': 24, 'quinquenal': 60, 'trienal': 36
         }
-        
         periodo_key = periodo.lower().strip()
         valor_periodo = periodos.get(periodo_key)
         if valor_periodo is None:
             raise ValueError(f"Periodo no soportado: {periodo}")
-        
         return round((frecuencia_indicada / valor_periodo) * proyeccion_tiempo, 1)
-    
+
+    # ============================================================
+    # DATOS MENSUALES
+    # ============================================================
+
     def _build_mensual_data(
         self,
         meses_nombres: List[str],
+        mes_inicio: int,
         mes_limite: int,
         poblaciones_mensuales: Dict[int, int],
         poblacion_obj_anual: int,
         numeradores_mensuales: Dict[int, int],
         poblacion_susceptible_mensual: float
     ) -> Dict:
-        """
-        Construye datos mensuales CON cobertura, semaforizacion y color.
-        """
         mensual_data = {}
-        
+
         for mes_num in range(1, 13):
             mes_nombre = meses_nombres[mes_num - 1]
-            
-            if mes_num <= mes_limite:
-                # Población objeto del mes
+
+            if mes_inicio <= mes_num <= mes_limite:
                 if -1 in poblaciones_mensuales:
                     poblacion_objeto_mes = poblacion_obj_anual
                 else:
                     poblacion_objeto_mes = poblaciones_mensuales.get(mes_num, 0)
-                
-                # Numerador y denominador
-                numerador = numeradores_mensuales.get(mes_num, 0)
+
+                numerador   = numeradores_mensuales.get(mes_num, 0)
                 denominador = round(poblacion_susceptible_mensual, 0)
-                
-                # Calcular cobertura
-                if denominador > 0:
-                    cobertura = (numerador / denominador) * 100
-                else:
-                    cobertura = 0.0
-                
-                # Obtener semaforización
+                cobertura   = (numerador / denominador * 100) if denominador > 0 else 0.0
+
                 semaf_result = self.semaforization.calculate_semaforizacion(
-                    numerador, 
-                    denominador, 
-                    cobertura
+                    numerador, denominador, cobertura
                 )
-                
+
                 mensual_data[mes_nombre] = {
                     "poblacion_objeto": poblacion_objeto_mes,
-                    "numerador": numerador,
-                    "denominador": denominador,
-                    "cobertura": round(cobertura, 2),
-                    "semaforizacion": semaf_result["estado"],
-                    "color": semaf_result["color"]
+                    "numerador":        numerador,
+                    "denominador":      denominador,
+                    "cobertura":        round(cobertura, 2),
+                    "semaforizacion":   semaf_result["estado"],
+                    "color":            semaf_result["color"]
                 }
             else:
-                # Meses fuera del límite → todo en 0 con NA
+                etiqueta = "No contratado" if mes_num < mes_inicio else "NA"
                 mensual_data[mes_nombre] = {
                     "poblacion_objeto": 0,
-                    "numerador": 0,
-                    "denominador": 0,
-                    "cobertura": 0.0,
-                    "semaforizacion": "NA",
-                    "color": "#808080"  # Gris
+                    "numerador":        0,
+                    "denominador":      0,
+                    "cobertura":        0.0,
+                    "semaforizacion":   etiqueta,
+                    "color":            "#808080"
                 }
-        
+
         return mensual_data

@@ -98,6 +98,7 @@ class HeaderMapper:
         'departamento': ['DPTO', 'dpto', 'departamento', 'depto'],
         'municipio': ['MUNICIPIO', 'municipio', 'mpio'],
         'nombre_ips': ['NOMBRE _ IPS', 'NOMBRE_IPS', 'nombre ips', 'ips', 'institucion'],
+        'regimen': ['REGIMEN', 'regimen', 'régimen'],
         'proyeccion_tiempo': ['Proyeccion de Tiempo de NT', 'proyeccion', 'tiempo de nt'],
         'consultas_procedimientos': ['CONSULTAS / PROCEDIMIENTOS', 'consultas/procedimientos', 'consultas'],
         'servicios_habilitados': ['S_HABILITADOS', 's_habilitados', 'servicios habilitados', 'tipo de interven'],
@@ -107,7 +108,10 @@ class HeaderMapper:
         'periodo': ['PERIODO', 'periodo', 'período'],
         'frecuencia_uso': ['FRECUENCIA  DE USO_IPS', 'FRECUENCIA DE USO_IPS', 'frecuencia de uso'],
         'frecuencia_ajustada': ['FRECUENCIA AJUSTADA', 'frecuencia ajustada'],
-        'meta': ['%META', '%meta', 'meta']
+        'meta': ['%META', '%meta', 'meta'],
+        'atenciones_realizar_anual': ['ATENCIONES A REALIZAR ANUAL', 'atenciones a realizar anual', 'atenciones a realizar'],
+        'intervenciones_realizadas': ['INTERVENCIONES REALIZADAS HISTORICO', 'intervenciones realizadas', 'intervenciones_realizadas'],
+        
     }
     
     @classmethod
@@ -168,7 +172,7 @@ class DataFormatter:
             df['codigo_departamento'] = df['codigo_departamento'].apply(lambda x: cls.format_codigo(x, 2))
         if 'codigo_municipio' in df.columns:
             df['codigo_municipio'] = df['codigo_municipio'].apply(lambda x: cls.format_codigo(x, 3))
-        for col in ['frecuencia_indicada', 'frecuencia_uso', 'frecuencia_ajustada', 'meta']:
+        for col in ['frecuencia_indicada', 'frecuencia_uso', 'frecuencia_ajustada', 'meta', 'atenciones_realizar_anual', 'intervenciones_realizadas']:
             if col in df.columns:
                 df[col] = df[col].apply(lambda x: cls.to_numeric(x, 1))
         print(f"   🔧 Normalizando campos de texto...")
@@ -291,7 +295,7 @@ class SheetExtractor:
         """Extrae campos generales de fila 3."""
         row_idx = self.HEADER_ROW_GENERAL - 1
         headers = df.iloc[row_idx].tolist()
-        fields = ['departamento', 'municipio', 'nombre_ips', 'proyeccion_tiempo']
+        fields = ['departamento', 'municipio', 'nombre_ips', 'regimen', 'proyeccion_tiempo']
         columns = HeaderMapper.find_all_columns(headers, fields)
         value_row_idx = row_idx + 1
         
@@ -299,7 +303,9 @@ class SheetExtractor:
             'codigo_departamento': self._get_value(df, value_row_idx, columns.get('departamento')),
             'codigo_municipio': self._get_value(df, value_row_idx, columns.get('municipio')),
             'nombre_ips': self._get_value(df, value_row_idx, columns.get('nombre_ips')),
-            'proyeccion_tiempo': self._get_value(df, value_row_idx, columns.get('proyeccion_tiempo'))
+            'regimen': self._get_value(df, value_row_idx, columns.get('regimen')),
+            'proyeccion_tiempo': self._get_value(df, value_row_idx, columns.get('proyeccion_tiempo')),
+            
         }
     
     def _extract_data_rows(self, df: pd.DataFrame, general: Dict) -> List[Dict]:
@@ -307,7 +313,7 @@ class SheetExtractor:
         row_idx = self.HEADER_ROW_DATA - 1
         headers = df.iloc[row_idx].tolist()
         fields = ['consultas_procedimientos', 'servicios_habilitados', 'frecuencia_edad', 'cups',
-                  'frecuencia_indicada', 'periodo', 'frecuencia_uso', 'frecuencia_ajustada', 'meta']
+                  'frecuencia_indicada', 'periodo', 'frecuencia_uso', 'frecuencia_ajustada', 'meta', 'atenciones_realizar_anual', 'intervenciones_realizadas']
         columns = HeaderMapper.find_all_columns(headers, fields)
         
         data_rows = []
@@ -322,7 +328,9 @@ class SheetExtractor:
                 'periodo': self._get_value(df, row_idx, columns.get('periodo')),
                 'frecuencia_uso': self._get_numeric(df, row_idx, columns.get('frecuencia_uso')),
                 'frecuencia_ajustada': self._get_numeric(df, row_idx, columns.get('frecuencia_ajustada')),
-                'meta': self._get_numeric(df, row_idx, columns.get('meta'))
+                'meta': self._get_numeric(df, row_idx, columns.get('meta')),
+                'atenciones_realizar_anual': self._get_numeric(df, row_idx, columns.get('atenciones_realizar_anual')),
+                'intervenciones_realizadas': self._get_numeric(df, row_idx, columns.get('intervenciones_realizadas'))
             }
             if pd.notna(row['consultas_procedimientos']) or pd.notna(row['cups']):
                 data_rows.append(row)
@@ -350,9 +358,9 @@ class ExcelProcessor:
     """Orquesta el procesamiento de múltiples archivos."""
     
     COLUMN_ORDER = ['nombre_archivo', 'codigo_departamento', 'departamento', 'codigo_municipio',
-                    'municipio', 'nombre_ips', 'proyeccion_tiempo', 'consultas_procedimientos',
+                    'municipio', 'nombre_ips','regimen', 'proyeccion_tiempo', 'consultas_procedimientos',
                     'servicios_habilitados', 'frecuencia_edad', 'cups', 'frecuencia_indicada',
-                    'periodo', 'frecuencia_uso', 'frecuencia_ajustada', 'meta']
+                    'periodo', 'frecuencia_uso', 'frecuencia_ajustada', 'meta', 'atenciones_realizar_anual', 'intervenciones_realizadas']
     
     def __init__(self, folder_path: str, departamentos_file: Optional[str] = None):
         self.folder_path = folder_path

@@ -208,6 +208,11 @@
       "incluye_anios": [12, 13, 14, 15]
     },
     {
+      "label": "18 a 23 Años",
+      "tipo": "compuesto",
+      "incluye_anios": [18, 19, 20, 21, 22, 23]
+    },
+    {
       "label": "18 a 28 Años",
       "tipo": "compuesto",
       "incluye_anios": [18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28]

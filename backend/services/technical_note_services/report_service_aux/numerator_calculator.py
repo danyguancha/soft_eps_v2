@@ -49,10 +49,7 @@ def _normalize_age_key(edad: str) -> str:
 
 
 def _find_birth_range_key(edad_aplicable: str) -> Optional[str]:
-    """
-    Busca la clave exacta en BIRTH_DATE_RANGES_BY_AGE
-    comparando el texto normalizado.
-    """
+    """Busca la clave exacta en BIRTH_DATE_RANGES_BY_AGE comparando texto normalizado"""
     edad_norm = _normalize_age_key(edad_aplicable)
     for key in BIRTH_DATE_RANGES_BY_AGE:
         if _normalize_age_key(key) == edad_norm:
@@ -79,6 +76,17 @@ def _parse_dd_mm_yyyy(fecha_str: str) -> Optional[date]:
         return None
 
 
+def _calcular_mes_inicio(proyeccion_tiempo: int) -> int:
+    """
+    Calcula el mes de inicio según proyeccion_tiempo.
+    proyeccion_tiempo=12 → mes_inicio=1  (enero a diciembre)
+    proyeccion_tiempo=8  → mes_inicio=5  (mayo a diciembre)
+    proyeccion_tiempo=6  → mes_inicio=7  (julio a diciembre)
+    """
+    mes_inicio = 13 - int(proyeccion_tiempo)
+    return max(1, min(12, mes_inicio))
+
+
 class NumeratorCalculator:
     """Responsable de calcular numeradores mensuales con soporte para filtros especiales"""
 
@@ -95,15 +103,20 @@ class NumeratorCalculator:
         mes_limite: int,
         keyword: str = None,
         corte_fecha: str = None,
-        edad_aplicable: str = None
+        edad_aplicable: str = None,
+        proyeccion_tiempo: int = 12          # 🔥 NUEVO PARÁMETRO
     ) -> Dict[int, int]:
         """
-        Calcula numerador MES A MES del AÑO de corte específico.
-        Para edades en meses: usa rangos de fechas de nacimiento por mes.
-        Para edades en años:  filtra por columna Edad directamente.
+        Calcula numerador MES A MES del AÑO de corte.
+        Solo calcula los meses contratados según proyeccion_tiempo.
+        proyeccion_tiempo=8 → calcula desde mayo (mes 5) hasta diciembre.
         """
+        # 🔥 Calcular mes de inicio según proyeccion_tiempo
+        mes_inicio = _calcular_mes_inicio(proyeccion_tiempo)
+
         print(f"      📊 Calculando numerador del AÑO {anio_corte} hasta {corte_fecha}")
         print(f"      📅 Columna de fechas: '{column_name}'")
+        print(f"      📆 Meses contratados: {proyeccion_tiempo} → Mes {mes_inicio} al {mes_limite}")
         if edad_aplicable:
             print(f"      🎯 Edad aplicable: '{edad_aplicable}'")
 
@@ -148,7 +161,8 @@ class NumeratorCalculator:
             print(f"      🍼 Edad en MESES → usando rangos de fechas de nacimiento")
             numeradores = self._calculate_monthly_counts_by_birth_range(
                 data_source, col_escaped, where_clause,
-                formato_detectado, anio_corte, corte_fecha, mes_limite,
+                formato_detectado, anio_corte, corte_fecha,
+                mes_inicio, mes_limite,                      # 🔥 mes_inicio y mes_limite
                 keyword, metodo_col, tamizaje_col, filter_type,
                 edad_aplicable
             )
@@ -156,13 +170,15 @@ class NumeratorCalculator:
             print(f"      📆 Edad en AÑOS (o sin edad) → usando filtro por columna Edad")
             numeradores = self._calculate_monthly_counts(
                 data_source, col_escaped, where_clause,
-                formato_detectado, anio_corte, corte_fecha, mes_limite,
+                formato_detectado, anio_corte, corte_fecha,
+                mes_inicio, mes_limite,                      # 🔥 mes_inicio y mes_limite
                 keyword, metodo_col, tamizaje_col, filter_type,
                 edad_aplicable
             )
 
         total = sum(numeradores.values())
-        print(f"         📊 TOTAL NUMERADOR ({anio_corte}): {total}")
+        meses_con_datos = sum(1 for v in numeradores.values() if v > 0)
+        print(f"         📊 TOTAL NUMERADOR ({anio_corte}): {total} ({meses_con_datos} meses con datos)")
 
         return numeradores
 
@@ -178,7 +194,8 @@ class NumeratorCalculator:
         formato: str,
         anio_corte: int,
         corte_fecha: str,
-        mes_limite: int,
+        mes_inicio: int,      # 🔥 Primer mes a calcular
+        mes_limite: int,      # 🔥 Último mes a calcular
         keyword: Optional[str],
         metodo_col: Optional[str],
         tamizaje_col: Optional[str],
@@ -191,7 +208,8 @@ class NumeratorCalculator:
             print(f"      ⚠️ No se encontró rango de nacimiento para '{edad_aplicable}', fallback sin filtro de edad")
             return self._calculate_monthly_counts(
                 data_source, col_escaped, where_clause,
-                formato, anio_corte, corte_fecha, mes_limite,
+                formato, anio_corte, corte_fecha,
+                mes_inicio, mes_limite,
                 keyword, metodo_col, tamizaje_col, filter_type, None
             )
 
@@ -203,11 +221,13 @@ class NumeratorCalculator:
             print(f"      ⚠️ No se encontró columna de fecha de nacimiento, fallback sin filtro de edad")
             return self._calculate_monthly_counts(
                 data_source, col_escaped, where_clause,
-                formato, anio_corte, corte_fecha, mes_limite,
+                formato, anio_corte, corte_fecha,
+                mes_inicio, mes_limite,
                 keyword, metodo_col, tamizaje_col, filter_type, None
             )
 
         print(f"      🗓️ Columna fecha nacimiento: '{birth_col}'")
+        print(f"      📆 Calculando meses {mes_inicio} al {mes_limite}")
 
         special_filter = ""
         sex_filter = ""
@@ -227,9 +247,11 @@ class NumeratorCalculator:
 
         birth_formato = self._detect_date_format(data_source, f'"{birth_col}"', where_clause)
 
+        # Inicializar todos los meses en 0
         numeradores = {m: 0 for m in range(1, 13)}
 
-        for mes in range(1, mes_limite + 1):
+        # 🔥 Iterar SOLO los meses contratados (mes_inicio a mes_limite)
+        for mes in range(mes_inicio, mes_limite + 1):
             mes_str = str(mes)
             if mes_str not in birth_ranges:
                 print(f"         ⚠️ Mes {mes} no encontrado en rangos de '{range_key}'")
@@ -246,7 +268,7 @@ class NumeratorCalculator:
             fecha_inicio_sql = fecha_inicio.strftime("%Y-%m-%d")
             fecha_fin_sql    = fecha_fin.strftime("%Y-%m-%d")
 
-            # 🔥 Filtro nacimiento robusto: excluye NULL real, string "NULL" y vacíos
+            # Filtro nacimiento robusto: excluye NULL real, string "NULL" y vacíos
             if birth_formato == 'yyyy-mm-dd':
                 birth_filter = f"""
                 AND "{birth_col}" IS NOT NULL
@@ -264,43 +286,36 @@ class NumeratorCalculator:
                 AND strptime(CAST("{birth_col}" AS VARCHAR), '%d/%m/%Y') <= DATE '{fecha_fin_sql}'
                 """
 
-            # 🔥 Filtro columna de atención robusto: excluye string "NULL"
             if formato == 'yyyy-mm-dd':
-                atencion_null_guard = f"""
-                AND UPPER(CAST({col_escaped} AS VARCHAR)) != 'NULL'
-                AND CAST({col_escaped} AS VARCHAR) LIKE '____-__-__'
-                """
                 query = f"""
                 SELECT COUNT(DISTINCT "Nro Identificación") as total
                 FROM {data_source}
                 WHERE {where_clause}
-                {sex_filter}
-                {special_filter}
-                {birth_filter}
-                AND {col_escaped} IS NOT NULL
-                AND CAST({col_escaped} AS VARCHAR) != ''
-                {atencion_null_guard}
-                AND EXTRACT(YEAR  FROM CAST(CAST({col_escaped} AS VARCHAR) AS DATE)) = {anio_corte}
-                AND EXTRACT(MONTH FROM CAST(CAST({col_escaped} AS VARCHAR) AS DATE)) = {mes}
-                AND CAST(CAST({col_escaped} AS VARCHAR) AS DATE) <= DATE '{corte_fecha}'
+                  {sex_filter}
+                  {special_filter}
+                  {birth_filter}
+                  AND {col_escaped} IS NOT NULL
+                  AND CAST({col_escaped} AS VARCHAR) != ''
+                  AND UPPER(CAST({col_escaped} AS VARCHAR)) != 'NULL'
+                  AND CAST({col_escaped} AS VARCHAR) LIKE '____-__-__'
+                  AND EXTRACT(YEAR  FROM CAST(CAST({col_escaped} AS VARCHAR) AS DATE)) = {anio_corte}
+                  AND EXTRACT(MONTH FROM CAST(CAST({col_escaped} AS VARCHAR) AS DATE)) = {mes}
+                  AND CAST(CAST({col_escaped} AS VARCHAR) AS DATE) <= DATE '{corte_fecha}'
                 """
             else:
-                atencion_null_guard = f"""
-                AND UPPER(CAST({col_escaped} AS VARCHAR)) != 'NULL'
-                """
                 query = f"""
                 SELECT COUNT(DISTINCT "Nro Identificación") as total
                 FROM {data_source}
                 WHERE {where_clause}
-                {sex_filter}
-                {special_filter}
-                {birth_filter}
-                AND {col_escaped} IS NOT NULL
-                AND CAST({col_escaped} AS VARCHAR) != ''
-                {atencion_null_guard}
-                AND EXTRACT(YEAR  FROM strptime(CAST({col_escaped} AS VARCHAR), '%d/%m/%Y')) = {anio_corte}
-                AND EXTRACT(MONTH FROM strptime(CAST({col_escaped} AS VARCHAR), '%d/%m/%Y')) = {mes}
-                AND strptime(CAST({col_escaped} AS VARCHAR), '%d/%m/%Y') <= DATE '{corte_fecha}'
+                  {sex_filter}
+                  {special_filter}
+                  {birth_filter}
+                  AND {col_escaped} IS NOT NULL
+                  AND CAST({col_escaped} AS VARCHAR) != ''
+                  AND UPPER(CAST({col_escaped} AS VARCHAR)) != 'NULL'
+                  AND EXTRACT(YEAR  FROM strptime(CAST({col_escaped} AS VARCHAR), '%d/%m/%Y')) = {anio_corte}
+                  AND EXTRACT(MONTH FROM strptime(CAST({col_escaped} AS VARCHAR), '%d/%m/%Y')) = {mes}
+                  AND strptime(CAST({col_escaped} AS VARCHAR), '%d/%m/%Y') <= DATE '{corte_fecha}'
                 """
 
             try:
@@ -319,6 +334,9 @@ class NumeratorCalculator:
 
         return numeradores
 
+    # ============================================================
+    # CÁLCULO MENSUAL ESTÁNDAR (AÑOS)
+    # ============================================================
 
     def _calculate_monthly_counts(
         self,
@@ -328,7 +346,8 @@ class NumeratorCalculator:
         formato: str,
         anio_corte: int,
         corte_fecha: str,
-        mes_limite: int,
+        mes_inicio: int,      # 🔥 Primer mes a calcular
+        mes_limite: int,      # 🔥 Último mes a calcular
         keyword: Optional[str],
         metodo_col: Optional[str],
         tamizaje_col: Optional[str],
@@ -338,6 +357,8 @@ class NumeratorCalculator:
         special_filter = ""
         age_filter     = ""
         sex_filter     = ""
+
+        print(f"      📆 Calculando meses {mes_inicio} al {mes_limite}")
 
         if edad_aplicable and _is_age_in_years(edad_aplicable):
             age_filter = self._build_age_filter_years(edad_aplicable, data_source)
@@ -357,7 +378,7 @@ class NumeratorCalculator:
         elif filter_type == 'metodo' and keyword and metodo_col:
             special_filter = self._build_metodo_filter(keyword, metodo_col)
 
-        # 🔥 Guard contra string "NULL" en la columna de atención
+        # 🔥 Filtro de mes en la query SQL (mes_inicio a mes_limite)
         if formato == 'yyyy-mm-dd':
             query = f"""
             SELECT
@@ -365,15 +386,16 @@ class NumeratorCalculator:
                 COUNT(DISTINCT "Nro Identificación") as total
             FROM {data_source}
             WHERE {where_clause}
-            {age_filter}
-            {sex_filter}
-            {special_filter}
-            AND {col_escaped} IS NOT NULL
-            AND CAST({col_escaped} AS VARCHAR) != ''
-            AND UPPER(CAST({col_escaped} AS VARCHAR)) != 'NULL'
-            AND CAST({col_escaped} AS VARCHAR) LIKE '____-__-__'
-            AND EXTRACT(YEAR FROM CAST(CAST({col_escaped} AS VARCHAR) AS DATE)) = {anio_corte}
-            AND CAST(CAST({col_escaped} AS VARCHAR) AS DATE) <= DATE '{corte_fecha}'
+              {age_filter}
+              {sex_filter}
+              {special_filter}
+              AND {col_escaped} IS NOT NULL
+              AND CAST({col_escaped} AS VARCHAR) != ''
+              AND UPPER(CAST({col_escaped} AS VARCHAR)) != 'NULL'
+              AND CAST({col_escaped} AS VARCHAR) LIKE '____-__-__'
+              AND EXTRACT(YEAR  FROM CAST(CAST({col_escaped} AS VARCHAR) AS DATE)) = {anio_corte}
+              AND EXTRACT(MONTH FROM CAST(CAST({col_escaped} AS VARCHAR) AS DATE)) >= {mes_inicio}
+              AND CAST(CAST({col_escaped} AS VARCHAR) AS DATE) <= DATE '{corte_fecha}'
             GROUP BY EXTRACT(MONTH FROM CAST(CAST({col_escaped} AS VARCHAR) AS DATE))
             ORDER BY mes
             """
@@ -384,14 +406,15 @@ class NumeratorCalculator:
                 COUNT(DISTINCT "Nro Identificación") as total
             FROM {data_source}
             WHERE {where_clause}
-            {age_filter}
-            {sex_filter}
-            {special_filter}
-            AND {col_escaped} IS NOT NULL
-            AND CAST({col_escaped} AS VARCHAR) != ''
-            AND UPPER(CAST({col_escaped} AS VARCHAR)) != 'NULL'
-            AND EXTRACT(YEAR FROM strptime(CAST({col_escaped} AS VARCHAR), '%d/%m/%Y')) = {anio_corte}
-            AND strptime(CAST({col_escaped} AS VARCHAR), '%d/%m/%Y') <= DATE '{corte_fecha}'
+              {age_filter}
+              {sex_filter}
+              {special_filter}
+              AND {col_escaped} IS NOT NULL
+              AND CAST({col_escaped} AS VARCHAR) != ''
+              AND UPPER(CAST({col_escaped} AS VARCHAR)) != 'NULL'
+              AND EXTRACT(YEAR  FROM strptime(CAST({col_escaped} AS VARCHAR), '%d/%m/%Y')) = {anio_corte}
+              AND EXTRACT(MONTH FROM strptime(CAST({col_escaped} AS VARCHAR), '%d/%m/%Y')) >= {mes_inicio}
+              AND strptime(CAST({col_escaped} AS VARCHAR), '%d/%m/%Y') <= DATE '{corte_fecha}'
             GROUP BY EXTRACT(MONTH FROM strptime(CAST({col_escaped} AS VARCHAR), '%d/%m/%Y'))
             ORDER BY mes
             """
@@ -400,7 +423,8 @@ class NumeratorCalculator:
             result = self.conn.execute(query).fetchall()
             numeradores = {m: 0 for m in range(1, 13)}
             for mes_num, total in result:
-                if mes_num and 1 <= mes_num <= mes_limite:
+                # 🔥 Solo guardar si está en el rango contratado
+                if mes_num and mes_inicio <= int(mes_num) <= mes_limite:
                     numeradores[int(mes_num)] = int(total)
                     print(f"         ✓ Mes {int(mes_num):2d} ({anio_corte}): {int(total)} atenciones")
             return numeradores
@@ -409,7 +433,6 @@ class NumeratorCalculator:
             import traceback
             traceback.print_exc()
             return {m: 0 for m in range(1, 13)}
-
 
     # ============================================================
     # DETECCIÓN DE COLUMNA DE FECHA DE NACIMIENTO
@@ -421,30 +444,21 @@ class NumeratorCalculator:
             describe_query = f"DESCRIBE SELECT * FROM {data_source}"
             cols = [r[0] for r in self.conn.execute(describe_query).fetchall()]
 
-            # Candidatos exactos
             exact_candidates = [
-                "Fecha de Nacimiento",
-                "Fecha Nacimiento",
-                "FechaNacimiento",
-                "fecha_nacimiento",
-                "Fecha_Nacimiento",
-                "FECHA_NACIMIENTO",
-                "FEC_NAC",
-                "Fec Nac",
-                "F. Nacimiento"
+                "Fecha de Nacimiento", "Fecha Nacimiento", "FechaNacimiento",
+                "fecha_nacimiento", "Fecha_Nacimiento", "FECHA_NACIMIENTO",
+                "FEC_NAC", "Fec Nac", "F. Nacimiento"
             ]
             for candidate in exact_candidates:
                 if candidate in cols:
                     return candidate
 
-            # Búsqueda normalizada
             cols_norm = {normalize_text(c): c for c in cols}
             norm_candidates = ["fecha nacimiento", "nacimiento", "fec nac", "fnacimiento"]
             for cand in norm_candidates:
                 if cand in cols_norm:
                     return cols_norm[cand]
 
-            # Búsqueda parcial
             for col in cols:
                 col_norm = normalize_text(col)
                 if "nacimiento" in col_norm or "fec_nac" in col_norm:

@@ -2,7 +2,7 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios';
 
 const api = axios.create({
-  baseURL:'http://192.168.0.100:8012/api/v1',
+  baseURL:'http://172.17.17.156:8011/api/v1',
   timeout: 300000,
   headers: {
     'Content-Type': 'application/json',
