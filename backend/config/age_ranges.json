@@ -153,8 +153,7 @@
     {
       "label": "0 a 5 Años",
       "tipo": "compuesto",
-      "incluye_meses": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
-      "incluye_anios": [1, 2, 3, 4, 5]
+      "incluye_anios": [0, 1, 2, 3, 4, 5]
     },
     {
       "label": "6 Meses a 5 Años",
@@ -306,6 +305,12 @@
       "label": "2 a 5 Años",
       "tipo": "compuesto",
       "incluye_anios": [2, 3, 4, 5]
+    },
+    {
+      "label": "0 a 5 Años",
+      "tipo": "compuesto",
+      "incluye_meses": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      "incluye_anios": [1, 2, 3, 4, 5]
     },
     {
       "label": "1 a 5 Años",
