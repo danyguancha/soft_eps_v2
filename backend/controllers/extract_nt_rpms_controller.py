@@ -5,6 +5,7 @@ import re
 from typing import List, Dict, Optional
 from difflib import SequenceMatcher
 from functools import lru_cache
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # ========== CACHÉ GLOBAL PARA DATOS GEOGRÁFICOS ==========
 _GEOGRAPHIC_CACHE = {}
@@ -280,8 +281,8 @@ class SheetExtractor:
         if not sheet_name:
             raise ValueError(f"No se encontró hoja válida en {self.file_path}")
         
-        df_raw = pd.read_excel(self.file_path, sheet_name=sheet_name, header=None, 
-                               engine='openpyxl', dtype=str)
+        # OPTIMIZACIÓN: reutilizar el mismo ExcelFile para evitar re-lecturas del archivo
+        df_raw = excel_file.parse(sheet_name=sheet_name, header=None, dtype=str)
         
         general_data = self._extract_general_fields(df_raw)
         data_rows = self._extract_data_rows(df_raw, general_data)
@@ -362,12 +363,34 @@ class ExcelProcessor:
                     'servicios_habilitados', 'frecuencia_edad', 'cups', 'frecuencia_indicada',
                     'periodo', 'frecuencia_uso', 'frecuencia_ajustada', 'meta', 'atenciones_realizar_anual', 'intervenciones_realizadas']
     
-    def __init__(self, folder_path: str, departamentos_file: Optional[str] = None):
+    def __init__(self, folder_path: str, departamentos_file: Optional[str] = None, max_workers: Optional[int] = None):
         self.folder_path = folder_path
         self.results, self.errors = [], []
         self.enricher = None
+        # Número de hilos para procesar archivos en paralelo
+        cpu_count = os.cpu_count() or 2
+        # OPTIMIZACIÓN: aumentar el paralelismo de forma controlada
+        default_workers = min(max(4, cpu_count - 1), 8)
+        self.max_workers = max_workers or default_workers
         if departamentos_file and os.path.exists(departamentos_file):
             self.enricher = GeographicEnricher(departamentos_file)
+    
+    def _process_single_file(self, filename: str) -> Optional[pd.DataFrame]:
+        """
+        Procesa un solo archivo Excel y devuelve un DataFrame.
+        Se diseña para ser usado en hilos (ThreadPoolExecutor) para paralelizar la carga.
+        """
+        file_path = os.path.join(self.folder_path, filename)
+        try:
+            df = SheetExtractor(file_path).extract()
+            df.insert(0, 'nombre_archivo', filename)
+            print(f"✓ {filename} - OK ({len(df)} registros)")
+            return df
+        except Exception as e:
+            # Registrar el error de forma segura
+            self.errors.append((filename, str(e)))
+            print(f"✗ {filename} - Error: {str(e)}")
+            return None
     
     def process_folder(self) -> pd.DataFrame:
         """Procesa todos los archivos Excel de la carpeta."""
@@ -380,16 +403,19 @@ class ExcelProcessor:
         if not excel_files:
             raise ValueError(f"No hay archivos Excel en: {self.folder_path}")
         
-        for filename in sorted(excel_files):
-            file_path = os.path.join(self.folder_path, filename)
-            try:
-                df = SheetExtractor(file_path).extract()
-                df.insert(0, 'nombre_archivo', filename)
-                self.results.append(df)
-                print(f"✓ {filename} - OK ({len(df)} registros)")
-            except Exception as e:
-                self.errors.append((filename, str(e)))
-                print(f"✗ {filename} - Error: {str(e)}")
+        # Procesar en paralelo para reducir el tiempo total de espera
+        print(f"🔄 Procesando {len(excel_files)} archivos en paralelo "
+              f"con hasta {self.max_workers} hilos...")
+        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+            futures = {
+                executor.submit(self._process_single_file, filename): filename
+                for filename in sorted(excel_files)
+            }
+            for future in as_completed(futures):
+                df = future.result()
+                if df is not None:
+                    # Agregar resultados exitosos
+                    self.results.append(df)
         
         if not self.results:
             raise ValueError("No se procesó ningún archivo correctamente")

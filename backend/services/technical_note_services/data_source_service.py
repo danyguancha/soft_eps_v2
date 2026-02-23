@@ -18,26 +18,20 @@ class DataSourceService:
         """
         try:
             print(f"🔍 Verificando fuente de datos para: {filename}")
-            
-            # Usar método existente: ensure_parquet_exists_or_regenerate
-            if self.query_pagination.ensure_parquet_exists_or_regenerate(
-                file_key, duckdb_service.loaded_tables
-            ):
-                table_info = duckdb_service.loaded_tables[file_key]
-                parquet_path = table_info.get('parquet_path')
-                print(f"Usando Parquet existente: {parquet_path}")
-                return f"read_parquet('{parquet_path}')"
-            
-            # Usar método existente: _load_file_on_demand_with_regeneration
-            if self.query_pagination._load_file_on_demand_with_regeneration(
-                file_key, duckdb_service.loaded_tables
-            ):
-                table_info = duckdb_service.loaded_tables[file_key]
-                parquet_path = table_info.get('parquet_path')
-                print(f"Cargado bajo demanda: {parquet_path}")
-                return f"read_parquet('{parquet_path}')"
-            
-            # Convertir desde CSV como última opción
+
+            # IMPORTANTE:
+            # En lugar de reutilizar Parquet sólo por nombre/clave lógica,
+            # derivamos SIEMPRE la fuente del archivo físico actual.
+            #
+            # FileConversionController/CacheController ya usan un hash del contenido
+            # del archivo, así que:
+            #   - Si subes un archivo con el MISMO contenido, se reutiliza el Parquet (cache hit).
+            #   - Si subes un archivo con el MISMO nombre pero contenido DIFERENTE,
+            #     se genera un nuevo Parquet y metadata (cache miss).
+            #
+            # Esto garantiza que cambios reales en los datos (más/menos registros)
+            # se reflejen en el reporte, sin depender sólo del nombre.
+
             return self._convert_from_csv(filename, file_key)
             
         except Exception as e:

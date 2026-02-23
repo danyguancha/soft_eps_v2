@@ -15,6 +15,11 @@ class TimeoutException(Exception):
 class FileConversionController:
     """Controlador para conversión de archivos a Parquet"""
     
+    # Limita el número de conversiones pesadas que pueden ejecutarse en paralelo.
+    # Esto evita que múltiples usuarios disparen conversiones gigantes al mismo tiempo
+    # y saturen la CPU/memoria del servidor.
+    _conversion_semaphore = threading.Semaphore(2)
+
     def __init__(self, conn, parquet_dir: str, cache_controller):
         self.conn = conn
         self.parquet_dir = parquet_dir
@@ -131,7 +136,17 @@ class FileConversionController:
         result_container = {"result": None, "error": None, "completed": False}
         
         def convert_worker():
+            acquired = False
             try:
+                # Asegurar que solo un número limitado de conversiones se ejecuten en paralelo
+                acquired = FileConversionController._conversion_semaphore.acquire(timeout=timeout_minutes * 60)
+                if not acquired:
+                    result_container["error"] = (
+                        f"Timeout esperando turno de conversión (más de {timeout_minutes:.1f} minutos en cola)."
+                    )
+                    result_container["completed"] = True
+                    return
+
                 if ext.lower() == 'csv':
                     result_container["result"] = self._convert_csv_to_parquet_robust(file_path, parquet_path)
                 else:
@@ -140,6 +155,9 @@ class FileConversionController:
             except Exception as e:
                 result_container["error"] = str(e)
                 result_container["completed"] = True
+            finally:
+                if acquired:
+                    FileConversionController._conversion_semaphore.release()
         
         thread = threading.Thread(target=convert_worker, daemon=True)
         thread.start()

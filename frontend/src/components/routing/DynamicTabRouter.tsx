@@ -54,12 +54,14 @@ export const DynamicTabRouter: React.FC<Props> = ({
   const finalProcessedCrossData = processedCrossData ?? crossData.processedCrossData;
   const finalCrossDataTotal = crossDataTotal ?? crossData.crossDataTotal;
 
-  console.log('🔍 DynamicTabRouter - Cross data:', {
-    tabKey,
-    hasCrossResult: !!finalCrossResult,
-    processedDataLength: finalProcessedCrossData?.length,
-    total: finalCrossDataTotal
-  });
+  if (import.meta.env.DEV) {
+    console.log('🔍 DynamicTabRouter - Cross data:', {
+      tabKey,
+      hasCrossResult: !!finalCrossResult,
+      processedDataLength: finalProcessedCrossData?.length,
+      total: finalCrossDataTotal
+    });
+  }
 
   return (
     <TabRenderer
