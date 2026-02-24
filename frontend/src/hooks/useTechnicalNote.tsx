@@ -340,7 +340,6 @@ export const useTechnicalNote = () => {
       return report;
     } catch (error: any) {
       console.error('❌ Error loading keyword age report:', error);
-      setKeywordReport(null);
       throw error;
     } finally {
       setLoadingReport(false);
