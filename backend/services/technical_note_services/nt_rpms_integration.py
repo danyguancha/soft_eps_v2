@@ -525,8 +525,8 @@ class NTRPMSIntegration:
             denominador_mensual   = (poblacion_susceptible * frecuencia) / proyeccion if proyeccion > 0 else 0
 
             return {
-                'poblacion_susceptible': round(poblacion_susceptible, 2),
-                'valor_mensual':         round(denominador_mensual, 0),
+                'poblacion_susceptible': round(poblacion_susceptible, 1),
+                'valor_mensual':         round(denominador_mensual, 1),
                 'meta':                  meta,
                 'frecuencia_uso':        nt_data.get('frecuencia_uso', 0.0),
                 'proyeccion_tiempo':     proyeccion

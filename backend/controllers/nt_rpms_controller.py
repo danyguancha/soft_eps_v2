@@ -1,34 +1,36 @@
-"""Controlador para procesar archivos NT RPMS y convertirlos a Parquet"""
+"""Controlador para procesar archivos NT RPMS / NT RMPN y convertirlos a Parquet"""
 import os
 import time
 import duckdb
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from controllers.duckdb_controller.cache_controller import CacheController
 from controllers.duckdb_controller.file_conversion_controller import FileConversionController
-from controllers.extract_nt_rpms_controller import extract_nt_rpms_to_csv
+from controllers.extract_nt_rpms_controller import (
+    extract_nt_rpms_to_csv,
+    extract_nt_rmpn_to_csv,
+    NT_RPMS_CONFIG,
+    NT_RMPN_CONFIG,
+    SheetConfig
+)
 from controllers.technical_note_controller.upload_controller import network_path_controller
 
 
 class NTRPMSController:
-    """Controlador para procesamiento NT RPMS con conversión a Parquet"""
-    
+    """Controlador para procesamiento NT RPMS / NT RMPN con conversión a Parquet"""
+
     def __init__(self):
-        """Inicializa el controlador sin dependencias externas"""
         self.base_output_dir = "extract_info_nt"
         self.parquet_dir = "parquet_cache"
         self.metadata_dir = "metadata_cache"
         self.departamentos_file = "extract_info_nt/departamentos.xlsx"
-        
-        # Crear directorios
+
         for directory in [self.base_output_dir, self.parquet_dir, self.metadata_dir]:
             os.makedirs(directory, exist_ok=True)
-        
-        # Validar existencia del archivo de departamentos
+
         if not os.path.exists(self.departamentos_file):
             print(f"⚠️ ADVERTENCIA: No se encontró {self.departamentos_file}")
             print(f"  Los códigos geográficos no serán enriquecidos")
-        
-        # Crear instancias de controladores
+
         self.cache_controller = CacheController(
             parquet_dir=self.parquet_dir,
             metadata_dir=self.metadata_dir
@@ -39,27 +41,20 @@ class NTRPMSController:
             parquet_dir=self.parquet_dir,
             cache_controller=self.cache_controller
         )
-    
+
+    # ==================== RED ====================
     def process_network_path(self, network_path: str) -> Dict[str, Any]:
         """
-        Procesa carpeta NT RPMS desde ruta de red compartida
-        
-        Args:
-            network_path: Ruta UNC (\\ip\carpeta) o drive mapeado (Z:\carpeta)
-            
-        Returns:
-            Dict con resultado del procesamiento
+        Procesa carpeta NT RPMS + NT RMPN desde ruta de red compartida.
+        Genera dos archivos independientes (uno por hoja).
         """
         start_time = time.time()
-        
         try:
             print("\n" + "="*60)
-            print("PROCESAMIENTO NT RPMS - CARPETA COMPARTIDA EN RED")
+            print("PROCESAMIENTO NT RPMS + NT RMPN - CARPETA EN RED")
             print("="*60)
-            
-            # PASO 1: Validar acceso a la ruta de red
+
             validation_result = network_path_controller.validate_and_normalize(network_path)
-            
             if not validation_result.get("success"):
                 return {
                     "success": False,
@@ -67,14 +62,11 @@ class NTRPMSController:
                     "suggestion": validation_result.get("suggestion"),
                     "total_time": time.time() - start_time
                 }
-            
+
             normalized_path = validation_result["normalized_path"]
-            
-            # PASO 2: Procesar archivos desde la ruta normalizada
             print(f"[1/2] Procesando archivos desde: {normalized_path}")
-            result = self.process_nt_rpms_folder(normalized_path)
-            
-            # Agregar información de red al resultado
+            result = self.process_nt_folder(normalized_path)
+
             if result.get("success"):
                 result["network_info"] = {
                     "original_path": network_path,
@@ -83,18 +75,12 @@ class NTRPMSController:
                     "total_files_in_folder": validation_result.get("total_files"),
                     "excel_files_found": validation_result.get("excel_files")
                 }
-                
                 print(f"\n{'='*60}")
                 print(f"✓✓✓ PROCESAMIENTO DESDE RED COMPLETADO ✓✓✓")
-                print(f"{'='*60}")
-                print(f"Carpeta red: {network_path}")
-                print(f"Archivos procesados: {result['extraction_summary']['archivos_procesados']}")
-                print(f"Registros totales: {result['total_rows']:,}")
-                print(f"Tiempo total: {result['timing']['total_time']:.2f}s")
                 print(f"{'='*60}\n")
-            
+
             return result
-            
+
         except Exception as e:
             import traceback
             traceback.print_exc()
@@ -103,99 +89,67 @@ class NTRPMSController:
                 "error": f"Error procesando carpeta de red: {str(e)}",
                 "total_time": time.time() - start_time
             }
-    
-    def process_nt_rpms_folder(self, folder_path: str) -> Dict[str, Any]:
-        """Procesa carpeta de archivos NT RPMS y convierte a Parquet"""
+
+    # ==================== PROCESAMIENTO PRINCIPAL ====================
+    def process_nt_folder(
+        self,
+        folder_path: str,
+        rpms_config: SheetConfig = NT_RPMS_CONFIG,
+        rmpn_config: SheetConfig = NT_RMPN_CONFIG
+    ) -> Dict[str, Any]:
+        """
+        Procesa una carpeta generando DOS archivos independientes:
+        - NT_RPMS_consolidado.csv / .parquet
+        - NT_RMPN_consolidado.csv / .parquet
+
+        Args:
+            folder_path:  Carpeta con los archivos Excel fuente.
+            rpms_config:  SheetConfig para la hoja NT RPMS (filas configurables).
+            rmpn_config:  SheetConfig para la hoja NT RMPN (filas configurables).
+        """
         start_time = time.time()
-        
         try:
             if not os.path.isdir(folder_path):
-                return {
-                    "success": False,
-                    "error": f"La carpeta no existe: {folder_path}"
-                }
-            
-            # Generar nombres de archivo
+                return {"success": False, "error": f"La carpeta no existe: {folder_path}"}
+
             timestamp = int(time.time())
-            csv_filename = f"NT_RPMS_consolidado.csv"
-            csv_path = os.path.join(self.base_output_dir, csv_filename)
-            
+
             print("\n" + "="*60)
-            print("INICIANDO PROCESAMIENTO NT RPMS")
+            print("INICIANDO PROCESAMIENTO NT RPMS + NT RMPN")
             print("="*60)
             print(f"Carpeta origen: {folder_path}")
-            print(f"Archivo CSV: {csv_path}")
-            
-            # PASO 1: Extraer datos de Excel a CSV
-            print("\n[1/2] Extrayendo datos de archivos Excel...")
-            extraction_result = extract_nt_rpms_to_csv(
+
+            # ── NT RPMS ──────────────────────────────────────────────
+            rpms_result = self._process_single_sheet(
                 folder_path=folder_path,
-                output_csv_path=csv_path,
-                separator=';',
-                departamentos_file=self.departamentos_file
+                config=rpms_config,
+                csv_filename="NT_RPMS_consolidado.csv",
+                file_id=f"nt_rpms_{timestamp}",
+                start_time=start_time
             )
-            
-            if not extraction_result.get("success"):
-                return {
-                    "success": False,
-                    "error": "Error en extracción de datos",
-                    "details": extraction_result
-                }
-            
-            extraction_time = time.time() - start_time
-            print(f"\n✓ Extracción completada en {extraction_time:.2f}s")
-            
-            # PASO 2: Convertir CSV a Parquet
-            print("\n[2/2] Convirtiendo CSV a Parquet...")
-            conversion_start = time.time()
-            file_id = f"nt_rpms_{timestamp}"
-            
-            conversion_result = self.file_converter.convert_file_to_parquet(
-                file_path=csv_path,
-                file_id=file_id,
-                original_name=csv_filename,
-                ext='csv'
+
+            # ── NT RMPN ──────────────────────────────────────────────
+            rmpn_result = self._process_single_sheet(
+                folder_path=folder_path,
+                config=rmpn_config,
+                csv_filename="NT_RMPN_consolidado.csv",
+                file_id=f"nt_rmpn_{timestamp}",
+                start_time=start_time
             )
-            
-            if not conversion_result.get("success"):
-                return {
-                    "success": False,
-                    "error": "Error en conversión a Parquet",
-                    "extraction_success": True,
-                    "csv_path": csv_path,
-                    "conversion_details": conversion_result
-                }
-            
-            conversion_time = time.time() - conversion_start
+
             total_time = time.time() - start_time
-            
-            # Resultado final
+            overall_success = rpms_result.get("success") or rmpn_result.get("success")
+
             result = {
-                "success": True,
-                "csv_path": csv_path,
-                "parquet_path": conversion_result["parquet_path"],
-                "total_rows": conversion_result["total_rows"],
-                "total_columns": len(conversion_result.get("columns", [])),
-                "columns": conversion_result.get("columns", []),
-                "extraction_summary": extraction_result.get("summary", {}),
-                "timing": {
-                    "extraction_time": extraction_time,
-                    "conversion_time": conversion_time,
-                    "total_time": total_time
-                },
-                "compression_info": {
-                    "original_size_mb": conversion_result.get("original_size_mb", 0),
-                    "parquet_size_mb": conversion_result.get("parquet_size_mb", 0),
-                    "compression_ratio": conversion_result.get("compression_ratio", 0)
-                },
-                "from_cache": conversion_result.get("from_cache", False),
-                "file_hash": conversion_result.get("file_hash", ""),
-                "file_id": file_id
+                "success": overall_success,
+                "total_time": total_time,
+                "nt_rpms": rpms_result,
+                "nt_rmpn": rmpn_result
             }
-            
+
             self._print_final_summary(result)
             return result
-            
+
         except Exception as e:
             import traceback
             traceback.print_exc()
@@ -204,80 +158,173 @@ class NTRPMSController:
                 "error": f"Error inesperado: {str(e)}",
                 "total_time": time.time() - start_time
             }
-    
+
+    # ── Alias de compatibilidad hacia atrás ──────────────────────────
+    def process_nt_rpms_folder(self, folder_path: str) -> Dict[str, Any]:
+        """
+        Mantiene compatibilidad con código existente que llame a este método.
+        Internamente llama a process_nt_folder y devuelve solo el resultado NT RPMS.
+        """
+        full_result = self.process_nt_folder(folder_path)
+        rpms = full_result.get("nt_rpms", {})
+        rpms["total_time"] = full_result.get("total_time")
+        return rpms
+
+    # ==================== LÓGICA INTERNA ====================
+    def _process_single_sheet(
+        self,
+        folder_path: str,
+        config: SheetConfig,
+        csv_filename: str,
+        file_id: str,
+        start_time: float
+    ) -> Dict[str, Any]:
+        """
+        Extrae una hoja específica a CSV y la convierte a Parquet.
+        Retorna un dict con el resultado completo de esa hoja.
+        """
+        label = config.output_label
+        csv_path = os.path.join(self.base_output_dir, csv_filename)
+
+        print(f"\n{'─'*60}")
+        print(f"[{label}] Extrayendo datos...")
+        print(f"  CSV destino: {csv_path}")
+        print(f"  Patrón hoja: {config.sheet_pattern}")
+        print(f"  Filas config → general:{config.header_row_general} | "
+              f"encabezados:{config.header_row_data} | datos:{config.data_start_row}")
+
+        extract_fn = extract_nt_rpms_to_csv if label == "NT_RPMS" else extract_nt_rmpn_to_csv
+        extraction_time_start = time.time()
+
+        extraction_result = extract_fn(
+            folder_path=folder_path,
+            output_csv_path=csv_path,
+            separator=';',
+            departamentos_file=self.departamentos_file,
+            config=config
+        )
+
+        if not extraction_result.get("success"):
+            return {
+                "success": False,
+                "label": label,
+                "error": f"[{label}] Error en extracción de datos",
+                "details": extraction_result
+            }
+
+        extraction_time = time.time() - extraction_time_start
+        print(f"✓ [{label}] Extracción completada en {extraction_time:.2f}s")
+
+        # Convertir a Parquet
+        print(f"[{label}] Convirtiendo CSV a Parquet...")
+        conversion_start = time.time()
+
+        conversion_result = self.file_converter.convert_file_to_parquet(
+            file_path=csv_path,
+            file_id=file_id,
+            original_name=csv_filename,
+            ext='csv'
+        )
+
+        if not conversion_result.get("success"):
+            return {
+                "success": False,
+                "label": label,
+                "error": f"[{label}] Error en conversión a Parquet",
+                "extraction_success": True,
+                "csv_path": csv_path,
+                "conversion_details": conversion_result
+            }
+
+        conversion_time = time.time() - conversion_start
+
+        return {
+            "success": True,
+            "label": label,
+            "csv_path": csv_path,
+            "parquet_path": conversion_result["parquet_path"],
+            "total_rows": conversion_result["total_rows"],
+            "total_columns": len(conversion_result.get("columns", [])),
+            "columns": conversion_result.get("columns", []),
+            "extraction_summary": extraction_result.get("summary", {}),
+            "timing": {
+                "extraction_time": extraction_time,
+                "conversion_time": conversion_time,
+            },
+            "compression_info": {
+                "original_size_mb": conversion_result.get("original_size_mb", 0),
+                "parquet_size_mb": conversion_result.get("parquet_size_mb", 0),
+                "compression_ratio": conversion_result.get("compression_ratio", 0)
+            },
+            "from_cache": conversion_result.get("from_cache", False),
+            "file_hash": conversion_result.get("file_hash", ""),
+            "file_id": file_id
+        }
+
+    # ==================== SUMMARY ====================
     def _print_final_summary(self, result: Dict[str, Any]):
-        """Imprime resumen final del procesamiento"""
+        """Imprime resumen consolidado de ambas hojas."""
         print("\n" + "="*60)
-        print("✓✓✓ PROCESAMIENTO COMPLETADO EXITOSAMENTE ✓✓✓")
+        print("✓✓✓ PROCESAMIENTO COMPLETADO ✓✓✓")
         print("="*60)
-        print(f"\nArchivo CSV: {result['csv_path']}")
-        print(f"Archivo Parquet: {result['parquet_path']}")
-        print(f"\nRegistros totales: {result['total_rows']:,}")
-        print(f"Columnas: {result['total_columns']}")
-        print(f"\nTiempos:")
-        print(f"  - Extracción: {result['timing']['extraction_time']:.2f}s")
-        print(f"  - Conversión: {result['timing']['conversion_time']:.2f}s")
-        print(f"  - Total: {result['timing']['total_time']:.2f}s")
-        print(f"\nCompresión:")
-        print(f"  - Tamaño CSV: {result['compression_info']['original_size_mb']:.2f} MB")
-        print(f"  - Tamaño Parquet: {result['compression_info']['parquet_size_mb']:.2f} MB")
-        print(f"  - Ratio: {result['compression_info']['compression_ratio']:.1f}%")
-        if result.get('from_cache'):
-            print(f"\n📦 Resultado recuperado del cache")
+
+        for key in ["nt_rpms", "nt_rmpn"]:
+            r = result.get(key, {})
+            label = r.get("label", key.upper())
+            status = "✓ OK" if r.get("success") else "✗ ERROR"
+            print(f"\n  [{label}] {status}")
+            if r.get("success"):
+                print(f"    CSV:     {r.get('csv_path')}")
+                print(f"    Parquet: {r.get('parquet_path')}")
+                print(f"    Filas:   {r.get('total_rows', 0):,}")
+                t = r.get("timing", {})
+                print(f"    Tiempo:  extracción {t.get('extraction_time', 0):.2f}s | "
+                      f"conversión {t.get('conversion_time', 0):.2f}s")
+                c = r.get("compression_info", {})
+                print(f"    Tamaño:  CSV {c.get('original_size_mb', 0):.2f} MB → "
+                      f"Parquet {c.get('parquet_size_mb', 0):.2f} MB "
+                      f"({c.get('compression_ratio', 0):.1f}%)")
+            else:
+                print(f"    Error: {r.get('error', 'desconocido')}")
+
+        print(f"\n  Tiempo total: {result.get('total_time', 0):.2f}s")
         print("="*60 + "\n")
-    
+
+    # ==================== UTILIDADES ====================
     def get_processing_status(self, file_hash: str) -> Dict[str, Any]:
-        """Obtiene el estado de un procesamiento por su hash"""
         try:
             cached_parquet = self.cache_controller.get_cached_parquet_path(file_hash)
             if not os.path.exists(cached_parquet):
-                return {
-                    "success": False,
-                    "error": f"No se encontró procesamiento con hash: {file_hash}"
-                }
-            
+                return {"success": False, "error": f"No se encontró hash: {file_hash}"}
             metadata = self.cache_controller.file_cache.get(file_hash, {})
-            return {
-                "success": True,
-                "file_hash": file_hash,
-                "parquet_path": cached_parquet,
-                "metadata": metadata
-            }
+            return {"success": True, "file_hash": file_hash,
+                    "parquet_path": cached_parquet, "metadata": metadata}
         except Exception as e:
-            return {
-                "success": False,
-                "error": f"Error obteniendo estado: {str(e)}"
-            }
-    
+            return {"success": False, "error": f"Error obteniendo estado: {str(e)}"}
+
     def list_processed_files(self) -> Dict[str, Any]:
-        """Lista todos los archivos NT RPMS procesados"""
         try:
             if not os.path.exists(self.base_output_dir):
-                return {
-                    "success": True,
-                    "files": [],
-                    "count": 0,
-                    "message": "No se han procesado archivos NT RPMS"
-                }
-            
+                return {"success": True, "files": [], "count": 0,
+                        "message": "No se han procesado archivos NT"}
+
             processed_files = []
             csv_files = [f for f in os.listdir(self.base_output_dir) if f.endswith('.csv')]
             from datetime import datetime
-            
+
             for csv_file in csv_files:
                 csv_path = os.path.join(self.base_output_dir, csv_file)
                 file_stat = os.stat(csv_path)
-                
-                # Buscar parquet correspondiente
                 parquet_path = None
                 parquet_found = False
+
                 if os.path.exists(self.parquet_dir):
                     for pq_file in os.listdir(self.parquet_dir):
                         if pq_file.endswith('.parquet') and csv_file.replace('.csv', '') in pq_file:
                             parquet_path = os.path.join(self.parquet_dir, pq_file)
                             parquet_found = True
                             break
-                
+
                 processed_files.append({
                     "filename": csv_file,
                     "csv_path": csv_path,
@@ -287,17 +334,10 @@ class NTRPMSController:
                     "created": datetime.fromtimestamp(file_stat.st_ctime).isoformat(),
                     "modified": datetime.fromtimestamp(file_stat.st_mtime).isoformat()
                 })
-            
-            return {
-                "success": True,
-                "files": processed_files,
-                "count": len(processed_files)
-            }
+
+            return {"success": True, "files": processed_files, "count": len(processed_files)}
         except Exception as e:
-            return {
-                "success": False,
-                "error": f"Error listando archivos: {str(e)}"
-            }
+            return {"success": False, "error": f"Error listando archivos: {str(e)}"}
 
 
 # Instancia global del controlador

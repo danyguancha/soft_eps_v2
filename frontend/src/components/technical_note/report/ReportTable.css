@@ -1,5 +1,4 @@
-/* components/technical-note/report/ReportTable.css */
-
+/* ─── TABLA ULTRA-COMPACTA ─── */
 .ultra-compact-table .ant-table-tbody > tr > td {
   padding: 3px 4px !important;
   height: auto !important;
@@ -16,10 +15,61 @@
   background: #fafafa !important;
 }
 
-.ultra-compact-table .ant-table-tbody > tr:hover > td {
+/* Hover en celdas normales (no fijas) */
+.ultra-compact-table .ant-table-tbody > tr > td:not(.ant-table-cell-fix-left):not(.ant-table-cell-fix-right) {
+  background-color: transparent;
+}
+
+.ultra-compact-table .ant-table-tbody > tr > td.ant-table-cell-row-hover:not(.ant-table-cell-fix-left):not(.ant-table-cell-fix-right) {
   background-color: rgba(24, 144, 255, 0.05) !important;
 }
 
+/* ─────────────────────────────────────────────────────────────────────────
+   🔥 FIX COLUMNAS FIJAS — capas CSS como respaldo al override TSX.
+   El override por `components` es la solución principal; estas reglas
+   actúan como segunda línea de defensa para variaciones de versión de antd.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* Base: celdas fijas en tbody */
+.ultra-compact-table .ant-table-cell-fix-left,
+.ultra-compact-table .ant-table-cell-fix-right {
+  position: sticky !important;
+  z-index: 3 !important;
+  background-color: #ffffff !important;
+}
+
+/* Base: celdas fijas en thead — encima del tbody fijo */
+.ultra-compact-table .ant-table-thead .ant-table-cell-fix-left,
+.ultra-compact-table .ant-table-thead .ant-table-cell-fix-right {
+  position: sticky !important;
+  z-index: 5 !important;
+  background-color: #fafafa !important;
+}
+
+/* Hover aplicado por tr:hover (CSS puro) */
+.ultra-compact-table .ant-table-tbody > tr:hover > td.ant-table-cell-fix-left,
+.ultra-compact-table .ant-table-tbody > tr:hover > td.ant-table-cell-fix-right {
+  position: sticky !important;
+  z-index: 3 !important;
+  /* Fondo sólido opaco — NO rgba para evitar bleed-through */
+  background-color: #f0f7ff !important;
+}
+
+/* 🔑 CLAVE: Ant Design añade esta clase vía JS a TODAS las celdas de la fila en hover.
+   Sin este selector, la clase dinámica puede resetear el z-index de las celdas fijas. */
+.ultra-compact-table .ant-table-tbody > tr > td.ant-table-cell-fix-left.ant-table-cell-row-hover,
+.ultra-compact-table .ant-table-tbody > tr > td.ant-table-cell-fix-right.ant-table-cell-row-hover {
+  position: sticky !important;
+  z-index: 3 !important;
+  background-color: #f0f7ff !important;
+}
+
+/* Sombra decorativa en el borde de la última columna fija */
+.ultra-compact-table .ant-table-cell-fix-left-last::after {
+  box-shadow: inset -4px 0 6px -4px rgba(0, 0, 0, 0.12) !important;
+}
+
+/* ─── BOTONES Y TAGS ─── */
 .ultra-compact-table .ant-btn-sm {
   height: 20px !important;
   padding: 0 4px !important;
@@ -33,6 +83,7 @@
   line-height: 16px !important;
 }
 
+/* ─── EMPTY Y PAGINACIÓN ─── */
 .ultra-compact-table .ant-empty {
   margin: 8px 0 !important;
 }
@@ -54,17 +105,7 @@
   font-size: 11px !important;
 }
 
-.ultra-compact-table .ant-table-cell-fix-left,
-.ultra-compact-table .ant-table-cell-fix-right {
-  background: #fff !important;
-}
-
-.ultra-compact-table .ant-table-thead .ant-table-cell-fix-left,
-.ultra-compact-table .ant-table-thead .ant-table-cell-fix-right {
-  background: #fafafa !important;
-}
-
-/* Encabezados de grupo de mes */
+/* ─── ENCABEZADOS DE GRUPO ─── */
 .month-group-header {
   background: linear-gradient(135deg, #e6f7ff 0%, #bae7ff 100%) !important;
   border: 1px solid #91d5ff !important;
@@ -73,7 +114,6 @@
   padding: 6px 4px !important;
 }
 
-/* Encabezados de consolidados */
 .consolidado-trimestre-header {
   background: linear-gradient(135deg, #fff7e6 0%, #ffd591 100%) !important;
   border: 1px solid #ffa940 !important;
@@ -101,7 +141,7 @@
   color: #cf1322 !important;
 }
 
-/* Subencabezados de programado/ejecutado */
+/* ─── SUBENCABEZADOS ─── */
 .month-subheader-programado {
   background: #f0f5ff !important;
   border-right: 1px solid #d9d9d9 !important;
@@ -121,6 +161,25 @@
   padding: 4px 2px !important;
 }
 
+.month-subheader-numerador {
+  background: #f0f5ff !important;
+  border-right: 1px solid #d9d9d9 !important;
+  color: #1890ff !important;
+  font-weight: 600 !important;
+  text-align: center !important;
+  font-size: 9px !important;
+  padding: 4px 2px !important;
+}
+
+.month-subheader-denominador {
+  background: #f6ffed !important;
+  color: #52c41a !important;
+  font-weight: 600 !important;
+  text-align: center !important;
+  font-size: 9px !important;
+  padding: 4px 2px !important;
+}
+
 .consolidado-subheader {
   background: #fafafa !important;
   border-right: 1px solid #d9d9d9 !important;
@@ -130,7 +189,7 @@
   padding: 4px 2px !important;
 }
 
-/* Celdas de datos */
+/* ─── CELDAS DE DATOS ─── */
 .month-cell-programado {
   background: #fafafa !important;
   border-right: 1px solid #e8e8e8 !important;
@@ -148,6 +207,16 @@
   font-size: 9px !important;
 }
 
+.month-cell-numerador {
+  color: #1890ff !important;
+  font-weight: 500 !important;
+}
+
+.month-cell-denominador {
+  color: #52c41a !important;
+  font-weight: 500 !important;
+}
+
 .consolidado-cell {
   background: #f5f5f5 !important;
   font-weight: 600 !important;
@@ -155,6 +224,7 @@
   font-size: 9px !important;
 }
 
+/* ─── EXPORT CONTROLS ─── */
 .export-controls-wrapper {
   background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
   padding: 8px 10px;

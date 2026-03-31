@@ -237,10 +237,10 @@ class ReportBuilder:
             poblacion = poblaciones_mensuales[-1]
             print(f"      Población objeto (años - conteo único): {poblacion}")
         else:
-            poblacion = sum(
+            poblacion = round(sum(
                 poblaciones_mensuales.get(i, 0)
                 for i in range(1, mes_limite + 1)
-            )
+            ), 0)
             print(f"      Población objeto (meses - suma): {poblacion}")
         return poblacion
 
@@ -272,7 +272,7 @@ class ReportBuilder:
             frecuencia_uso_ips        = self._get_frecuencia_uso_ips(
                 frecuencia_indicada, periodo, proyeccion_tiempo
             )
-            frecuencia_ajustada_anual = frecuencia_uso_ips * meta
+            frecuencia_ajustada_anual = round(frecuencia_uso_ips * meta, 1)
 
             # 🔥 Bifurcación según tipo de atención
             es_planificacion = _is_planificacion_keyword(keyword)
@@ -280,23 +280,20 @@ class ReportBuilder:
             if es_planificacion:
                 # Para planificación: usar atenciones_realizar_anual directamente
                 atenciones_raw = rpms_data.get('atenciones_realizar_anual')
-                atenciones_realizar_anual = float(atenciones_raw) if atenciones_raw not in (None, '', 'NULL', 'null') else 0.0
+                atenciones_realizar_anual = round(float(atenciones_raw) if atenciones_raw not in (None, '', 'NULL', 'null') else 0.0, 0)
 
-                poblacion_susceptible_anual   = atenciones_realizar_anual
+                poblacion_susceptible_anual   = round(atenciones_realizar_anual, 0)
                 poblacion_susceptible_mensual = (
-                    atenciones_realizar_anual / proyeccion_tiempo
+                    round(atenciones_realizar_anual / proyeccion_tiempo, 0)
                     if proyeccion_tiempo > 0 else 0
                 )
-                print(f"      🔵 PLANIFICACIÓN FAMILIAR → pob_susceptible_anual = atenciones_realizar_anual")
-                print(f"         atenciones_realizar_anual: {atenciones_realizar_anual}")
-                print(f"         Pob susceptible mensual: {poblacion_susceptible_mensual:.2f}")
 
             else:
                 # Para las demás atenciones: fórmula estándar
-                poblacion_neta                = max(0, poblacion_obj_anual - historico)
-                poblacion_susceptible_anual   = poblacion_neta * frecuencia_ajustada_anual
+                poblacion_neta                = max(0, poblacion_obj_anual)
+                poblacion_susceptible_anual   = round(poblacion_neta * frecuencia_ajustada_anual, 0)
                 poblacion_susceptible_mensual = (
-                    poblacion_susceptible_anual / proyeccion_tiempo
+                    round(poblacion_susceptible_anual / proyeccion_tiempo, 0)
                     if proyeccion_tiempo > 0 else 0
                 )
                 print(f"      🟢 ATENCIÓN NORMAL → pob_susceptible_anual = (pob_objeto - histórico) * freq_ajustada")
@@ -387,7 +384,7 @@ class ReportBuilder:
                     "poblacion_objeto": poblacion_objeto_mes,
                     "numerador":        numerador,
                     "denominador":      denominador,
-                    "cobertura":        round(cobertura, 2),
+                    "cobertura":        round(cobertura, 1),
                     "semaforizacion":   semaf_result["estado"],
                     "color":            semaf_result["color"]
                 }

@@ -84,7 +84,6 @@ interface ConsolidadoData {
 }
 
 interface ReportItem {
-  // Columnas base
   consulta_procedimiento: string;
   rango_edad: string;
   poblacion_objeto: number;
@@ -93,21 +92,13 @@ interface ReportItem {
   meta: number;
   proyeccion_tiempo: number;
   valor_mensual: number;
-
-  // Datos mensuales (enero, febrero, etc.)
   [key: string]: any;
-
-  // Trimestres (T1, T2, T3, T4)
   T1?: ConsolidadoData;
   T2?: ConsolidadoData;
   T3?: ConsolidadoData;
   T4?: ConsolidadoData;
-
-  // Semestres (S1, S2)
   S1?: ConsolidadoData;
   S2?: ConsolidadoData;
-
-  // Anual
   anual?: ConsolidadoData;
 }
 
@@ -142,46 +133,64 @@ interface ExportControlsProps {
 }
 
 /* ──────────────────────────── UTILIDADES ──────────────────────────── */
-
-/**
- * 🔥 Genera el nombre del archivo basado en filtros geográficos
- */
 const generateFilename = (geographicFilters?: GeographicFilters): string => {
   const parts: string[] = [];
-
-  if (geographicFilters?.departamento) {
-    // Limpiar y normalizar departamento
+  if (geographicFilters?.departamento)
     parts.push(geographicFilters.departamento.toUpperCase().replace(/\s+/g, '_'));
-  }
-
-  if (geographicFilters?.municipio) {
-    // Limpiar y normalizar municipio
+  if (geographicFilters?.municipio)
     parts.push(geographicFilters.municipio.toUpperCase().replace(/\s+/g, '_'));
-  }
-
-  if (geographicFilters?.ips) {
-    // Limpiar y normalizar IPS
+  if (geographicFilters?.ips)
     parts.push(geographicFilters.ips.toUpperCase().replace(/\s+/g, '_'));
-  }
-
-  // Si no hay filtros geográficos, usar nombre genérico
-  if (parts.length === 0) {
-    return 'REPORTE_GENERAL';
-  }
-
-  // Unir con guiones
+  if (parts.length === 0) return 'REPORTE_GENERAL';
   return parts.join('-');
 };
 
-/**
- * Limpia caracteres especiales que no son válidos en nombres de archivo
- */
 const sanitizeFilename = (filename: string): string => {
   return filename
-    .replace(/[<>:"/\\|?*]/g, '_')  // Reemplazar caracteres inválidos
-    .replace(/\s+/g, '_')            // Espacios a guiones bajos
-    .replace(/_+/g, '_')             // Múltiples guiones bajos a uno solo
-    .replace(/^_|_$/g, '');          // Eliminar guiones bajos al inicio/fin
+    .replace(/[<>:"/\\|?*]/g, '_')
+    .replace(/\s+/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '');
+};
+
+/* ──────────────────────────────────────────────────────────────────────
+   🔥 FIX PRINCIPAL: Sobrescribir el renderizado del td para celdas fijas.
+   Definido FUERA del componente → objeto estable, no se recrea en cada render.
+   Esto es más confiable que CSS puro porque inline styles no dependen de
+   la cascada ni de la clase dinámica `ant-table-cell-row-hover`.
+────────────────────────────────────────────────────────────────────── */
+const TABLE_BODY_COMPONENTS = {
+  body: {
+    cell: ({
+      className = '',
+      style,
+      ...rest
+    }: React.TdHTMLAttributes<HTMLTableCellElement> & Record<string, any>) => {
+      const isFixedLeft = (className as string).includes('ant-table-cell-fix-left');
+      const isFixedRight = (className as string).includes('ant-table-cell-fix-right');
+      const isFixed = isFixedLeft || isFixedRight;
+      const isHovered = (className as string).includes('ant-table-cell-row-hover');
+
+      // Celdas fijas: siempre fondo OPACO para evitar que el contenido
+      // desplazado "traspase" visualmente por encima de ellas.
+      const fixedOverride: React.CSSProperties = isFixed
+        ? {
+            position: 'sticky',
+            zIndex: 3,
+            // #f0f7ff es la versión sólida equivalente de rgba(24,144,255,0.05) sobre blanco
+            backgroundColor: isHovered ? '#f0f7ff' : '#ffffff',
+          }
+        : {};
+
+      return (
+        <td
+          className={className}
+          style={{ ...style, ...fixedOverride }}
+          {...rest}
+        />
+      );
+    },
+  },
 };
 
 /* ──────────────────────────── EXPORTACIÓN ──────────────────────────── */
@@ -200,7 +209,6 @@ const ExportControls = memo<ExportControlsProps>(({
 
   const effectiveCutoffDate = cutoffDate || keywordReport.corte_fecha || "2025-07-31";
 
-  // 🔥 Generar nombre base del archivo
   const baseFilename = useMemo(() => {
     const geoName = generateFilename(geographicFilters);
     return sanitizeFilename(geoName);
@@ -210,55 +218,34 @@ const ExportControls = memo<ExportControlsProps>(({
     try {
       setExcelLoading(true);
       onExportStart?.();
-
       message.loading({ content: 'Exportando Excel...', key: 'export-excel', duration: 0 });
 
-      // 🔥 Usar nombre personalizado basado en filtros geográficos
       const timestamp = new Date().toISOString().split('T')[0];
       const timestampedFilename = `${baseFilename}_${timestamp}`;
-
-      console.log('📊 Exportando con nombre:', timestampedFilename);
 
       const exportData = {
         report_data: keywordReport,
         filename: timestampedFilename,
         export_type: 'excel',
-        export_options: {
-          export_csv: true,
-          export_pdf: false,
-          include_detailed: true
-        }
+        export_options: { export_csv: true, export_pdf: false, include_detailed: true }
       };
 
-      const response = await api.post(
-        '/technical-note/reports/export-current',
-        exportData,
-        { timeout: 90000 }
-      );
-
+      const response = await api.post('/technical-note/reports/export-current', exportData, { timeout: 90000 });
       const result = response.data;
 
       if (result.success && result.download_links) {
         const excelLink = result.download_links.excel;
-
         if (excelLink) {
-          await TechnicalNoteService.downloadFromLink(
-            excelLink,
-            `${timestampedFilename}.xlsx`
-          );
-
+          await TechnicalNoteService.downloadFromLink(excelLink, `${timestampedFilename}.xlsx`);
           message.success({ content: '✅ Excel descargado', key: 'export-excel' });
           onExportComplete?.({ excel: 'descargado' });
         } else {
-          console.error('Links disponibles:', result.download_links);
           throw new Error('No se encontró enlace Excel');
         }
       } else {
         throw new Error(result.message || 'Error en exportación');
       }
-
     } catch (error) {
-      console.error('Error exportando Excel:', error);
       const errorMsg = error instanceof Error ? error.message : 'Error desconocido';
       message.error({ content: `❌ ${errorMsg}`, key: 'export-excel' });
       onExportError?.(errorMsg);
@@ -271,48 +258,29 @@ const ExportControls = memo<ExportControlsProps>(({
     try {
       setPdfLoading(true);
       onExportStart?.();
-
       message.loading({ content: 'Generando PDF...', key: 'export-pdf', duration: 0 });
 
-      // 🔥 Usar nombre personalizado basado en filtros geográficos
       const timestamp = new Date().toISOString().split('T')[0];
       const timestampedFilename = `${baseFilename}_${timestamp}`;
-
-      console.log('📄 Exportando PDF con nombre:', timestampedFilename);
 
       const exportData = {
         report_data: keywordReport,
         filename: timestampedFilename,
         export_type: 'pdf',
-        export_options: {
-          export_csv: false,
-          export_pdf: true,
-          include_detailed: true
-        }
+        export_options: { export_csv: false, export_pdf: true, include_detailed: true }
       };
 
-      const response = await api.post(
-        '/technical-note/reports/export-current',
-        exportData,
-        { timeout: 120000 }
-      );
-
+      const response = await api.post('/technical-note/reports/export-current', exportData, { timeout: 120000 });
       const result = response.data;
 
       if (result.success && result.download_links?.pdf) {
-        await TechnicalNoteService.downloadFromLink(
-          result.download_links.pdf,
-          `${timestampedFilename}.pdf`
-        );
-
+        await TechnicalNoteService.downloadFromLink(result.download_links.pdf, `${timestampedFilename}.pdf`);
         message.success({ content: '✅ PDF descargado', key: 'export-pdf' });
         onExportComplete?.({ pdf: 'descargado' });
       } else {
         throw new Error('Error generando PDF');
       }
-
     } catch (error) {
-      console.error('Error exportando PDF:', error);
       const errorMsg = error instanceof Error ? error.message : 'Error desconocido';
       message.error({ content: `❌ ${errorMsg}`, key: 'export-pdf' });
       onExportError?.(errorMsg);
@@ -343,9 +311,7 @@ const ExportControls = memo<ExportControlsProps>(({
               </div>
 
               {keywordReport.meses_reportados && (
-                <Tag color="green">
-                  {keywordReport.meses_reportados} meses de análisis
-                </Tag>
+                <Tag color="green">{keywordReport.meses_reportados} meses de análisis</Tag>
               )}
 
               {selectedKeywords.length > 0 && (
@@ -423,17 +389,12 @@ export const ReportTable = memo<Props>(({
 
   const { items } = keywordReport;
 
-  console.log('📊 ReportTable - Items recibidos:', items.length);
-  console.log('📊 Estructura del primer item:', items[0]);
-
-  // 🔥 Función helper para obtener datos mensuales
   const getMensualData = (item: ReportItem, mes: string): MensualData | null => {
     const mesData = item[mes];
     if (!mesData || typeof mesData !== 'object') return null;
     return mesData as MensualData;
   };
 
-  // 🔥 Función helper para crear columna de mes
   const createMonthColumn = (mesIndex: number): ColumnGroupType<ReportItem> => {
     const mesNombre = MESES_NOMBRES[mesIndex];
     const mesCapitalizado = MESES_CAPITALIZADOS[mesIndex];
@@ -444,44 +405,34 @@ export const ReportTable = memo<Props>(({
       children: [
         {
           title: 'Numerador',
-          dataIndex: `${mesNombre}`,
+          dataIndex: mesNombre,
           key: `${mesNombre}_numerador`,
           width: 90,
           align: 'center',
           className: 'month-subheader-numerador',
           render: (_: any, record: ReportItem) => {
             const data = getMensualData(record, mesNombre);
-            return (
-              <span className="month-cell-numerador">
-                {data?.numerador?.toLocaleString() || '0'}
-              </span>
-            );
+            return <span className="month-cell-numerador">{data?.numerador?.toLocaleString() || '0'}</span>;
           }
         },
         {
           title: 'Denominador',
-          dataIndex: `${mesNombre}`,
+          dataIndex: mesNombre,
           key: `${mesNombre}_denominador`,
           width: 90,
           align: 'center',
           className: 'month-subheader-denominador',
           render: (_: any, record: ReportItem) => {
             const data = getMensualData(record, mesNombre);
-            return (
-              <span className="month-cell-denominador">
-                {data?.denominador?.toLocaleString() || '0'}
-              </span>
-            );
+            return <span className="month-cell-denominador">{data?.denominador?.toLocaleString() || '0'}</span>;
           }
         }
       ]
     };
   };
 
-  // 🔥 Función helper para crear columna de trimestre
   const createTrimestreColumn = (trimNum: number): ColumnGroupType<ReportItem> => {
     const trimKey = `trim${trimNum}`;
-
     return {
       title: `Trimestre ${trimNum}`,
       className: 'consolidado-trimestre-header',
@@ -517,12 +468,9 @@ export const ReportTable = memo<Props>(({
           render: (_: any, record: ReportItem) => {
             const data = record[trimKey] as ConsolidadoData | undefined;
             if (!data) return '-';
-
             const cobertura = data.cobertura || 0;
-            const color = data.denominador === 0
-              ? '#808080'
+            const color = data.denominador === 0 ? '#808080'
               : cobertura >= 70 ? '#52c41a' : cobertura >= 50 ? '#fa8c16' : '#ff4d4f';
-
             return <Text strong style={{ color }}>{cobertura.toFixed(1)}%</Text>;
           }
         },
@@ -542,10 +490,8 @@ export const ReportTable = memo<Props>(({
     };
   };
 
-  // 🔥 Función helper para crear columna de semestre
   const createSemestreColumn = (semNum: number): ColumnGroupType<ReportItem> => {
     const semKey = `sem${semNum}`;
-
     return {
       title: `Semestre ${semNum}`,
       className: 'consolidado-semestre-header',
@@ -581,12 +527,9 @@ export const ReportTable = memo<Props>(({
           render: (_: any, record: ReportItem) => {
             const data = record[semKey] as ConsolidadoData | undefined;
             if (!data) return '-';
-
             const cobertura = data.cobertura || 0;
-            const color = data.denominador === 0
-              ? '#808080'
+            const color = data.denominador === 0 ? '#808080'
               : cobertura >= 70 ? '#52c41a' : cobertura >= 50 ? '#fa8c16' : '#ff4d4f';
-
             return <Text strong style={{ color }}>{cobertura.toFixed(1)}%</Text>;
           }
         },
@@ -606,11 +549,9 @@ export const ReportTable = memo<Props>(({
     };
   };
 
-  // 🔥 Generar columnas
   const columns: ColumnsType<ReportItem> = useMemo(() => {
     const cols: ColumnsType<ReportItem> = [];
 
-    // ✨ COLUMNAS FIJAS INICIALES
     cols.push({
       title: 'Procedimiento/Consulta',
       dataIndex: 'consulta_procedimiento',
@@ -632,9 +573,7 @@ export const ReportTable = memo<Props>(({
       fixed: 'left',
       align: 'center',
       render: (text: string) => (
-        <Text strong style={{ color: '#940ceeff', fontSize: '12px' }}>
-          {text || '-'}
-        </Text>
+        <Text strong style={{ color: '#940ceeff', fontSize: '12px' }}>{text || '-'}</Text>
       )
     });
 
@@ -645,9 +584,7 @@ export const ReportTable = memo<Props>(({
       width: 120,
       align: 'center',
       render: (text: string) => (
-        <Text strong style={{ color: '#940ceeff', fontSize: '12px' }}>
-          {text || '-'}
-        </Text>
+        <Text strong style={{ color: '#940ceeff', fontSize: '12px' }}>{text || '-'}</Text>
       )
     });
 
@@ -658,9 +595,7 @@ export const ReportTable = memo<Props>(({
       width: 120,
       align: 'center',
       render: (text: string) => (
-        <Text strong style={{ color: '#940ceeff', fontSize: '12px' }}>
-          {text || '-'}
-        </Text>
+        <Text strong style={{ color: '#940ceeff', fontSize: '12px' }}>{text || '-'}</Text>
       )
     });
 
@@ -671,9 +606,7 @@ export const ReportTable = memo<Props>(({
       width: 130,
       align: 'center',
       render: (val: number) => (
-        <Text strong style={{ color: '#1890ff' }}>
-          {val?.toLocaleString() || '0'}
-        </Text>
+        <Text strong style={{ color: '#1890ff' }}>{val?.toLocaleString() || '0'}</Text>
       )
     });
 
@@ -684,9 +617,7 @@ export const ReportTable = memo<Props>(({
       width: 120,
       align: 'center',
       render: (text: string) => (
-        <Text strong style={{ color: '#940ceeff', fontSize: '12px' }}>
-          {text || '-'}
-        </Text>
+        <Text strong style={{ color: '#940ceeff', fontSize: '12px' }}>{text || '-'}</Text>
       )
     });
 
@@ -696,9 +627,7 @@ export const ReportTable = memo<Props>(({
       key: 'frecuencia_uso_ips',
       width: 120,
       align: 'center',
-      render: (val: number) => (
-        <Text>{val?.toFixed(1) || '0'}</Text>
-      )
+      render: (val: number) => <Text>{val?.toFixed(1) || '0'}</Text>
     });
 
     cols.push({
@@ -707,9 +636,7 @@ export const ReportTable = memo<Props>(({
       key: 'fecuencia_ajustada_anual',
       width: 120,
       align: 'center',
-      render: (val: number) => (
-        <Text>{val?.toFixed(1) || '0'}</Text>
-      )
+      render: (val: number) => <Text>{val?.toFixed(1) || '0'}</Text>
     });
 
     cols.push({
@@ -719,9 +646,7 @@ export const ReportTable = memo<Props>(({
       width: 80,
       align: 'center',
       render: (val: number) => (
-        <Text strong style={{ color: '#52c41a' }}>
-          {val?.toFixed(1) || '0'}
-        </Text>
+        <Text strong style={{ color: '#52c41a' }}>{val?.toFixed(1) || '0'}</Text>
       )
     });
 
@@ -732,9 +657,7 @@ export const ReportTable = memo<Props>(({
       width: 140,
       align: 'center',
       render: (val: number) => (
-        <Text strong style={{ color: '#722ed1' }}>
-          {val?.toLocaleString() || '0'}
-        </Text>
+        <Text strong style={{ color: '#722ed1' }}>{val?.toLocaleString() || '0'}</Text>
       )
     });
 
@@ -745,9 +668,7 @@ export const ReportTable = memo<Props>(({
       width: 140,
       align: 'center',
       render: (val: number) => (
-        <Text strong style={{ color: '#722ed1' }}>
-          {val?.toLocaleString() || '0'}
-        </Text>
+        <Text strong style={{ color: '#722ed1' }}>{val?.toLocaleString() || '0'}</Text>
       )
     });
 
@@ -758,33 +679,25 @@ export const ReportTable = memo<Props>(({
       width: 130,
       align: 'center',
       render: (val: number) => (
-        <Text strong style={{ color: '#eb2f96' }}>
-          {val?.toFixed(0) || '0'}
-        </Text>
+        <Text strong style={{ color: '#eb2f96' }}>{val?.toFixed(0) || '0'}</Text>
       )
     });
 
-    // ✨ COLUMNAS MENSUALES Y CONSOLIDADOS
     if (showTemporalData) {
-      // Enero, Febrero, Marzo → Trimestre 1
       for (let i = 0; i < 3; i++) cols.push(createMonthColumn(i));
       cols.push(createTrimestreColumn(1));
 
-      // Abril, Mayo, Junio → Trimestre 2 + Semestre 1
       for (let i = 3; i < 6; i++) cols.push(createMonthColumn(i));
       cols.push(createTrimestreColumn(2));
       cols.push(createSemestreColumn(1));
 
-      // Julio, Agosto, Septiembre → Trimestre 3
       for (let i = 6; i < 9; i++) cols.push(createMonthColumn(i));
       cols.push(createTrimestreColumn(3));
 
-      // Octubre, Noviembre, Diciembre → Trimestre 4 + Semestre 2
       for (let i = 9; i < 12; i++) cols.push(createMonthColumn(i));
       cols.push(createTrimestreColumn(4));
       cols.push(createSemestreColumn(2));
 
-      // Consolidado Anual
       cols.push({
         title: 'Consolidado Anual',
         className: 'consolidado-anual-header',
@@ -795,10 +708,9 @@ export const ReportTable = memo<Props>(({
             key: 'anual_Numerador',
             width: 80,
             align: 'center',
-            render: (_: any, record: ReportItem) => {
-              const data = record.anual;
-              return <Text>{data?.numerador?.toLocaleString() || '0'}</Text>;
-            }
+            render: (_: any, record: ReportItem) => (
+              <Text>{record.anual?.numerador?.toLocaleString() || '0'}</Text>
+            )
           },
           {
             title: 'Denominador',
@@ -806,10 +718,9 @@ export const ReportTable = memo<Props>(({
             key: 'anual_Denominador',
             width: 80,
             align: 'center',
-            render: (_: any, record: ReportItem) => {
-              const data = record.anual;
-              return <Text>{data?.denominador?.toLocaleString() || '0'}</Text>;
-            }
+            render: (_: any, record: ReportItem) => (
+              <Text>{record.anual?.denominador?.toLocaleString() || '0'}</Text>
+            )
           },
           {
             title: '%',
@@ -820,12 +731,9 @@ export const ReportTable = memo<Props>(({
             render: (_: any, record: ReportItem) => {
               const data = record.anual;
               if (!data) return '-';
-
               const cobertura = data.cobertura || 0;
-              const color = data.denominador === 0
-                ? '#808080'
+              const color = data.denominador === 0 ? '#808080'
                 : cobertura >= 70 ? '#52c41a' : cobertura >= 50 ? '#fa8c16' : '#ff4d4f';
-
               return <Text strong style={{ color, fontSize: '11px' }}>{cobertura.toFixed(1)}%</Text>;
             }
           },
@@ -878,6 +786,8 @@ export const ReportTable = memo<Props>(({
         }}
         className="ultra-compact-table"
         bordered
+        // 🔥 FIX: override del td para garantizar fondo opaco en celdas fijas
+        components={TABLE_BODY_COMPONENTS}
       />
     </>
   );
