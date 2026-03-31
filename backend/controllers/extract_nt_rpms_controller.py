@@ -147,6 +147,8 @@ class HeaderMapper:
         'meta': ['%META', '%meta', 'meta'],
         'atenciones_realizar_anual': ['ATENCIONES A REALIZAR ANUAL', 'atenciones a realizar anual', 'atenciones a realizar'],
         'intervenciones_realizadas': ['INTERVENCIONES REALIZADAS HISTORICO', 'intervenciones realizadas', 'intervenciones_realizadas'],
+        'finalidad_cups_3374':['FINALIDAD_CUPS (3374)','Finalidad_CUPS (3374)','finalidad cups 3374','finalidad_cups_3374'],
+        'finalidad_cups_1036':['FINALIDAD_CUPS (1036)','Finalidad_CUPS (1036)','finalidad cups 1036','finalidad_cups_1036']
     }
 
     @classmethod
@@ -209,7 +211,7 @@ class DataFormatter:
                 df[col] = df[col].apply(lambda x: cls.to_numeric(x, 1))
         print(f"   🔧 Normalizando campos de texto...")
         text_cols = ['nombre_ips', 'consultas_procedimientos', 'servicios_habilitados',
-                     'frecuencia_edad', 'periodo', 'departamento', 'municipio']
+                     'frecuencia_edad', 'periodo', 'departamento', 'municipio', 'finalidad_cups_3374', 'finalidad_cups_1036']
         df = TextNormalizer.normalize_dataframe(df, text_cols)
         return df
 
@@ -337,7 +339,7 @@ class SheetExtractor:
         fields = [
             'consultas_procedimientos', 'servicios_habilitados', 'frecuencia_edad', 'cups',
             'frecuencia_indicada', 'periodo', 'frecuencia_uso', 'frecuencia_ajustada',
-            'meta', 'atenciones_realizar_anual', 'intervenciones_realizadas'
+            'meta', 'atenciones_realizar_anual', 'intervenciones_realizadas', 'finalidad_cups_3374', 'finalidad_cups_1036'
         ]
         columns = HeaderMapper.find_all_columns(headers, fields)
 
@@ -355,7 +357,9 @@ class SheetExtractor:
                 'frecuencia_ajustada': self._get_numeric(df, r_idx, columns.get('frecuencia_ajustada')),
                 'meta': self._get_numeric(df, r_idx, columns.get('meta')),
                 'atenciones_realizar_anual': self._get_numeric(df, r_idx, columns.get('atenciones_realizar_anual')),
-                'intervenciones_realizadas': self._get_numeric(df, r_idx, columns.get('intervenciones_realizadas'))
+                'intervenciones_realizadas': self._get_numeric(df, r_idx, columns.get('intervenciones_realizadas')),
+                'finalidad_cups_3374': self._get_value(df, r_idx, columns.get('finalidad_cups_3374')),
+                'finalidad_cups_1036': self._get_value(df, r_idx, columns.get('finalidad_cups_1036'))
             }
             if pd.notna(row['consultas_procedimientos']) or pd.notna(row['cups']):
                 data_rows.append(row)
@@ -386,7 +390,7 @@ class ExcelProcessor:
         'municipio', 'nombre_ips', 'regimen', 'proyeccion_tiempo', 'consultas_procedimientos',
         'servicios_habilitados', 'frecuencia_edad', 'cups', 'frecuencia_indicada',
         'periodo', 'frecuencia_uso', 'frecuencia_ajustada', 'meta',
-        'atenciones_realizar_anual', 'intervenciones_realizadas'
+        'atenciones_realizar_anual', 'intervenciones_realizadas', 'finalidad_cups_3374', 'finalidad_cups_1036'
     ]
 
     def __init__(
