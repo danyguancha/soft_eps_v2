@@ -17,29 +17,97 @@ report_exporter = ReportExporter()
 router = APIRouter()
 
 
-
 mandatory_date = "Fecha de corte OBLIGATORIA (YYYY-MM-DD)"
+
+def _track_and_print_result(result: Dict[str, Any], endpoint_label: str):
+    """Registra en tracker e imprime resumen para resultados con estructura rpms/rmpn."""
+    for key in ("rpms", "rmpn"):
+        sheet = result.get(key, {})
+        if not sheet:
+            continue
+        label = sheet.get("label", key.upper())
+        if sheet.get("success"):
+            csv_path     = sheet.get("csv_path")
+            parquet_path = sheet.get("parquet_path")
+            total_rows   = sheet.get("total_rows", 0)
+
+            if csv_path:
+                cache_access_tracker.track_access(csv_path, "extract_info_nt")
+            if parquet_path:
+                cache_access_tracker.track_access(parquet_path, "parquet_cache")
+
+            print(f"  [{label}] ✓ OK")
+            print(f"    - CSV:      {csv_path}")
+            print(f"    - Parquet:  {parquet_path}")
+            print(f"    - Filas:    {total_rows:,}")
+        else:
+            print(f"  [{label}] ✗ ERROR: {sheet.get('error', 'desconocido')}")
+
+
+def _build_response(result: Dict[str, Any]) -> Dict[str, Any]:
+    """Construye el dict de respuesta JSON con estructura rpms/rmpn."""
+    rpms = result.get("rpms", {})
+    rmpn = result.get("rmpn", {})
+    return {
+        "success":    result.get("success"),
+        "total_time": result.get("total_time"),
+        "rpms": {
+            "success":      rpms.get("success"),
+            "label":        rpms.get("label"),
+            "csv_path":     rpms.get("csv_path"),
+            "parquet_path": rpms.get("parquet_path"),
+            "total_rows":   rpms.get("total_rows", 0),
+            "total_columns": rpms.get("total_columns", 0),
+            "columns":      rpms.get("columns", []),
+            "timing":       rpms.get("timing", {}),
+            "compression_info": rpms.get("compression_info", {}),
+            "from_cache":   rpms.get("from_cache", False),
+            "file_hash":    rpms.get("file_hash", ""),
+            "file_id":      rpms.get("file_id", ""),
+            "extraction_summary": rpms.get("extraction_summary", {}),
+            "error":        rpms.get("error")
+        },
+        "rmpn": {
+            "success":      rmpn.get("success"),
+            "label":        rmpn.get("label"),
+            "csv_path":     rmpn.get("csv_path"),
+            "parquet_path": rmpn.get("parquet_path"),
+            "total_rows":   rmpn.get("total_rows", 0),
+            "total_columns": rmpn.get("total_columns", 0),
+            "columns":      rmpn.get("columns", []),
+            "timing":       rmpn.get("timing", {}),
+            "compression_info": rmpn.get("compression_info", {}),
+            "from_cache":   rmpn.get("from_cache", False),
+            "file_hash":    rmpn.get("file_hash", ""),
+            "file_id":      rmpn.get("file_id", ""),
+            "extraction_summary": rmpn.get("extraction_summary", {}),
+            "error":        rmpn.get("error")
+        }
+    }
+
+
+# ========== ENDPOINTS NT RPMS / RMPN ==========
 
 
 @router.post("/nt-rpms/process-network", tags=["NT RPMS"])
 async def process_network_nt_rpms(request: NetworkPathRequest) -> Dict[str, Any]:
     """
-    Procesa archivos NT RPMS desde una carpeta compartida en red
-    
+    Procesa archivos NT RPMS y NT RMPN desde una carpeta compartida en red.
+
     **Ejemplos de rutas válidas:**
     - Windows UNC: `\\\\192.168.1.100\\NT_RPMS_Share`
     - Drive mapeado: `Z:\\NT_RPMS`
     - Linux mount: `/mnt/smb/nt_rpms`
-    
+
     **Requisitos:**
     1. La carpeta debe estar compartida en el cliente
     2. El servidor debe tener permisos de lectura
     3. El firewall debe permitir SMB/CIFS
     4. Ambos equipos en la misma red
-    
+
     Args:
         request: Objeto con network_path (ruta UNC)
-    
+
     Returns:
         Resultado del procesamiento con información de red
     """
@@ -48,57 +116,47 @@ async def process_network_nt_rpms(request: NetworkPathRequest) -> Dict[str, Any]
         print("ENDPOINT: POST /nt-rpms/process-network")
         print(f"{'='*60}")
         print(f"Ruta de red solicitada: {request.network_path}")
-        
-        # Procesar usando el método de red del controlador
+
         result = nt_rpms_controller.process_network_path(request.network_path)
-        
+
         if not result.get("success"):
             raise HTTPException(
                 status_code=400,
                 detail={
-                    "error": result.get("error"),
+                    "error":      result.get("error"),
                     "suggestion": result.get("suggestion"),
                     "total_time": result.get("total_time")
                 }
             )
-        
-        # 🔥 TRACKING: Registrar archivos generados
-        if result.get("csv_path"):
-            cache_access_tracker.track_access(result["csv_path"], "extract_info_nt")
-        if result.get("parquet_path"):
-            cache_access_tracker.track_access(result["parquet_path"], "parquet_cache")
-        
+
         print(f"\n✓ Procesamiento desde red completado exitosamente")
-        print(f"  - Carpeta red: {request.network_path}")
-        print(f"  - CSV: {result['csv_path']}")
-        print(f"  - Parquet: {result['parquet_path']}")
-        print(f"  - Registros: {result['total_rows']:,}")
-        
-        return result
-        
+        _track_and_print_result(result, "process-network")
+
+        response = _build_response(result)
+        if result.get("network_info"):
+            response["network_info"] = result["network_info"]
+
+        return response
+
     except HTTPException:
         raise
     except Exception as e:
         print(f"✗ Error inesperado en /nt-rpms/process-network: {e}")
         import traceback
         traceback.print_exc()
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error inesperado: {str(e)}"
-        )
-
+        raise HTTPException(status_code=500, detail=f"Error inesperado: {str(e)}")
 
 
 @router.post("/nt-rpms/process-local", tags=["NT RPMS"])
 async def process_local_nt_rpms(request: LocalPathRequest) -> Dict[str, Any]:
     """
-    Procesa archivos NT RPMS desde una carpeta local del servidor
-    
-    **Nota:** Esta ruta solo funciona si la carpeta está físicamente en el servidor
-    
+    Procesa archivos NT RPMS y NT RMPN desde una carpeta local del servidor.
+
+    **Nota:** Esta ruta solo funciona si la carpeta está físicamente en el servidor.
+
     Args:
         request: Objeto con folder_path (ruta local del servidor)
-    
+
     Returns:
         Resultado del procesamiento
     """
@@ -107,59 +165,45 @@ async def process_local_nt_rpms(request: LocalPathRequest) -> Dict[str, Any]:
         print("ENDPOINT: POST /nt-rpms/process-local")
         print(f"{'='*60}")
         print(f"Carpeta local solicitada: {request.folder_path}")
-        
-        # Validar que la carpeta existe
+
         if not os.path.isdir(request.folder_path):
             raise HTTPException(
                 status_code=400,
                 detail=f"La carpeta no existe: {request.folder_path}"
             )
-        
-        # Contar archivos Excel en la carpeta
-        excel_files = [f for f in os.listdir(request.folder_path) 
-                      if f.lower().endswith(('.xlsx', '.xls')) and not f.startswith('~$')]
-        
+
+        excel_files = [
+            f for f in os.listdir(request.folder_path)
+            if f.lower().endswith(('.xlsx', '.xls')) and not f.startswith('~$')
+        ]
         if not excel_files:
             raise HTTPException(
                 status_code=400,
                 detail=f"No se encontraron archivos Excel en la carpeta: {request.folder_path}"
             )
-        
+
         print(f"📁 Archivos Excel encontrados: {len(excel_files)}")
-        
-        # Procesar carpeta usando el controlador
+
         result = nt_rpms_controller.process_nt_rpms_folder(request.folder_path)
-        
+
         if not result.get("success"):
             raise HTTPException(
                 status_code=500,
                 detail=result.get("error", "Error desconocido en procesamiento")
             )
-        
-        # 🔥 TRACKING: Registrar archivos generados
-        if result.get("csv_path"):
-            cache_access_tracker.track_access(result["csv_path"], "extract_info_nt")
-        if result.get("parquet_path"):
-            cache_access_tracker.track_access(result["parquet_path"], "parquet_cache")
-        
+
         print(f"\n✓ Procesamiento local completado exitosamente")
-        print(f"  - CSV: {result['csv_path']}")
-        print(f"  - Parquet: {result['parquet_path']}")
-        print(f"  - Registros: {result['total_rows']:,}")
-        
-        return result
-        
+        _track_and_print_result(result, "process-local")
+
+        return _build_response(result)
+
     except HTTPException:
         raise
     except Exception as e:
         print(f"✗ Error inesperado en /nt-rpms/process-local: {e}")
         import traceback
         traceback.print_exc()
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error inesperado: {str(e)}"
-        )
-
+        raise HTTPException(status_code=500, detail=f"Error inesperado: {str(e)}")
 
 
 # ========== ENDPOINT ANTIGUO (MANTENER POR COMPATIBILIDAD) ==========
@@ -168,13 +212,13 @@ async def process_local_nt_rpms(request: LocalPathRequest) -> Dict[str, Any]:
 @router.post("/nt-rpms/process", tags=["NT RPMS"])
 async def process_nt_rpms_folder(request: NTRPMSProcessRequest) -> Dict[str, Any]:
     """
-    **[DEPRECATED]** Usar /nt-rpms/process-local o /nt-rpms/process-network
-    
-    Procesa archivos NT RPMS de una carpeta y los convierte a Parquet
-    
+    **[DEPRECATED]** Usar /nt-rpms/process-local o /nt-rpms/process-network.
+
+    Procesa archivos NT RPMS y NT RMPN de una carpeta y los convierte a Parquet.
+
     Args:
         request: Contiene folder_path con la ruta de la carpeta
-    
+
     Returns:
         Resultado del procesamiento con rutas de archivos generados
     """
@@ -184,120 +228,98 @@ async def process_nt_rpms_folder(request: NTRPMSProcessRequest) -> Dict[str, Any
         print(f"⚠️  ADVERTENCIA: Usa /nt-rpms/process-local o /nt-rpms/process-network")
         print(f"{'='*60}")
         print(f"Carpeta solicitada: {request.folder_path}")
-        
-        # Validar que la carpeta existe
+
         if not os.path.isdir(request.folder_path):
             raise HTTPException(
                 status_code=400,
                 detail=f"La carpeta no existe: {request.folder_path}"
             )
-        
-        # Contar archivos Excel en la carpeta
-        excel_files = [f for f in os.listdir(request.folder_path) 
-                      if f.lower().endswith(('.xlsx', '.xls')) and not f.startswith('~$')]
-        
+
+        excel_files = [
+            f for f in os.listdir(request.folder_path)
+            if f.lower().endswith(('.xlsx', '.xls')) and not f.startswith('~$')
+        ]
         if not excel_files:
             raise HTTPException(
                 status_code=400,
                 detail=f"No se encontraron archivos Excel en la carpeta: {request.folder_path}"
             )
-        
+
         print(f"📁 Archivos Excel encontrados: {len(excel_files)}")
-        
-        # Procesar carpeta usando el controlador global
+
         result = nt_rpms_controller.process_nt_rpms_folder(request.folder_path)
-        
+
         if not result.get("success"):
             raise HTTPException(
                 status_code=500,
                 detail=result.get("error", "Error desconocido en procesamiento")
             )
-        
-        # 🔥 TRACKING: Registrar archivos generados
-        if result.get("csv_path"):
-            cache_access_tracker.track_access(result["csv_path"], "extract_info_nt")
-        if result.get("parquet_path"):
-            cache_access_tracker.track_access(result["parquet_path"], "parquet_cache")
-        
+
         print(f"\n✓ Procesamiento completado exitosamente")
-        print(f"  - CSV: {result['csv_path']}")
-        print(f"  - Parquet: {result['parquet_path']}")
-        print(f"  - Registros: {result['total_rows']:,}")
-        
-        return result
-        
+        _track_and_print_result(result, "process")
+
+        return _build_response(result)
+
     except HTTPException:
         raise
     except Exception as e:
         print(f"✗ Error inesperado en /nt-rpms/process: {e}")
         import traceback
         traceback.print_exc()
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error inesperado: {str(e)}"
-        )
-
+        raise HTTPException(status_code=500, detail=f"Error inesperado: {str(e)}")
 
 
 @router.get("/nt-rpms/status/{file_hash}", tags=["NT RPMS"])
 async def get_nt_rpms_processing_status(file_hash: str) -> Dict[str, Any]:
     """
-    Obtiene el estado de un procesamiento NT RPMS por su hash
-    
+    Obtiene el estado de un procesamiento NT RPMS por su hash.
+
     Args:
         file_hash: Hash del archivo procesado
-    
+
     Returns:
         Estado del procesamiento y metadata
     """
     try:
         result = nt_rpms_controller.get_processing_status(file_hash)
-        
+
         if not result.get("success"):
             raise HTTPException(
                 status_code=404,
                 detail=result.get("error", "Procesamiento no encontrado")
             )
-        
+
         return result
-        
+
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error obteniendo estado: {str(e)}"
-        )
-
+        raise HTTPException(status_code=500, detail=f"Error obteniendo estado: {str(e)}")
 
 
 @router.get("/nt-rpms/list-processed", tags=["NT RPMS"])
 async def list_processed_nt_rpms() -> Dict[str, Any]:
     """
-    Lista todos los archivos NT RPMS procesados disponibles
-    
+    Lista todos los archivos NT RPMS y NT RMPN procesados disponibles.
+
     Returns:
         Lista de archivos procesados con metadata
     """
     try:
         result = nt_rpms_controller.list_processed_files()
-        
+
         if not result.get("success"):
             raise HTTPException(
                 status_code=500,
                 detail=result.get("error", "Error listando archivos")
             )
-        
+
         return result
-        
+
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error listando archivos procesados: {str(e)}"
-        )
-
+        raise HTTPException(status_code=500, detail=f"Error listando archivos procesados: {str(e)}")
 
 
 # ========== ENDPOINTS PRINCIPALES ==========
@@ -313,10 +335,9 @@ def get_available_technical_files():
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 
-
 @router.get("/data/{filename}")
 def get_technical_file_data_with_excel_filters(
-    filename: str, 
+    filename: str,
     page: int = Query(1, ge=1),
     page_size: int = Query(1000, ge=10, le=2000),
     sheet_name: Optional[str] = Query(None),
@@ -328,32 +349,32 @@ def get_technical_file_data_with_excel_filters(
     """Obtiene datos con filtros estilo Excel"""
     try:
         print(f"GET /data/{filename} - página {page}")
-        
+
         parsed_filters = None
         if filters:
             try:
                 parsed_filters = json.loads(filters)
             except json.JSONDecodeError as e:
                 print(f"Error parseando filtros: {e}")
-        
-        # 🔥 TRACKING: Registrar acceso al archivo técnico
+
+        # 🔥 TRACKING
         file_path = os.path.join("technical_note", filename)
         if os.path.exists(file_path):
             cache_access_tracker.track_access(file_path, "technical_note")
-        
+
         result = technical_note_controller.read_technical_file_data_paginated(
             filename=filename,
-            page=page, 
-            page_size=page_size, 
+            page=page,
+            page_size=page_size,
             sheet_name=sheet_name,
             filters=parsed_filters,
             search=search,
             sort_by=sort_by,
             sort_order=sort_order
         )
-        
+
         return result
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -361,16 +382,14 @@ def get_technical_file_data_with_excel_filters(
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 
-
 @router.get("/metadata/{filename}")
 def get_technical_file_metadata(filename: str):
     """Metadatos del archivo"""
     try:
-        # 🔥 TRACKING: Registrar acceso
         file_path = os.path.join("technical_note", filename)
         if os.path.exists(file_path):
             cache_access_tracker.track_access(file_path, "technical_note")
-        
+
         return technical_note_controller.get_technical_file_metadata(filename)
     except HTTPException:
         raise
@@ -379,24 +398,22 @@ def get_technical_file_metadata(filename: str):
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 
-
 @router.get("/columns/{filename}")
 def get_file_columns(filename: str):
     """Obtiene columnas de un archivo"""
     try:
         metadata = technical_note_controller.get_technical_file_metadata(filename)
         return {
-            "filename": filename,
-            "columns": metadata["columns"],
+            "filename":      filename,
+            "columns":       metadata["columns"],
             "total_columns": len(metadata["columns"]),
-            "display_name": metadata["display_name"]
+            "display_name":  metadata["display_name"]
         }
     except HTTPException:
         raise
     except Exception as e:
         print(f"Error en /columns/{filename}: {e}")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
-
 
 
 # ========== ENDPOINTS GEOGRÁFICOS ==========
@@ -406,16 +423,14 @@ def get_file_columns(filename: str):
 def get_departamentos(filename: str):
     """Obtiene departamentos únicos"""
     try:
-        result = technical_note_controller.get_geographic_values(
+        return technical_note_controller.get_geographic_values(
             filename=filename,
             geo_type='departamento'
         )
-        return result
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
-
 
 
 @router.get("/geographic/{filename}/municipios")
@@ -425,17 +440,15 @@ def get_municipios(
 ):
     """Obtiene municipios filtrados por departamento"""
     try:
-        result = technical_note_controller.get_geographic_values(
+        return technical_note_controller.get_geographic_values(
             filename=filename,
             geo_type='municipios',
             departamento=departamento
         )
-        return result
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
-
 
 
 @router.get("/geographic/{filename}/ips")
@@ -446,18 +459,16 @@ def get_ips(
 ):
     """Obtiene IPS filtradas"""
     try:
-        result = technical_note_controller.get_geographic_values(
+        return technical_note_controller.get_geographic_values(
             filename=filename,
             geo_type='ips',
             departamento=departamento,
             municipio=municipio
         )
-        return result
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
-
 
 
 # ========== ENDPOINT DE REPORTE PRINCIPAL ==========
@@ -473,11 +484,14 @@ def get_keyword_age_report(
     municipio: Optional[str] = Query(None),
     ips: Optional[str] = Query(None),
     corte_fecha: str = Query(..., description=mandatory_date),
-    regimen: Optional[str] = Query(None, description="Régimen: 'Subsidiado' o 'Contributivo'. Si no se especifica, incluye ambos.")
+    regimen: Optional[str] = Query(
+        None,
+        description="Régimen: 'Subsidiado' o 'Contributivo'. Si no se especifica, incluye ambos."
+    )
 ):
     """
-    Genera reporte con filtros geográficos y de régimen
-    
+    Genera reporte con filtros geográficos y de régimen.
+
     Args:
         filename: Nombre del archivo a procesar
         keywords: Keywords separadas por comas para filtrar
@@ -495,17 +509,15 @@ def get_keyword_age_report(
         print(f"Fecha corte: {corte_fecha}")
         print(f"Régimen: {regimen if regimen else 'Todos'}")
         print(f"{'='*60}")
-        
-        # Validar formato de fecha
+
         try:
             datetime.strptime(corte_fecha, '%Y-%m-%d')
         except ValueError:
             raise HTTPException(
-                status_code=400, 
+                status_code=400,
                 detail=f"Formato de fecha inválido: {corte_fecha}. Use YYYY-MM-DD"
             )
-        
-        # Validar régimen si se proporciona
+
         if regimen:
             regimen_clean = regimen.strip()
             if regimen_clean.upper() not in ['SUBSIDIADO', 'CONTRIBUTIVO']:
@@ -515,12 +527,11 @@ def get_keyword_age_report(
                 )
         else:
             regimen_clean = None
-        
-        # Procesar keywords
+
         kw_list = None
         if keywords and keywords.strip():
             kw_list = [k.strip().lower() for k in keywords.split(",") if k.strip()]
-        
+
         result = technical_note_controller.get_keyword_age_report(
             filename=filename,
             keywords=kw_list,
@@ -532,11 +543,9 @@ def get_keyword_age_report(
             corte_fecha=corte_fecha,
             regimen=regimen_clean
         )
-        
-        # Convertir a formato JSON-serializable
+
         try:
             encoded_result = jsonable_encoder(result)
-            
             return JSONResponse(
                 content=encoded_result,
                 status_code=200,
@@ -545,28 +554,23 @@ def get_keyword_age_report(
                     "Cache-Control": "no-cache, no-store, must-revalidate"
                 }
             )
-            
+
         except Exception as encode_error:
             print(f"✗ Error codificando respuesta: {encode_error}")
             import traceback
             traceback.print_exc()
-            
-            # Intento alternativo
+
             try:
-                json_str = json.dumps(result, default=str, ensure_ascii=False)
+                json_str  = json.dumps(result, default=str, ensure_ascii=False)
                 json_data = json.loads(json_str)
-                
-                return JSONResponse(
-                    content=json_data,
-                    status_code=200
-                )
+                return JSONResponse(content=json_data, status_code=200)
             except Exception as fallback_error:
                 print(f"✗ Error en fallback: {fallback_error}")
                 raise HTTPException(
                     status_code=500,
                     detail=f"Error serializando respuesta: {str(fallback_error)}"
                 )
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -576,7 +580,6 @@ def get_keyword_age_report(
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
-
 
 
 # ========== ENDPOINTS DE VALORES ÚNICOS ==========
@@ -591,15 +594,13 @@ def get_column_unique_values(
 ):
     """Obtiene valores únicos de una columna"""
     try:
-        result = technical_note_controller.get_column_unique_values(
+        return technical_note_controller.get_column_unique_values(
             filename, column_name, sheet_name, limit
         )
-        return result
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
-
 
 
 # ========== ENDPOINTS DE RANGOS DE EDAD ==========
@@ -613,31 +614,29 @@ def get_age_ranges(
     """Obtiene rangos de edades únicos con fecha dinámica"""
     try:
         print(f"GET /age-ranges/{filename} con fecha: {corte_fecha}")
-        
-        # Validar formato
+
         try:
             datetime.strptime(corte_fecha, "%Y-%m-%d")
         except ValueError:
             raise HTTPException(
-                status_code=400, 
+                status_code=400,
                 detail="Fecha debe tener formato YYYY-MM-DD"
             )
-        
+
         result = technical_note_controller.get_age_ranges(
             filename=filename,
             corte_fecha=corte_fecha
         )
-        
+
         if not result.get("success"):
             raise HTTPException(status_code=500, detail=result.get("error"))
-        
+
         return result
-        
+
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
-
 
 
 # ========== ENDPOINTS DE INASISTENTES ==========
@@ -648,11 +647,14 @@ def get_inasistentes_report(
     filename: str,
     request: Dict[str, Any],
     corte_fecha: str = Query(..., description="Fecha de corte en formato YYYY-MM-DD"),
-    regimen: Optional[str] = Query(None, description="Régimen: 'Subsidiado' o 'Contributivo'")
+    regimen: Optional[str] = Query(
+        None,
+        description="Régimen: 'Subsidiado' o 'Contributivo'"
+    )
 ):
     """
-    Genera reporte de inasistentes mes a mes con filtro de régimen
-    
+    Genera reporte de inasistentes mes a mes con filtro de régimen.
+
     Args:
         filename: Nombre del archivo
         request: Body con selectedKeywords, departamento, municipio, ips
@@ -663,8 +665,7 @@ def get_inasistentes_report(
         print(f"POST /inasistentes-report/{filename}")
         print(f"Fecha de corte: {corte_fecha}")
         print(f"Régimen: {regimen if regimen else 'Todos'}")
-        
-        # Validar formato de fecha
+
         try:
             datetime.strptime(corte_fecha, "%Y-%m-%d")
         except ValueError:
@@ -672,8 +673,7 @@ def get_inasistentes_report(
                 status_code=400,
                 detail="Fecha debe tener formato YYYY-MM-DD"
             )
-        
-        # Validar régimen si se proporciona
+
         if regimen:
             regimen_clean = regimen.strip()
             if regimen_clean.upper() not in ['SUBSIDIADO', 'CONTRIBUTIVO']:
@@ -683,11 +683,9 @@ def get_inasistentes_report(
                 )
         else:
             regimen_clean = None
-        
-        # Extraer keywords del request
+
         selected_keywords = request.get("selectedKeywords", ["medicina"])
-        
-        # Construir resultado
+
         result = technical_note_controller.get_inasistentes_report(
             filename=filename,
             keywords=selected_keywords,
@@ -697,12 +695,12 @@ def get_inasistentes_report(
             ips=request.get("ips"),
             regimen=regimen_clean
         )
-        
+
         if not result.get("success"):
             raise HTTPException(status_code=500, detail=result.get("error"))
-        
+
         return result
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -712,18 +710,20 @@ def get_inasistentes_report(
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 
-
 @router.post("/inasistentes-report/{filename}/export-csv")
 def export_inasistentes_csv(
     filename: str,
     request: Dict[str, Any],
     corte_fecha: str = Query(..., description="Fecha de corte en formato YYYY-MM-DD"),
     encoding: str = Query(default="utf-8-sig", description="Encoding del CSV"),
-    regimen: Optional[str] = Query(None, description="Régimen: 'Subsidiado' o 'Contributivo'")
+    regimen: Optional[str] = Query(
+        None,
+        description="Régimen: 'Subsidiado' o 'Contributivo'"
+    )
 ):
     """
-    Exporta reporte de inasistentes a CSV con filtro de régimen
-    
+    Exporta reporte de inasistentes a CSV con filtro de régimen.
+
     Args:
         filename: Nombre del archivo
         request: Body con selectedKeywords, departamento, municipio, ips
@@ -735,8 +735,7 @@ def export_inasistentes_csv(
         print(f"POST /inasistentes-report/{filename}/export-csv")
         print(f"Fecha de corte: {corte_fecha}")
         print(f"Régimen: {regimen if regimen else 'Todos'}")
-        
-        # Validar formato de fecha
+
         try:
             datetime.strptime(corte_fecha, "%Y-%m-%d")
         except ValueError:
@@ -744,8 +743,7 @@ def export_inasistentes_csv(
                 status_code=400,
                 detail="Fecha debe tener formato YYYY-MM-DD"
             )
-        
-        # Validar régimen si se proporciona
+
         if regimen:
             regimen_clean = regimen.strip()
             if regimen_clean.upper() not in ['SUBSIDIADO', 'CONTRIBUTIVO']:
@@ -755,11 +753,9 @@ def export_inasistentes_csv(
                 )
         else:
             regimen_clean = None
-        
-        # Extraer keywords del request
+
         selected_keywords = request.get("selectedKeywords", ["medicina"])
-        
-        # Exportar
+
         csv_response = technical_note_controller.export_inasistentes_csv(
             filename=filename,
             keywords=selected_keywords,
@@ -770,9 +766,9 @@ def export_inasistentes_csv(
             encoding=encoding,
             regimen=regimen_clean
         )
-        
+
         return csv_response
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -780,7 +776,6 @@ def export_inasistentes_csv(
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
-
 
 
 # ========== ENDPOINTS DE EXPORTACIÓN ==========
@@ -791,30 +786,27 @@ async def download_report_file(file_id: str):
     """Descargar archivo desde memoria"""
     try:
         file_info = report_exporter.get_temp_file(file_id)
-        
+
         if not file_info:
             raise HTTPException(status_code=404, detail="Archivo no encontrado")
-        
-        content = file_info['content']
-        filename = file_info['filename']
+
+        content      = file_info['content']
+        filename     = file_info['filename']
         content_type = file_info['content_type']
-        
+
         content.seek(0)
-        
+
         return StreamingResponse(
             content,
             media_type=content_type,
-            headers={
-                'Content-Disposition': f'attachment; filename="{filename}"'
-            }
+            headers={'Content-Disposition': f'attachment; filename="{filename}"'}
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:
         print(f"Error descargando archivo: {e}")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
-
 
 
 @router.post("/reports/export-current")
@@ -823,31 +815,25 @@ async def export_current_report(
     background_tasks: BackgroundTasks,
 ):
     """
-    ENDPOINT CRÍTICO: Exporta el reporte actual visible en el frontend
+    ENDPOINT CRÍTICO: Exporta el reporte actual visible en el frontend.
     """
     try:
         print("📤 Exportando reporte actual del frontend")
-        
-        report_data = request_data.get('report_data')
-        filename = request_data.get('filename', 'reporte')
+
+        report_data    = request_data.get('report_data')
+        filename       = request_data.get('filename', 'reporte')
         export_options = request_data.get('export_options', {})
-        
+
         if not report_data:
-            raise HTTPException(
-                status_code=400,
-                detail="report_data es obligatorio"
-            )
-        
+            raise HTTPException(status_code=400, detail="report_data es obligatorio")
+
         corte_fecha = report_data.get('corte_fecha')
         if not corte_fecha:
-            raise HTTPException(
-                status_code=400,
-                detail="corte_fecha es obligatorio en report_data"
-            )
-        
+            raise HTTPException(status_code=400, detail="corte_fecha es obligatorio en report_data")
+
         print(f"Exportando: {len(report_data.get('items', []))} items")
         print(f"Fecha corte: {corte_fecha}")
-        
+
         export_result = report_exporter.export_report(
             report_data=report_data,
             base_filename=filename,
@@ -855,13 +841,13 @@ async def export_current_report(
             export_pdf=export_options.get('export_pdf', False),
             include_detailed=export_options.get('include_detailed', True)
         )
-        
+
         background_tasks.add_task(report_exporter.cleanup_old_temp_files, 30)
-        
+
         print(f"Exportación completada: {len(export_result.get('files', {}))} archivos")
-        
+
         return export_result
-        
+
     except HTTPException:
         raise
     except Exception as e:

@@ -177,6 +177,101 @@
       "incluye_anios": [3, 4, 5]
     },
     {
+      "label": "3 Años",
+      "tipo": "compuesto",
+      "incluye_anios": [3]
+    },
+    {
+      "label": "29 Años",
+      "tipo": "compuesto",
+      "incluye_anios": [29]
+    },
+    {
+      "label": "4 Años",
+      "tipo": "compuesto",
+      "incluye_anios": [4]
+    },
+    {
+      "label": "5 Años",
+      "tipo": "compuesto",
+      "incluye_anios": [5]
+    },
+    {
+      "label": "6 Años",
+      "tipo": "compuesto",
+      "incluye_anios": [6]
+    },
+    {
+      "label": "7 Años",
+      "tipo": "compuesto",
+      "incluye_anios": [7]
+    },
+    {
+      "label": "8 Años",
+      "tipo": "compuesto",
+      "incluye_anios": [8]
+    },
+    {
+      "label": "9 Años",
+      "tipo": "compuesto",
+      "incluye_anios": [9]
+    },
+    {
+      "label": "10 Años",
+      "tipo": "compuesto",
+      "incluye_anios": [10]
+    },
+    {
+      "label": "11 Años",
+      "tipo": "compuesto",
+      "incluye_anios": [11]
+    },
+    {
+      "label": "12 Años",
+      "tipo": "compuesto",
+      "incluye_anios": [12]
+    },
+    {
+      "label": "13 Años",
+      "tipo": "compuesto",
+      "incluye_anios": [13]
+    },
+    {
+      "label": "14 Años",
+      "tipo": "compuesto",
+      "incluye_anios": [14]
+    },
+    {
+      "label": "15 Años",
+      "tipo": "compuesto",
+      "incluye_anios": [15]
+    },
+    {
+      "label": "16 Años",
+      "tipo": "compuesto",
+      "incluye_anios": [16]
+    },
+    {
+      "label": "17 Años",
+      "tipo": "compuesto",
+      "incluye_anios": [17]
+    },
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    {
       "label": "6 a 11 Años",
       "tipo": "compuesto",
       "incluye_anios": [6, 7, 8, 9, 10, 11]

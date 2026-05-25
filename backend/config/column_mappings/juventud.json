@@ -24,7 +24,7 @@
       "columna_usuario": "Fecha más reciente de Consulta Odontológica",
       "keyword": "odontológica",
       "consolidado": {
-        "consulta_procedimiento": "Atención en salud bucal por profesional de odontología - Juventud",
+        "consulta_procedimiento": "Atención en salud bucal por profesional de odontología- Juventud",
         "edad_aplicable": "18 a 28 Años",
         "edad_NT_RPMS": "18 a 28 Años"
       }
@@ -33,7 +33,7 @@
       "columna_usuario": "Fecha más reciente de remoción placa bacteriana",
       "keyword": "placa",
       "consolidado": {
-        "consulta_procedimiento": "Profilaxis y Remoción de Placa Bacterina - Juventud",
+        "consulta_procedimiento": "Profilaxis y Remoción de Placa  Bacterina- Juventud",
         "edad_aplicable": "18 a 28 Años",
         "edad_NT_RPMS": "18 a 28 Años"
       }
@@ -51,7 +51,7 @@
       "columna_usuario": "Fecha más reciente de asesoría en planificación familiar",
       "keyword": "planificación",
       "consolidado": {
-        "consulta_procedimiento": "Consulta primera vez de Atencion en salud por medicina general en la asesoria en anticoncepcion - Juventud",
+        "consulta_procedimiento": "Consulta primera vez de Atencion en salud por medicina general en la asesoria en anticoncepcion  - Juventud",
         "edad_aplicable": "18 a 28 Años",
         "edad_NT_RPMS": "18 a 28 Años"
       }
@@ -105,7 +105,7 @@
       "columna_usuario": "Fecha más reciente de Suministro de Método Anticonceptivo",
       "keyword": "diu",
       "consolidado": {
-        "consulta_procedimiento": "Inserción de dispositivo intrauterino anticonceptivo(DIU)- Juventud",
+        "consulta_procedimiento": "Inserción de dispositivo intrauterino anticonceptivo(DIU) - Juventud",
         "edad_aplicable": "18 a 28 Años",
         "edad_NT_RPMS": "18 a 28 Años"
       }
@@ -115,33 +115,6 @@
       "keyword": "subdermico",
       "consolidado": {
         "consulta_procedimiento": "Insercion de Anticonceptivo Subdermico",
-        "edad_aplicable": "18 a 28 Años",
-        "edad_NT_RPMS": "18 a 28 Años"
-      }
-    },
-    {
-      "columna_usuario": "Fecha asesoría pre test VIH",
-      "keyword": "asesoria_pre_test_vih",
-      "consolidado": {
-        "consulta_procedimiento": "Asesoria Pre y Pos Test VIH - Juventud",
-        "edad_aplicable": "18 a 28 Años",
-        "edad_NT_RPMS": "18 a 28 Años"
-      }
-    },
-    {
-      "columna_usuario": "Fecha asesoría post test VIH",
-      "keyword": "asesoria_post_test_vih",
-      "consolidado": {
-        "consulta_procedimiento": "Asesoria Pre y Pos Test VIH - Juventud",
-        "edad_aplicable": "18 a 28 Años",
-        "edad_NT_RPMS": "18 a 28 Años"
-      }
-    },
-    {
-      "columna_usuario": "Fecha de tamizaje para VIH",
-      "keyword": "tamizaje_vih",
-      "consolidado": {
-        "consulta_procedimiento": "Prueba rápida para VIH - Juventud",
         "edad_aplicable": "18 a 28 Años",
         "edad_NT_RPMS": "18 a 28 Años"
       }
@@ -177,7 +150,7 @@
       "columna_usuario": "Fecha de tamizaje",
       "keyword": "citologia",
       "consolidado": {
-        "consulta_procedimiento": "Tamizaje de Cancer de Cuello Uterino(Citologia)- Juventud",
+        "consulta_procedimiento": "Tamizaje de Cancer de Cuello Uterino (Citologia) - Juventud",
         "edad_aplicable": "25 a 28 Años",
         "edad_NT_RPMS": "25 a 28 Años"
       }
@@ -214,33 +187,6 @@
       "keyword": "anticonceptivo_inyectable_trimestral",
       "consolidado": {
         "consulta_procedimiento": "Suministro de Anticoncepcion inyectables trimestrales - Juventud",
-        "edad_aplicable": "18 a 28 Años",
-        "edad_NT_RPMS": "18 a 28 Años"
-      }
-    },
-    {
-      "columna_usuario": "Fecha prueba embarazo",
-      "keyword": "prueba_embarazo",
-      "consolidado": {
-        "consulta_procedimiento": "Prueba de embarazo - Juventud",
-        "edad_aplicable": "18 a 28 Años",
-        "edad_NT_RPMS": "18 a 28 Años"
-      }
-    },
-    {
-      "columna_usuario": "Fecha de tamizaje para sífilis",
-      "keyword": "sifilis",
-      "consolidado": {
-        "consulta_procedimiento": "Prueba rápida treponémica para sífilis - Juventud",
-        "edad_aplicable": "12 a 17 Años",
-        "edad_NT_RPMS": "12 a 17 Años"
-      }
-    },
-    {
-      "columna_usuario": "Fecha de tamizaje para sífilis",
-      "keyword": "sifilis",
-      "consolidado": {
-        "consulta_procedimiento": "Prueba rápida treponémica para sífilis - Juventud",
         "edad_aplicable": "18 a 28 Años",
         "edad_NT_RPMS": "18 a 28 Años"
       }

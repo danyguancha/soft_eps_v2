@@ -332,6 +332,7 @@ export interface ExtractionSummary {
  * Respuesta completa del procesamiento NT RPMS
  */
 export interface NTRPMSProcessResponse {
+  total_time: any;
   success: boolean;
   message?: string;
   error?: string;

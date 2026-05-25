@@ -69,7 +69,7 @@
       "columna_usuario": "Fecha más reciente de aplicación flúor",
       "keyword": "flúor",
       "consolidado": {
-        "consulta_procedimiento": "Aplicación de Barniz de Flúor - Infancia",
+        "consulta_procedimiento": "Aplicación de Barniz de Flúor  - Infancia",
         "edad_aplicable": "6 a 11 Años",
         "edad_NT_RPMS": "6 a 11 Años"
       }
@@ -87,7 +87,7 @@
       "columna_usuario": "Fecha más reciente de remoción placa bacteriana",
       "keyword": "placa",
       "consolidado": {
-        "consulta_procedimiento": "Profilaxis y Remoción de Placa Bacterina - Infancia",
+        "consulta_procedimiento": "Profilaxis y Remoción de Placa  Bacterina - Infancia",
         "edad_aplicable": "6 a 11 Años",
         "edad_NT_RPMS": "6 a 11 Años"
       }
@@ -96,7 +96,7 @@
       "columna_usuario": "Fecha de diagnostico de Anemia nutricional",
       "keyword": "hematocrito",
       "consolidado": {
-        "consulta_procedimiento": "Tamizaje para Anemia(Hematocrito)- Infancia",
+        "consulta_procedimiento": "Tamizaje para Anemia (Hematocrito) - Infancia",
         "edad_aplicable": "10 a 11 Años",
         "edad_NT_RPMS": "10 a 11 Años"
       }
@@ -105,7 +105,7 @@
       "columna_usuario": "Fecha Hemoglobina",
       "keyword": "hemoglobina",
       "consolidado": {
-        "consulta_procedimiento": "Tamizaje para Anemia(Hemoglobina)- Infancia",
+        "consulta_procedimiento": "Tamizaje para Anemia (Hemoglobina) - Infancia",
         "edad_aplicable": "10 a 11 Años",
         "edad_NT_RPMS": "10 a 11 Años"
       }
@@ -114,7 +114,7 @@
       "columna_usuario": "Fecha más reciente de educación Individual",
       "keyword": "educacion_individual",
       "consolidado": {
-        "consulta_procedimiento": "Educación individual(padres o cuidadores)",
+        "consulta_procedimiento": "Educación individual (padres o cuidadores)",
         "edad_aplicable": "6 a 11 Años",
         "edad_NT_RPMS": "6 a 11 Años"
       }

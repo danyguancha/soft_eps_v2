@@ -69,7 +69,7 @@
       "columna_usuario": "Fecha más reciente de Consulta Odontológica",
       "keyword": "odontológica",
       "consolidado": {
-        "consulta_procedimiento": "Atención en salud bucal por profesional de odontología - Adultez",
+        "consulta_procedimiento": "Atención en salud bucal por profesional de odontología  - Adultez",
         "edad_aplicable": "29 a 59 Años",
         "edad_NT_RPMS": "29 a 59 Años"
       }
@@ -78,7 +78,7 @@
       "columna_usuario": "Fecha más reciente de remoción placa bacteriana",
       "keyword": "placa",
       "consolidado": {
-        "consulta_procedimiento": "Profilaxis y Remoción de Placa Bacterina - Adultez",
+        "consulta_procedimiento": "Profilaxis y Remoción de Placa  Bacterina - Adultez",
         "edad_aplicable": "29 a 59 Años",
         "edad_NT_RPMS": "29 a 59 Años"
       }
@@ -96,7 +96,7 @@
       "columna_usuario": "Fecha más reciente de asesoría en planificación familiar",
       "keyword": "planificación",
       "consolidado": {
-        "consulta_procedimiento": "Consulta primera vez de Atencion en salud por medicina general para la asesoria en anticoncepcion - Adultez",
+        "consulta_procedimiento": "Consulta primera vez de Atencion en salud por medicina general para la asesoria en anticoncepcion  - Adultez",
         "edad_aplicable": "29 a 59 Años",
         "edad_NT_RPMS": "29 a 59 Años"
       }
@@ -150,7 +150,7 @@
       "columna_usuario": "Fecha más reciente de Suministro de Método Anticonceptivo",
       "keyword": "diu",
       "consolidado": {
-        "consulta_procedimiento": "Inserción de dispositivo intrauterino anticonceptivo(DIU)- Adultez",
+        "consulta_procedimiento": "Inserción de dispositivo intrauterino anticonceptivo(DIU) - Adultez",
         "edad_aplicable": "29 a 49 Años",
         "edad_NT_RPMS": "29 a 49 Años"
       }
@@ -162,33 +162,6 @@
         "consulta_procedimiento": "Insercion de Anticonceptivo Subdermico - Adultez",
         "edad_aplicable": "29 a 49 Años",
         "edad_NT_RPMS": "29 a 49 Años"
-      }
-    },
-    {
-      "columna_usuario": "Fecha asesoría pre test VIH",
-      "keyword": "Asesoria Pre y Pos Test VIH",
-      "consolidado": {
-        "consulta_procedimiento": "Asesoria Pre y Pos Test VIH - Adultez",
-        "edad_aplicable": "29 a 59 Años",
-        "edad_NT_RPMS": "29 a 59 Años"
-      }
-    },
-    {
-      "columna_usuario": "Fecha asesoría post test VIH",
-      "keyword": "Asesoria Pre y Pos Test VIH",
-      "consolidado": {
-        "consulta_procedimiento": "Asesoria Pre y Pos Test VIH - Adultez",
-        "edad_aplicable": "29 a 59 Años",
-        "edad_NT_RPMS": "29 a 59 Años"
-      }
-    },
-    {
-      "columna_usuario": "Fecha de tamizaje para VIH",
-      "keyword": "Fecha de tamizaje para VIH",
-      "consolidado": {
-        "consulta_procedimiento": "Prueba rápida para VIH - Adultez",
-        "edad_aplicable": "29 a 59 Años",
-        "edad_NT_RPMS": "29 a 59 Años"
       }
     },
     {
@@ -222,7 +195,7 @@
       "columna_usuario": "Fecha de tamizaje",
       "keyword": "citologia",
       "consolidado": {
-        "consulta_procedimiento": "Tamizaje de Cancer de Cuello Uterino(Citologia Convencional)- Adultez",
+        "consulta_procedimiento": "Tamizaje de Cancer de Cuello Uterino (Citologia Convencional) - Adultez",
         "edad_aplicable": "29 Años",
         "edad_NT_RPMS": "29 Años"
       }
@@ -231,7 +204,7 @@
       "columna_usuario": "Fecha de tamizaje",
       "keyword": "adn-vph",
       "consolidado": {
-        "consulta_procedimiento": "Canalizacion Efectiva del Tamizaje de Cancer de Cuello Uterino ADN - VPH - Adultez",
+        "consulta_procedimiento": "Canalizacion Efectiva del Tamizaje de Cancer de Cuello Uterino ADN - VPH  - Adultez",
         "edad_aplicable": "30 a 59 Años",
         "edad_NT_RPMS": "30 a 59 Años"
       }
@@ -273,19 +246,10 @@
       }
     },
     {
-      "columna_usuario": "Fecha de tamizaje para sífilis",
-      "keyword": "sifilis",
-      "consolidado": {
-        "consulta_procedimiento": "Prueba rápida treponémica para sífilis - Adultez",
-        "edad_aplicable": "29 a 59 Años",
-        "edad_NT_RPMS": "29 a 59 Años"
-      }
-    },
-    {
       "columna_usuario": "Fecha Mamografía",
       "keyword": "cancer_mamografia",
       "consolidado": {
-        "consulta_procedimiento": "Canalizacion Efectiva del Tamizaje para cancer de mama(Mamografia)- Adultez",
+        "consulta_procedimiento": "Canalizacion Efectiva del Tamizaje para cancer de mama (Mamografia) - Adultez",
         "edad_aplicable": "50 a 59 Años",
         "edad_NT_RPMS": "50 a 59 Años"
       }
@@ -294,7 +258,7 @@
       "columna_usuario": "Fecha examen clínico mama",
       "keyword": "valoracion_clinica_mama",
       "consolidado": {
-        "consulta_procedimiento": "Tamizaje para cancer de mama(valoracion clinica de la mama)- Adultez",
+        "consulta_procedimiento": "Tamizaje para cancer de mama(valoracion clinica de la mama) - Adultez",
         "edad_aplicable": "40 a 59 Años",
         "edad_NT_RPMS": "40 a 59 Años"
       }
@@ -303,7 +267,7 @@
       "columna_usuario": "Fecha Antígeno Prostático (PSA)",
       "keyword": "antigeno_prostatico",
       "consolidado": {
-        "consulta_procedimiento": "Tamizaje para cancer de Prostata(PSA)- Adultez",
+        "consulta_procedimiento": "Tamizaje para cancer de Prostata (PSA)  - Adultez",
         "edad_aplicable": "50 a 59 Años",
         "edad_NT_RPMS": "50 a 59 Años"
       }
@@ -312,7 +276,7 @@
       "columna_usuario": "Fecha prueba Sangre Oculta en Materia Fecal (SOMF)",
       "keyword": "cancer_colon_sangre_oculta",
       "consolidado": {
-        "consulta_procedimiento": "Tamizaje para cáncer de colon(sangre oculta en materia fecal)- Adultez",
+        "consulta_procedimiento": "Tamizaje para cáncer de colon  (sangre oculta en materia fecal) - Adultez",
         "edad_aplicable": "50 a 59 Años",
         "edad_NT_RPMS": "50 a 59 Años"
       }

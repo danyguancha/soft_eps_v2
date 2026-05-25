@@ -150,7 +150,7 @@
       "columna_usuario": "Fecha más reciente de remoción placa bacteriana",
       "keyword": "placa",
       "consolidado": {
-        "consulta_procedimiento": "Profilaxis y Remoción de Placa Bacterina - Vejez",
+        "consulta_procedimiento": "Profilaxis y Remoción de Placa  Bacterina - Vejez",
         "edad_aplicable": "60 a 62 Años",
         "edad_NT_RPMS": "60 a 62 Años"
       }
@@ -159,7 +159,7 @@
       "columna_usuario": "Fecha más reciente de remoción placa bacteriana",
       "keyword": "placa",
       "consolidado": {
-        "consulta_procedimiento": "Profilaxis y Remoción de Placa Bacterina - Vejez",
+        "consulta_procedimiento": "Profilaxis y Remoción de Placa  Bacterina - Vejez",
         "edad_aplicable": "63 a 65 Años",
         "edad_NT_RPMS": "63 a 65 Años"
       }
@@ -168,7 +168,7 @@
       "columna_usuario": "Fecha más reciente de remoción placa bacteriana",
       "keyword": "placa",
       "consolidado": {
-        "consulta_procedimiento": "Profilaxis y Remoción de Placa Bacterina - Vejez",
+        "consulta_procedimiento": "Profilaxis y Remoción de Placa  Bacterina - Vejez",
         "edad_aplicable": "66 a 68 Años",
         "edad_NT_RPMS": "66 a 68 Años"
       }
@@ -177,7 +177,7 @@
       "columna_usuario": "Fecha más reciente de remoción placa bacteriana",
       "keyword": "placa",
       "consolidado": {
-        "consulta_procedimiento": "Profilaxis y Remoción de Placa Bacterina - Vejez",
+        "consulta_procedimiento": "Profilaxis y Remoción de Placa  Bacterina - Vejez",
         "edad_aplicable": "69 a 71 Años",
         "edad_NT_RPMS": "69 a 71 Años"
       }
@@ -186,7 +186,7 @@
       "columna_usuario": "Fecha más reciente de remoción placa bacteriana",
       "keyword": "placa",
       "consolidado": {
-        "consulta_procedimiento": "Profilaxis y Remoción de Placa Bacterina - Vejez",
+        "consulta_procedimiento": "Profilaxis y Remoción de Placa  Bacterina - Vejez",
         "edad_aplicable": "72 a 74 Años",
         "edad_NT_RPMS": "72 a 74 Años"
       }
@@ -195,7 +195,7 @@
       "columna_usuario": "Fecha más reciente de remoción placa bacteriana",
       "keyword": "placa",
       "consolidado": {
-        "consulta_procedimiento": "Profilaxis y Remoción de Placa Bacterina - Vejez",
+        "consulta_procedimiento": "Profilaxis y Remoción de Placa  Bacterina - Vejez",
         "edad_aplicable": "75 a 77 Años",
         "edad_NT_RPMS": "75 a 77 Años"
       }
@@ -204,7 +204,7 @@
       "columna_usuario": "Fecha más reciente de remoción placa bacteriana",
       "keyword": "placa",
       "consolidado": {
-        "consulta_procedimiento": "Profilaxis y Remoción de Placa Bacterina - Vejez",
+        "consulta_procedimiento": "Profilaxis y Remoción de Placa  Bacterina - Vejez",
         "edad_aplicable": "78 a 79 Años",
         "edad_NT_RPMS": "78 a 79 Años"
       }
@@ -213,7 +213,7 @@
       "columna_usuario": "Fecha más reciente de remoción placa bacteriana",
       "keyword": "placa",
       "consolidado": {
-        "consulta_procedimiento": "Profilaxis y Remoción de Placa Bacterina - Vejez",
+        "consulta_procedimiento": "Profilaxis y Remoción de Placa  Bacterina - Vejez",
         "edad_aplicable": ">80 Años",
         "edad_NT_RPMS": ">80 Años"
       }
@@ -240,7 +240,7 @@
       "columna_usuario": "Fecha asesoría pre test VIH",
       "keyword": "asesoria_pre_test_vih",
       "consolidado": {
-        "consulta_procedimiento": "Asesoria Pre y Pos Test VIH - Vejez",
+        "consulta_procedimiento": "Asesoria Pre y Pos Test VIH -Vejez",
         "edad_aplicable": ">= 60 Años",
         "edad_NT_RPMS": ">= 60 Años"
       }
@@ -249,7 +249,7 @@
       "columna_usuario": "Fecha asesoría post test VIH",
       "keyword": "asesoria_post_test_vih",
       "consolidado": {
-        "consulta_procedimiento": "Asesoria Pre y Pos Test VIH - Vejez",
+        "consulta_procedimiento": "Asesoria Pre y Pos Test VIH -Vejez",
         "edad_aplicable": ">= 60 Años",
         "edad_NT_RPMS": ">= 60 Años"
       }
@@ -285,7 +285,7 @@
       "columna_usuario": "Fecha más reciente de educación Individual",
       "keyword": "educacion_individual",
       "consolidado": {
-        "consulta_procedimiento": "Educación a padres o cuidadores - Vejez",
+        "consulta_procedimiento": "Educación a padres o cuidadores- Vejez",
         "edad_aplicable": ">= 60 Años",
         "edad_NT_RPMS": ">= 60 Años"
       }
@@ -309,15 +309,6 @@
       }
     },
     {
-      "columna_usuario": "Fecha prueba embarazo",
-      "keyword": "prueba_embarazo",
-      "consolidado": {
-        "consulta_procedimiento": "Prueba de embarazo - Adultez",
-        "edad_aplicable": "29 a 49 Años",
-        "edad_NT_RPMS": "29 a 49 Años"
-      }
-    },
-    {
       "columna_usuario": "Fecha de tamizaje para sífilis",
       "keyword": "sifilis",
       "consolidado": {
@@ -330,7 +321,7 @@
       "columna_usuario": "Fecha Mamografía",
       "keyword": "cancer_mamografia",
       "consolidado": {
-        "consulta_procedimiento": "Canalizacion Efectiva del Tamizaje para cancer de mama(Mamografia)- Adultez",
+        "consulta_procedimiento": "Canalizacion Efectiva del Tamizaje para cancer de mama  (Mamografia) - Adultez",
         "edad_aplicable": "60 a 69 Años",
         "edad_NT_RPMS": "60 a 69 Años"
       }
@@ -339,7 +330,7 @@
       "columna_usuario": "Fecha examen clínico mama",
       "keyword": "valoracion_clinica_mama",
       "consolidado": {
-        "consulta_procedimiento": "Tamizaje para cancer de mama(valoracion clinica de la mama)- Adultez",
+        "consulta_procedimiento": "Tamizaje para cancer de mama(valoracion clinica de la mama) - Adultez",
         "edad_aplicable": "60 a 69 Años",
         "edad_NT_RPMS": "60 a 69 Años"
       }
@@ -348,7 +339,7 @@
       "columna_usuario": "Fecha Antígeno Prostático (PSA)",
       "keyword": "antigeno_prostatico",
       "consolidado": {
-        "consulta_procedimiento": "Tamizaje para cancer de Prostata(PSA)Toma y Envio - Vejez",
+        "consulta_procedimiento": "Tamizaje para cancer de Prostata (PSA) Toma y Envio - Vejez",
         "edad_aplicable": "60 a 75 Años",
         "edad_NT_RPMS": "60 a 75 Años"
       }
@@ -357,7 +348,7 @@
       "columna_usuario": "Fecha prueba Sangre Oculta en Materia Fecal (SOMF)",
       "keyword": "cancer_colon_sangre_oculta",
       "consolidado": {
-        "consulta_procedimiento": "Tamizaje para cáncer de colon(sangre oculta en materia fecal)- Adultez",
+        "consulta_procedimiento": "Tamizaje para cáncer de colon  (sangre oculta en materia fecal) - Adultez",
         "edad_aplicable": "60 a 75 Años",
         "edad_NT_RPMS": "60 a 75 Años"
       }

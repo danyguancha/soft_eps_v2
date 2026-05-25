@@ -33,7 +33,7 @@
       "columna_usuario": "Consulta por Enfermería 13 años",
       "keyword": "enfermería",
       "consolidado": {
-        "consulta_procedimiento": "Atencion en salud por profesional de enfermeria - Adolescencia",
+        "consulta_procedimiento": "Atencion en salud por profesional de enfermeria  -  Adolescencia",
         "edad_aplicable": "13 Años",
         "edad_NT_RPMS": "13 15 y 17 años"
       }
@@ -42,7 +42,7 @@
       "columna_usuario": "Consulta por Enfermería 15 años",
       "keyword": "enfermería",
       "consolidado": {
-        "consulta_procedimiento": "Atencion en salud por profesional de enfermeria - Adolescencia",
+        "consulta_procedimiento": "Atencion en salud por profesional de enfermeria  -  Adolescencia",
         "edad_aplicable": "15 Años",
         "edad_NT_RPMS": "13 15 y 17 años"
       }
@@ -51,7 +51,7 @@
       "columna_usuario": "Consulta por Enfermería 17 años",
       "keyword": "enfermería",
       "consolidado": {
-        "consulta_procedimiento": "Atencion en salud por profesional de enfermeria - Adolescencia",
+        "consulta_procedimiento": "Atencion en salud por profesional de enfermeria  -  Adolescencia",
         "edad_aplicable": "17 Años",
         "edad_NT_RPMS": "13 15 y 17 años"
       }
@@ -60,7 +60,7 @@
       "columna_usuario": "Fecha más reciente de Consulta Odontológica",
       "keyword": "odontologica",
       "consolidado": {
-        "consulta_procedimiento": "Atención en salud bucal por profesional de odontología - Adolescencia",
+        "consulta_procedimiento": "Atención en salud bucal por profesional de odontología  -  Adolescencia",
         "edad_aplicable": "12 a 17 Años",
         "edad_NT_RPMS": "12 a 17 Años"
       }
@@ -69,7 +69,7 @@
       "columna_usuario": "Fecha más reciente de aplicación flúor",
       "keyword": "fluor",
       "consolidado": {
-        "consulta_procedimiento": "Aplicación de Barniz de Flúor - Adolescencia",
+        "consulta_procedimiento": "Aplicación de Barniz de Flúor  - Adolescencia",
         "edad_aplicable": "12 a 17 Años",
         "edad_NT_RPMS": "12 a 17 Años"
       }
@@ -78,7 +78,7 @@
       "columna_usuario": "Fecha más reciente de aplicación de sellantes",
       "keyword": "sellantes",
       "consolidado": {
-        "consulta_procedimiento": "Aplicación de Sellantes - Adolescencia",
+        "consulta_procedimiento": "Aplicación de Sellantes  -  Adolescencia",
         "edad_aplicable": "12 a 15 Años",
         "edad_NT_RPMS": "12 a 15 Años"
       }
@@ -87,7 +87,7 @@
       "columna_usuario": "Fecha más reciente de remoción placa bacteriana",
       "keyword": "placa",
       "consolidado": {
-        "consulta_procedimiento": "Profilaxis y Remoción de Placa Bacterina - Adolescencia",
+        "consulta_procedimiento": "Profilaxis y Remoción de Placa  Bacterina  -  Adolescencia",
         "edad_aplicable": "12 a 17 Años",
         "edad_NT_RPMS": "12 a 17 Años"
       }
@@ -96,7 +96,7 @@
       "columna_usuario": "Fecha más reciente de Detartraje",
       "keyword": "detartraje",
       "consolidado": {
-        "consulta_procedimiento": "Detartraje supragingival - Adolescencia",
+        "consulta_procedimiento": "Detartraje supragingival  -  Adolescencia",
         "edad_aplicable": "12 a 17 Años",
         "edad_NT_RPMS": "12 a 17 Años"
       }
@@ -105,7 +105,7 @@
       "columna_usuario": "Fecha más reciente de Suministro de Método Anticonceptivo",
       "keyword": "diu",
       "consolidado": {
-        "consulta_procedimiento": "Inserción de dispositivo intrauterino anticonceptivo(DIU)- Adolescencia",
+        "consulta_procedimiento": "Inserción de dispositivo intrauterino anticonceptivo(DIU)  - Adolescencia",
         "edad_aplicable": "14 a 17 Años",
         "edad_NT_RPMS": "14 a 17 Años"
       }
@@ -123,7 +123,7 @@
       "columna_usuario": "Fecha de diagnostico de Anemia nutricional",
       "keyword": "hematocrito",
       "consolidado": {
-        "consulta_procedimiento": "Tamizaje para Anemia(Hemotocrito)- Adolescencia",
+        "consulta_procedimiento": "Tamizaje para Anemia (Hemotocrito)  -  Adolescencia",
         "edad_aplicable": "12 a 13 Años",
         "edad_NT_RPMS": "12 a 13 Años"
       }
@@ -132,7 +132,7 @@
       "columna_usuario": "Fecha de diagnostico de Anemia nutricional",
       "keyword": "hematocrito",
       "consolidado": {
-        "consulta_procedimiento": "Tamizaje para Anemia(Hemotocrito)- Adolescencia",
+        "consulta_procedimiento": "Tamizaje para Anemia (Hemotocrito)  - Adoscencia",
         "edad_aplicable": "14 a 17 Años",
         "edad_NT_RPMS": "14 a 17 Años"
       }
@@ -141,7 +141,7 @@
       "columna_usuario": "Fecha Hemoglobina (10 - 13 años)",
       "keyword": "hemoglobina",
       "consolidado": {
-        "consulta_procedimiento": "Tamizaje para Anemia(Hemoglobina)- Adolescencia",
+        "consulta_procedimiento": "Tamizaje para Anemia (Hemoglobina)  -  Adolescencia",
         "edad_aplicable": "12 a 13 Años",
         "edad_NT_RPMS": "12 a 13 Años"
       }
@@ -150,7 +150,7 @@
       "columna_usuario": "Fecha Hemoglobina (14 - 17 años)",
       "keyword": "hemoglobina",
       "consolidado": {
-        "consulta_procedimiento": "Tamizaje para Anemia(Hemoglobina)- Adolescencia",
+        "consulta_procedimiento": "Tamizaje para Anemia (Hemoglobina)  -  Adolescencia",
         "edad_aplicable": "14 a 17 Años",
         "edad_NT_RPMS": "14 a 17 Años"
       }
@@ -159,7 +159,7 @@
       "columna_usuario": "Fecha más reciente de educación Individual",
       "keyword": "educacion_individual",
       "consolidado": {
-        "consulta_procedimiento": "Educación individual(padres o cuidadores)",
+        "consulta_procedimiento": "Educación individual (padres o cuidadores)",
         "edad_aplicable": "14 a 17 Años",
         "edad_NT_RPMS": "14 a 17 Años"
       }
@@ -177,7 +177,7 @@
       "columna_usuario": "Fecha más reciente de Suministro de Método Anticonceptivo",
       "keyword": "anticonceptivo_oral",
       "consolidado": {
-        "consulta_procedimiento": "Suministro de Anticoncepcion Oral - Adolescencia",
+        "consulta_procedimiento": "Suministro de Anticoncepcion Oral  - Adolescencia",
         "edad_aplicable": "14 a 17 Años",
         "edad_NT_RPMS": "14 a 17 Años"
       }
@@ -195,7 +195,7 @@
       "columna_usuario": "Fecha más reciente de Suministro de Método Anticonceptivo",
       "keyword": "anticonceptivo_inyectable_trimestral",
       "consolidado": {
-        "consulta_procedimiento": "Suministro de Anticoncepcion inyectables trimestrales - Adolescencia",
+        "consulta_procedimiento": "Suministro de Anticoncepcion inyectables trimestrales  - Adolescencia",
         "edad_aplicable": "14 a 17 Años",
         "edad_NT_RPMS": "14 a 17 Años"
       }
@@ -204,7 +204,7 @@
       "columna_usuario": "Fecha prueba embarazo",
       "keyword": "prueba_embarazo",
       "consolidado": {
-        "consulta_procedimiento": "Prueba de embarazo - Adolescencia",
+        "consulta_procedimiento": "Prueba de embarazo -  Adolescencia",
         "edad_aplicable": "12 a 17 Años",
         "edad_NT_RPMS": "12 a 17 Años"
       }
@@ -226,7 +226,33 @@
         "edad_aplicable": "12 a 17 Años",
         "edad_NT_RPMS": "12 a 17 Años"
       }
+    },
+    {
+      "columna_usuario": "Fecha de tamizaje para sífilis",
+      "keyword": "sifilis",
+      "consolidado": {
+        "consulta_procedimiento": "Prueba rápida treponémica para sífilis - Juventud",
+        "edad_aplicable": "12 a 17 Años",
+        "edad_NT_RPMS": "12 a 17 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha de tamizaje para VIH",
+      "keyword": "vih",
+      "consolidado": {
+        "consulta_procedimiento": "Prueba rápida para VIH - Juventud",
+        "edad_aplicable": "12 a 17 Años",
+        "edad_NT_RPMS": "12 a 17 Años"
+      }
+    },
+    {
+      "columna_usuario": "Fecha más reciente de asesoría en planificación familiar",
+      "keyword": "planificación",
+      "consolidado": {
+        "consulta_procedimiento": "Consulta primera vez  de Atencion en salud por medicina general para la asesoria en anticoncepcion - Adolescencia",
+        "edad_aplicable": "14 a 17 Años",
+        "edad_NT_RPMS": "14 a 17 Años"
+      }
     }
-    
   ]
 }

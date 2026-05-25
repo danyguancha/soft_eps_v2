@@ -1,7 +1,6 @@
-// components/technical-note/TechnicalNoteViewer.tsx - VERSIÓN CORREGIDA
-
+// components/technical-note/TechnicalNoteViewer.tsx
 import React, { useState, useEffect, useMemo } from 'react';
-import { Modal, message, Divider, Button as AntButton } from 'antd';
+import { Modal, message, Divider } from 'antd';
 import dayjs, { Dayjs } from 'dayjs';
 import 'dayjs/locale/es';
 import { useTechnicalNote } from '../../hooks/useTechnicalNote';
@@ -10,123 +9,68 @@ import { getVisibleGroups, isPredefinedFile, getPredefinedGroupKey } from '../..
 import { TechnicalNoteService } from '../../services/TechnicalNoteService';
 import type { AgeGroupIcon, CustomUploadedFile } from '../../types/FileTypes';
 
-// Componentes refactorizados
-import { HeaderSection } from './HeaderSection';
-import { LoadingProgress } from './LoadingProgress';
+import { HeaderSection }      from './HeaderSection';
+import { LoadingProgress }    from './LoadingProgress';
 import { FolderPathSelector } from './FolderPathSelector';
 import { CutoffDateSelector } from './CutoffDateSelector';
-import { FileGridSection } from './FileGridSection';
-import { FileUploadModal } from './FileUploadModal';
-import { MainContent } from './MainContent';
+import { FileGridSection }    from './FileGridSection';
+import { FileUploadModal }    from './FileUploadModal';
+import { MainContent }        from './MainContent';
 
 dayjs.locale('es');
 
 const TechnicalNoteViewer: React.FC = () => {
   const [fileSelectionLoading, setFileSelectionLoading] = useState(false);
-  const [showUploadModal, setShowUploadModal] = useState(false);
-  const [cutoffDate, setCutoffDate] = useState<Dayjs | null>(null);
+  const [showUploadModal, setShowUploadModal]           = useState(false);
+  const [cutoffDate, setCutoffDate]                     = useState<Dayjs | null>(null);
+  const [, setIsAccumulationMode]     = useState(false);
+  const [folderPath, setFolderPath]                     = useState('');
+  const [processingNTRPMS, setProcessingNTRPMS]         = useState(false);
+  const [, setNtRpmsProcessed]                          = useState(false);
 
-  // 🔥 NUEVO: Estado para controlar si estamos en "modo acumulación"
-  const [isAccumulationMode, setIsAccumulationMode] = useState(false);
+  const cutoffDateString = useMemo(
+    () => cutoffDate?.format('YYYY-MM-DD'),
+    [cutoffDate]
+  );
 
-  // Estados para NT RPMS
-  const [folderPath, setFolderPath] = useState<string>('');
-  const [processingNTRPMS, setProcessingNTRPMS] = useState<boolean>(false);
-  const [, setNtRpmsProcessed] = useState<boolean>(false);
-
-  // Convertir cutoffDate
-  const cutoffDateString = useMemo(() => {
-    const result = cutoffDate ? cutoffDate.format('YYYY-MM-DD') : undefined;
-    console.log('TechnicalNoteViewer - cutoffDateString calculado:', result);
-    return result;
-  }, [cutoffDate]);
-
-  // Hook personalizado para gestión de archivos
   const {
-    uploadedFiles,
-    uploading,
-    fileList,
-    handleCustomUpload,
-    handleBeforeUpload,
-    handleUploadChange,
-    handleRemoveUploadedFile
+    uploadedFiles, uploading, fileList,
+    handleCustomUpload, handleBeforeUpload,
+    handleUploadChange, handleRemoveUploadedFile
   } = useFileUpload();
 
-  // Hook principal de nota técnica
   const {
-    availableFiles,
-    currentFileMetadata,
-    loading,
-    loadingFiles,
-    selectedFile,
-    filteredData,
-    pagination,
-    currentPage,
-    totalPages,
-    keywordReport,
-    loadingReport,
-    showReport,
-    hasReport,
-    reportTotalRecords,
-    reportKeywords,
-    reportMinCount,
-    showTemporalData,
-    geographicFilters,
-    departamentosOptions,
-    municipiosOptions,
-    ipsOptions,
-    loadingGeoFilters,
-    selectedRegimen,
-    loadFileData,
-    loadAvailableFiles,
-    getFileByDisplayName,
-    handlePaginationChange,
-    handleFiltersChange,
-    handleSortChange,
-    handleDeleteRows,
-    handleSearch,
-    loadKeywordAgeReport,
-    toggleReportVisibility,
-    regenerateReport,
-    onSetReportKeywords,
-    onSetReportMinCount,
-    onSetShowTemporalData,
-    onAddKeyword,
-    onRemoveKeyword,
-    onDepartamentoChange,
-    onMunicipioChange,
-    onIpsChange,
-    onRegimenChange,
-    resetGeographicFilters,
-    hasData,
-    columns,
-    currentPageInfo,
-    hasGeographicFilters,
-    geographicSummary,
-    setSelectedFileOnly, // 🔥 NUEVA FUNCIÓN
+    availableFiles, currentFileMetadata, loading, loadingFiles,
+    selectedFile, filteredData, pagination, currentPage, totalPages,
+    keywordReport, loadingReport, showReport, hasReport,
+    reportTotalRecords, reportKeywords, reportMinCount,
+    showTemporalData, geographicFilters,
+    departamentosOptions, municipiosOptions, ipsOptions,
+    loadingGeoFilters, selectedRegimen,
+    loadFileData, loadAvailableFiles, getFileByDisplayName,
+    handlePaginationChange, handleFiltersChange, handleSortChange,
+    handleDeleteRows, handleSearch, loadKeywordAgeReport,
+    toggleReportVisibility, regenerateReport,
+    onSetReportKeywords, onSetReportMinCount, onSetShowTemporalData,
+    onAddKeyword, onRemoveKeyword,
+    onDepartamentoChange, onMunicipioChange, onIpsChange, onRegimenChange,
+    resetGeographicFilters, hasData, columns, currentPageInfo,
+    hasGeographicFilters, geographicSummary, setSelectedFileOnly,
   } = useTechnicalNote();
 
-  // Calcular grupos visibles
-  const visibleFileGroups = useMemo(() => {
-    const groups = getVisibleGroups(availableFiles, uploadedFiles);
-    console.log('Grupos visibles calculados:', groups.length);
-    return groups;
-  }, [availableFiles, uploadedFiles]);
+  const visibleFileGroups = useMemo(
+    () => getVisibleGroups(availableFiles, uploadedFiles),
+    [availableFiles, uploadedFiles]
+  );
 
-  // Handler para cambio de fecha de corte
   const handleCutoffDateChange = (date: Dayjs | null) => {
-    console.log('handleCutoffDateChange llamado con:', date?.format('YYYY-MM-DD'));
     setCutoffDate(date);
-    if (date) {
-      console.log(`Fecha de corte seleccionada: ${date.format('DD/MM/YYYY')}`);
-      message.success(`Fecha de corte establecida: ${date.format('DD/MM/YYYY')}`);
-    } else {
-      console.log('Fecha de corte eliminada');
-      message.warning('Fecha de corte eliminada');
-    }
+    date
+      ? message.success(`Fecha de corte establecida: ${date.format('DD/MM/YYYY')}`)
+      : message.warning('Fecha de corte eliminada');
   };
 
-  // Handler para procesar archivos NT RPMS
+  // ─── HANDLER NT RPMS ─────────────────────────────────────────────────────
   const handleProcessNTRPMS = async (mode: 'network' | 'local') => {
     if (!folderPath.trim()) {
       message.error('Debe ingresar la ruta de la carpeta con archivos NT RPMS');
@@ -136,71 +80,50 @@ const TechnicalNoteViewer: React.FC = () => {
     setProcessingNTRPMS(true);
 
     try {
-      console.log('='.repeat(60));
-      console.log(`PROCESANDO ARCHIVOS NT RPMS - MODO: ${mode.toUpperCase()}`);
-      console.log('='.repeat(60));
-      console.log(`Ruta: ${folderPath}`);
+      const response = mode === 'network'
+        ? await TechnicalNoteService.processNTRPMSFromNetwork(folderPath)
+        : await TechnicalNoteService.processNTRPMSFromLocal(folderPath);
 
-      let response;
-      if (mode === 'network') {
-        console.log('Procesando desde carpeta compartida en red...');
-        response = await TechnicalNoteService.processNTRPMSFromNetwork(folderPath);
-      } else {
-        console.log('Procesando desde carpeta local del servidor...');
-        response = await TechnicalNoteService.processNTRPMSFromLocal(folderPath);
-      }
-
-      if (!response) {
-        throw new Error('No se recibió respuesta del servidor');
-      }
+      if (!response) throw new Error('No se recibió respuesta del servidor');
 
       if (response.success) {
-        const filesProcessed = response.extraction_summary?.archivos_procesados || 0;
-        const totalRows = response.total_rows || 0;
-        const totalColumns = response.total_columns || 0;
-        const totalTime = response.timing?.total_time;
-        const extractionTime = response.timing?.extraction_time;
-        const conversionTime = response.timing?.conversion_time;
+        // ── CORRECCIÓN: leer datos desde response.rpms y response.rmpn ──────
+        const rpms = (response as any).rpms ?? {};
+        const rmpn = (response as any).rmpn ?? {};
 
-        const networkInfo = response.network_info;
+        // Sumar archivos y registros de ambas hojas
+        const filesProcessed =
+          (rpms.extraction_summary?.archivos_procesados ?? 0) +
+          (rmpn.extraction_summary?.archivos_procesados ?? 0);
+
+        const totalRows =
+          (rpms.total_rows ?? 0) + (rmpn.total_rows ?? 0);
+
+        // Columnas: tomar el máximo entre ambas hojas
+        const totalColumns =
+          Math.max(rpms.total_columns ?? 0, rmpn.total_columns ?? 0);
+
+        // Tiempo total viene en el nivel raíz
+        const totalTime      = response.total_time as number | undefined;
+        const extractionTime = rpms.timing?.extraction_time as number | undefined;
+        const conversionTime = rpms.timing?.conversion_time as number | undefined;
+
+        // Compresión: preferir rpms, fallback rmpn
+        const compressionInfo = rpms.compression_info ?? rmpn.compression_info;
+
+        // Network info: nivel raíz (viene del backend en process-network)
+        const networkInfo = (response as any).network_info;
         const isFromNetwork = networkInfo?.access_type === 'network_share';
 
-        const timeMessage = totalTime ? `en ${totalTime.toFixed(2)}s` : '';
-        const sourceMessage = isFromNetwork 
-          ? `desde red compartida (${networkInfo?.excel_files_found || filesProcessed} archivos Excel encontrados)`
+        const timeMessage   = totalTime ? `en ${totalTime.toFixed(2)}s` : '';
+        const sourceMessage = isFromNetwork
+          ? `desde red compartida (${networkInfo?.excel_files_found ?? filesProcessed} archivos Excel encontrados)`
           : 'desde carpeta local';
 
         message.success({
           content: `Procesamiento exitoso! ${filesProcessed} archivos procesados ${sourceMessage} con ${totalRows.toLocaleString()} registros ${timeMessage}`,
           duration: 6,
         });
-
-        console.log('Procesamiento completado:');
-        console.log(`  - Archivos procesados: ${filesProcessed}`);
-        console.log(`  - Registros totales: ${totalRows.toLocaleString()}`);
-        console.log(`  - Columnas: ${totalColumns}`);
-        
-        if (extractionTime) {
-          console.log(`  - Tiempo extracción: ${extractionTime.toFixed(2)}s`);
-        }
-        if (conversionTime) {
-          console.log(`  - Tiempo conversión: ${conversionTime.toFixed(2)}s`);
-        }
-        if (totalTime) {
-          console.log(`  - Tiempo total: ${totalTime.toFixed(2)}s`);
-        }
-
-        if (networkInfo) {
-          console.log(`  - Carpeta origen: ${networkInfo.original_path}`);
-          console.log(`  - Tipo acceso: ${networkInfo.access_type}`);
-        }
-
-        if (response.compression_info) {
-          const compression = response.compression_info;
-          console.log(`  - Tamaño CSV: ${compression.original_size_mb?.toFixed(2)} MB`);
-          console.log(`  - Tamaño Parquet: ${compression.parquet_size_mb?.toFixed(2)} MB`);
-          console.log(`  - Ratio compresión: ${compression.compression_ratio?.toFixed(1)}%`);
-        }
 
         setNtRpmsProcessed(true);
         await loadAvailableFiles();
@@ -211,57 +134,62 @@ const TechnicalNoteViewer: React.FC = () => {
           content: (
             <div>
               <p><strong>Procesamiento completado correctamente</strong></p>
-              
+
               <Divider style={{ margin: '12px 0' }} />
-              
-              <div style={{ marginBottom: 12 }}>
-                <p style={{ marginBottom: 4, fontSize: 13 }}>
-                  <strong>Resumen:</strong>
-                </p>
-                <ul style={{ fontSize: 13, marginBottom: 0 }}>
-                  <li>Archivos procesados: <strong>{filesProcessed}</strong></li>
-                  <li>Registros totales: <strong>{totalRows.toLocaleString()}</strong></li>
-                  <li>Columnas: <strong>{totalColumns}</strong></li>
-                  {totalTime && <li>Tiempo total: <strong>{totalTime.toFixed(2)}s</strong></li>}
-                </ul>
-              </div>
+
+              <p style={{ marginBottom: 4, fontSize: 13 }}><strong>Resumen:</strong></p>
+              <ul style={{ fontSize: 13, marginBottom: 0 }}>
+                <li>Archivos procesados: <strong>{filesProcessed}</strong></li>
+                <li>Registros totales:   <strong>{totalRows.toLocaleString()}</strong></li>
+                <li>Columnas:            <strong>{totalColumns}</strong></li>
+                {totalTime      && <li>Tiempo total:      <strong>{totalTime.toFixed(2)}s</strong></li>}
+                {extractionTime && <li>Tiempo extracción: <strong>{extractionTime.toFixed(2)}s</strong></li>}
+                {conversionTime && <li>Tiempo conversión: <strong>{conversionTime.toFixed(2)}s</strong></li>}
+              </ul>
+
+              {/* Detalle por hoja */}
+              {(rpms.total_rows > 0 || rmpn.total_rows > 0) && (
+                <>
+                  <Divider style={{ margin: '12px 0' }} />
+                  <p style={{ marginBottom: 4, fontSize: 13 }}><strong>Detalle por hoja:</strong></p>
+                  <ul style={{ fontSize: 13, marginBottom: 0 }}>
+                    {rpms.total_rows > 0 && (
+                      <li>NT RPMS: <strong>{rpms.total_rows?.toLocaleString()}</strong> registros</li>
+                    )}
+                    {rmpn.total_rows > 0 && (
+                      <li>NT RMPN: <strong>{rmpn.total_rows?.toLocaleString()}</strong> registros</li>
+                    )}
+                  </ul>
+                </>
+              )}
 
               {networkInfo && (
-                <React.Fragment>
+                <>
                   <Divider style={{ margin: '12px 0' }} />
-                  <div style={{ marginBottom: 12 }}>
-                    <p style={{ marginBottom: 4, fontSize: 13 }}>
-                      <strong>Información de Red:</strong>
-                    </p>
-                    <ul style={{ fontSize: 13, marginBottom: 0 }}>
-                      <li>Origen: <code style={{ fontSize: 11 }}>{networkInfo.original_path}</code></li>
-                      <li>Tipo: <strong>{networkInfo.access_type === 'network_share' ? 'Carpeta compartida en red' : 'Local'}</strong></li>
-                      {networkInfo.excel_files_found && (
-                        <li>Archivos Excel encontrados: <strong>{networkInfo.excel_files_found}</strong></li>
-                      )}
-                    </ul>
-                  </div>
-                </React.Fragment>
+                  <p style={{ marginBottom: 4, fontSize: 13 }}><strong>Información de Red:</strong></p>
+                  <ul style={{ fontSize: 13, marginBottom: 0 }}>
+                    <li>Origen: <code style={{ fontSize: 11 }}>{networkInfo.original_path}</code></li>
+                    <li>Tipo: <strong>{isFromNetwork ? 'Carpeta compartida en red' : 'Local'}</strong></li>
+                    {networkInfo.excel_files_found && (
+                      <li>Archivos Excel encontrados: <strong>{networkInfo.excel_files_found}</strong></li>
+                    )}
+                  </ul>
+                </>
               )}
 
-              {response.compression_info && (
-                <React.Fragment>
+              {compressionInfo && (
+                <>
                   <Divider style={{ margin: '12px 0' }} />
-                  <div style={{ marginBottom: 12 }}>
-                    <p style={{ marginBottom: 4, fontSize: 13 }}>
-                      <strong>Compresión:</strong>
-                    </p>
-                    <ul style={{ fontSize: 13, marginBottom: 0 }}>
-                      <li>CSV: {response.compression_info.original_size_mb?.toFixed(2)} MB</li>
-                      <li>Parquet: {response.compression_info.parquet_size_mb?.toFixed(2)} MB</li>
-                      <li>Ahorro: {response.compression_info.compression_ratio?.toFixed(1)}%</li>
-                    </ul>
-                  </div>
-                </React.Fragment>
+                  <p style={{ marginBottom: 4, fontSize: 13 }}><strong>Compresión:</strong></p>
+                  <ul style={{ fontSize: 13, marginBottom: 0 }}>
+                    <li>CSV:     {compressionInfo.original_size_mb?.toFixed(2)} MB</li>
+                    <li>Parquet: {compressionInfo.parquet_size_mb?.toFixed(2)} MB</li>
+                    <li>Ahorro:  {compressionInfo.compression_ratio?.toFixed(1)}%</li>
+                  </ul>
+                </>
               )}
 
               <Divider style={{ margin: '12px 0' }} />
-              
               <p style={{ fontSize: 13, color: '#52c41a', marginBottom: 4 }}>
                 <strong>Siguiente paso:</strong>
               </p>
@@ -273,9 +201,9 @@ const TechnicalNoteViewer: React.FC = () => {
         });
 
         setFolderPath('');
+
       } else {
         message.warning('El procesamiento finalizó con advertencias');
-        console.warn('Procesamiento con advertencias:', response.errors);
 
         Modal.warning({
           title: 'Procesamiento con Advertencias',
@@ -283,56 +211,26 @@ const TechnicalNoteViewer: React.FC = () => {
           content: (
             <div>
               <p>El procesamiento finalizó pero algunos archivos tuvieron problemas:</p>
-              {response.errors && response.errors.length > 0 ? (
+              {(response as any).errors?.length > 0 ? (
                 <ul>
-                  {response.errors.map((error, index) => (
-                    <li key={index}>{error}</li>
+                  {(response as any).errors.map((err: string, i: number) => (
+                    <li key={i}>{err}</li>
                   ))}
                 </ul>
               ) : (
                 <p>No se especificaron detalles del error.</p>
               )}
-              
-              {response.extraction_summary?.errores && response.extraction_summary.errores.length > 0 && (
-                <React.Fragment>
-                  <Divider style={{ margin: '12px 0' }} />
-                  <p><strong>Errores específicos por archivo:</strong></p>
-                  <ul style={{ fontSize: 12 }}>
-                    {response.extraction_summary.errores.map(([file, error], index) => (
-                      <li key={index}>
-                        <code style={{ fontSize: 11 }}>{file}</code>: {error}
-                      </li>
-                    ))}
-                  </ul>
-                </React.Fragment>
-              )}
             </div>
           ),
         });
       }
+
     } catch (error: any) {
-      console.group('ERROR EN COMPONENTE');
-      console.error('error completo:', error);
-      console.error('error.message:', error.message);
-      console.groupEnd();
+      const parts      = (error.message ?? '').split('\n\n💡 Sugerencia:\n');
+      const errMsg     = parts[0] || 'Error desconocido al procesar archivos';
+      const suggestion = parts[1] ?? '';
 
-      let errorMessage = 'Error desconocido al procesar archivos';
-      let suggestion = '';
-
-      if (error.message) {
-        const parts = error.message.split('\n\nSugerencia:\n');
-        errorMessage = parts[0];
-        if (parts.length > 1) {
-          suggestion = parts[1];
-        }
-      } else if (typeof error === 'string') {
-        errorMessage = error;
-      }
-
-      message.error({
-        content: errorMessage,
-        duration: 6
-      });
+      message.error({ content: errMsg, duration: 6 });
 
       Modal.error({
         title: 'Error al Procesar Archivos NT RPMS',
@@ -340,13 +238,13 @@ const TechnicalNoteViewer: React.FC = () => {
         content: (
           <div>
             <p style={{ color: '#ff4d4f', fontWeight: 600, fontSize: 14, marginBottom: 12 }}>
-              {errorMessage}
+              {errMsg}
             </p>
-            
+
             {suggestion && (
-              <React.Fragment>
+              <>
                 <Divider style={{ margin: '12px 0' }} />
-                <div style={{ background: '#e6f7ff', padding: 12, borderRadius: 4, marginBottom: 12 }}>
+                <div style={{ background: '#e6f7ff', padding: 12, borderRadius: 4 }}>
                   <p style={{ fontSize: 13, color: '#0050b3', marginBottom: 4 }}>
                     <strong>Sugerencia:</strong>
                   </p>
@@ -354,31 +252,32 @@ const TechnicalNoteViewer: React.FC = () => {
                     {suggestion}
                   </p>
                 </div>
-              </React.Fragment>
+              </>
             )}
-            
+
             <Divider style={{ margin: '12px 0' }} />
             <p style={{ fontSize: 13, color: '#666', marginBottom: 8 }}>
               <strong>Verifique que:</strong>
             </p>
             <ul style={{ fontSize: 13, color: '#666', marginBottom: 12 }}>
               {mode === 'network' ? (
-                <React.Fragment>
+                <>
                   <li>La carpeta está compartida correctamente en el equipo cliente</li>
                   <li>El servidor tiene permisos de lectura sobre la carpeta compartida</li>
                   <li>El firewall permite compartir archivos (SMB/CIFS)</li>
                   <li>Ambos equipos están en la misma red</li>
                   <li>La ruta UNC tiene el formato correcto: \\IP\carpeta</li>
-                </React.Fragment>
+                </>
               ) : (
-                <React.Fragment>
-                  <li>La ruta de la carpeta sea correcta y existe en el servidor</li>
+                <>
+                  <li>La ruta de la carpeta sea correcta y exista en el servidor</li>
                   <li>La carpeta contiene archivos Excel (.xlsx o .xls)</li>
                   <li>Los archivos no están corruptos o protegidos con contraseña</li>
                   <li>Tiene permisos de lectura en la carpeta</li>
-                </React.Fragment>
+                </>
               )}
             </ul>
+
             <Divider style={{ margin: '12px 0' }} />
             <div style={{ background: '#f5f5f5', padding: 8, borderRadius: 4 }}>
               <p style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 4 }}>
@@ -396,30 +295,20 @@ const TechnicalNoteViewer: React.FC = () => {
       setProcessingNTRPMS(false);
     }
   };
+  // ─────────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
-    const loadFiles = async () => {
-      try {
-        await loadAvailableFiles();
-      } catch (error) {
-        console.error('Error cargando archivos disponibles:', error);
-      }
-    };
-    loadFiles();
+    loadAvailableFiles().catch(console.error);
   }, [loadAvailableFiles]);
 
-  // 🔥 HANDLER MODIFICADO: Click en archivo desde la grilla
   const handleFileGroupClick = async (group: AgeGroupIcon) => {
     if (!cutoffDate) {
       message.error('Debe seleccionar una fecha de corte antes de cargar archivos');
       return;
     }
-
     if (!group.filename) return;
 
-    // 🔥 Si ya existe un reporte, solo cambiar el archivo seleccionado (modo acumulación)
     if (hasReport) {
-      console.log('📊 MODO ACUMULACIÓN: Solo cambiando archivo seleccionado a', group.filename);
       setIsAccumulationMode(true);
       setSelectedFileOnly(group.filename);
       message.info({
@@ -429,20 +318,10 @@ const TechnicalNoteViewer: React.FC = () => {
       return;
     }
 
-    // Si NO hay reporte, cargar datos normalmente
     try {
       setFileSelectionLoading(true);
-
-      console.log(`Cargando archivo: ${group.filename}`);
-      console.log(`Con fecha de corte: ${cutoffDate.format('YYYY-MM-DD')}`);
-
       await loadFileData(group.filename, cutoffDate.format('YYYY-MM-DD'));
-
-      if (showUploadModal) {
-        setShowUploadModal(false);
-      }
-
-      console.log(`Archivo cargado exitosamente: ${group.displayName}`);
+      if (showUploadModal) setShowUploadModal(false);
     } catch (error) {
       console.error(`Error cargando ${group.displayName}:`, error);
       message.error(`Error cargando ${group.displayName}`);
@@ -456,7 +335,6 @@ const TechnicalNoteViewer: React.FC = () => {
       message.warning('No se pueden eliminar archivos del sistema predefinidos');
       return;
     }
-
     Modal.confirm({
       title: '¿Eliminar archivo?',
       content: `¿Estás seguro de que quieres eliminar "${fileToRemove.name}"?`,
@@ -465,8 +343,7 @@ const TechnicalNoteViewer: React.FC = () => {
           await handleRemoveUploadedFile(fileToRemove);
           await loadAvailableFiles();
           message.success('Archivo eliminado correctamente');
-        } catch (error) {
-          console.error('Error eliminando archivo:', error);
+        } catch {
           message.error('Error eliminando archivo');
         }
       }
@@ -478,21 +355,16 @@ const TechnicalNoteViewer: React.FC = () => {
       message.error('Debe seleccionar una fecha de corte antes de cargar archivos');
       return;
     }
-
     try {
       await handleCustomUpload(options);
       await loadAvailableFiles();
-
-      const uploadedFilename = options.file.name;
-      if (isPredefinedFile(uploadedFilename)) {
-        const groupKey = getPredefinedGroupKey(uploadedFilename);
-        message.success(`Archivo "${uploadedFilename}" asociado al grupo: ${groupKey}`, 3);
+      const name = options.file.name;
+      if (isPredefinedFile(name)) {
+        message.success(`Archivo "${name}" asociado al grupo: ${getPredefinedGroupKey(name)}`, 3);
       } else {
-        message.success(`Archivo "${uploadedFilename}" cargado como personalizado`, 2);
+        message.success(`Archivo "${name}" cargado como personalizado`, 2);
       }
-    } catch (error) {
-      // Error ya manejado
-    }
+    } catch { /* ya manejado */ }
   };
 
   const handleShowUploadModal = () => {
@@ -508,23 +380,7 @@ const TechnicalNoteViewer: React.FC = () => {
       message.error('Debe seleccionar una fecha de corte antes de regenerar el reporte');
       return;
     }
-    console.log(`Regenerando reporte con fecha: ${cutoffDateString}`);
     regenerateReport(cutoffDateString);
-  };
-
-  const handleAddKeyword = (value: string) => {
-    console.log(`Agregando palabra clave: ${value}`);
-    onAddKeyword(value);
-  };
-
-  const handleRemoveKeyword = (keyword: string) => {
-    console.log(`Removiendo palabra clave: ${keyword}`);
-    onRemoveKeyword(keyword);
-  };
-
-  const handleSetReportKeywords = (keywords: string[]) => {
-    console.log(`Estableciendo nuevas palabras clave: ${keywords}`);
-    onSetReportKeywords(keywords);
   };
 
   return (
@@ -629,12 +485,12 @@ const TechnicalNoteViewer: React.FC = () => {
         onSearch={handleSearch}
         onToggleReportVisibility={toggleReportVisibility}
         onRegenerateReport={handleRegenerateReport}
-        onSetReportKeywords={handleSetReportKeywords}
+        onSetReportKeywords={onSetReportKeywords}
         onSetReportMinCount={onSetReportMinCount}
         onSetShowTemporalData={onSetShowTemporalData}
         onLoadKeywordAgeReport={loadKeywordAgeReport}
-        onAddKeyword={handleAddKeyword}
-        onRemoveKeyword={handleRemoveKeyword}
+        onAddKeyword={onAddKeyword}
+        onRemoveKeyword={onRemoveKeyword}
         onDepartamentoChange={onDepartamentoChange}
         onMunicipioChange={onMunicipioChange}
         onIpsChange={onIpsChange}

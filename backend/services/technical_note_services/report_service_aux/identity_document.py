@@ -3,30 +3,27 @@
 from services.duckdb_service.duckdb_service import duckdb_service
 
 class IdentityDocument:
-    """Detecta campo de documento de identidad"""
+    """Detecta campo de codsiris que es el identificador unico de cada registro en el dataset"""
     
     def get_document_field(self, data_source: str) -> str:
         """
-        Detecta el campo de documento de identidad en el dataset
+        Detecta el campo de codsiris de identidad en el dataset
         
         Returns:
-            Nombre del campo de documento YA ESCAPADO con comillas
+            Nombre del campo de codsiris YA ESCAPADO con comillas
         """
         try:
             describe_query = f"DESCRIBE SELECT * FROM {data_source}"
             columns_result = duckdb_service.conn.execute(describe_query).fetchall()
             all_columns = [row[0] for row in columns_result]
             
-            # Buscar columnas típicas de documento
+            # Buscar columnas típicas de codsiris
             possible_fields = [
-                'Nro Identificación',
-                'Nro Identificacion',
-                'Numero Identificacion',
-                'Numero_Identificacion',
-                'NumeroIdentificacion',
-                'Documento',
-                'Identificacion',
-                'ID'
+                'codsiris',
+                'cod_siris',
+                'CodSiris',
+                'Codigo Siris',
+                'Código Siris'
             ]
             
             for field in possible_fields:
@@ -37,7 +34,7 @@ class IdentityDocument:
             # Si no encuentra, usar la primera columna que parezca un ID
             for col in all_columns:
                 col_lower = col.lower()
-                if 'identificacion' in col_lower or 'documento' in col_lower or col_lower == 'id':
+                if 'codsiris' in col_lower or 'cod_siris' in col_lower:
                     # 🔥 RETORNAR CON COMILLAS ESCAPADAS
                     return f'"{col}"'
             
@@ -48,5 +45,5 @@ class IdentityDocument:
                 return '"id"'
             
         except Exception as e:
-            print(f"Error detectando campo documento: {e}")
+            print(f"Error detectando campo codsiris: {e}")
             return '"id"'

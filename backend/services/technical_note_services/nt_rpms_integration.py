@@ -5,6 +5,33 @@ from services.duckdb_service.duckdb_service import duckdb_service
 from utils.text_normalizer import normalize_text
 
 
+# ── Helper global: parsea float con coma O punto decimal y maneja porcentajes ─
+def _parse_float(value, default: float = 0.0) -> float:
+    """
+    Convierte a float tolerando:
+      - Formato español con coma decimal : '119,4666' → 119.4666
+      - Punto decimal estándar           : '107.33'   → 107.33
+      - Porcentaje Excel (display value) : '70%'      → 0.70
+                                           '25,94%'   → 0.2594
+      - None / vacío / NULL              : → default (0.0)
+    """
+    if value in (None, '', 'NULL', 'null'):
+        return default
+    try:
+        s = str(value).strip().replace(',', '.')
+        # ── Porcentaje: quitar '%' y dividir por 100 ─────────────────
+        if s.endswith('%'):
+            return float(s[:-1]) / 100.0
+        return float(s)
+    except (ValueError, TypeError):
+        return default
+
+
+def _parse_int(value, default: int = 0) -> int:
+    """Convierte a int tolerando coma decimal y porcentaje (trunca decimal)."""
+    return int(_parse_float(value, float(default)))
+
+
 class NTRPMSIntegration:
     """Integración con datos consolidados de NT RPMS con validación de servicios habilitados y matching por similitud"""
 
@@ -38,9 +65,9 @@ class NTRPMSIntegration:
         except Exception as e:
             print(f"   ⚠️ Error verificando NT_RPMS: {e}")
 
-        self.habilitado_column   = self._detect_habilitado_column()
-        self.historico_column    = self._detect_historico_column()
-        self.atenciones_column   = self._detect_atenciones_column()   # 🔥 NUEVO
+        self.habilitado_column = self._detect_habilitado_column()
+        self.historico_column  = self._detect_historico_column()
+        self.atenciones_column = self._detect_atenciones_column()
 
     # ============================================================
     # DETECCIÓN DE COLUMNAS
@@ -48,8 +75,8 @@ class NTRPMSIntegration:
 
     def _detect_habilitado_column(self) -> Optional[str]:
         try:
-            describe_query = f"DESCRIBE SELECT * FROM {self.table_name}"
-            cols = [row[0] for row in duckdb_service.conn.execute(describe_query).fetchall()]
+            cols = [row[0] for row in duckdb_service.conn.execute(
+                f"DESCRIBE SELECT * FROM {self.table_name}").fetchall()]
             cols_norm = {normalize_text(c): c for c in cols}
 
             candidates = [
@@ -70,10 +97,9 @@ class NTRPMSIntegration:
             return None
 
     def _detect_historico_column(self) -> Optional[str]:
-        """Detecta la columna de intervenciones/histórico realizadas"""
         try:
-            describe_query = f"DESCRIBE SELECT * FROM {self.table_name}"
-            cols = [row[0] for row in duckdb_service.conn.execute(describe_query).fetchall()]
+            cols = [row[0] for row in duckdb_service.conn.execute(
+                f"DESCRIBE SELECT * FROM {self.table_name}").fetchall()]
             cols_norm = {normalize_text(c): c for c in cols}
 
             candidates = [
@@ -101,10 +127,9 @@ class NTRPMSIntegration:
             return None
 
     def _detect_atenciones_column(self) -> Optional[str]:
-        """🔥 Detecta la columna de atenciones a realizar en el año"""
         try:
-            describe_query = f"DESCRIBE SELECT * FROM {self.table_name}"
-            cols = [row[0] for row in duckdb_service.conn.execute(describe_query).fetchall()]
+            cols = [row[0] for row in duckdb_service.conn.execute(
+                f"DESCRIBE SELECT * FROM {self.table_name}").fetchall()]
             cols_norm = {normalize_text(c): c for c in cols}
 
             candidates = [
@@ -127,7 +152,6 @@ class NTRPMSIntegration:
                     print(f"   ✓ Columna atenciones_realizar_anual detectada: '{col}'")
                     return col
 
-            # Búsqueda parcial
             for col in cols:
                 col_norm = normalize_text(col)
                 if 'atencion' in col_norm and ('realizar' in col_norm or 'anual' in col_norm):
@@ -186,31 +210,31 @@ class NTRPMSIntegration:
                     )
 
                 print(f"      🔍 No hay match exacto, intentando por SIMILITUD (≥{self.similarity_threshold*100:.0f}%)...")
-                best_match, similarity_score = self._query_rpms_similarity_match(
+                best_match, sim_score = self._query_rpms_similarity_match(
                     consulta_norm, edad_norm, depto_norm, muni_norm, ips_norm
                 )
-                if best_match and similarity_score >= self.similarity_threshold:
-                    print(f"      ✅ Match por SIMILITUD encontrado ({similarity_score*100:.1f}% coincidencia)")
+                if best_match and sim_score >= self.similarity_threshold:
+                    print(f"      ✅ Match por SIMILITUD encontrado ({sim_score*100:.1f}% coincidencia)")
                     return self._process_rpms_result(
                         best_match, consulta_procedimiento, edad_nt_rpms,
-                        departamento, municipio, nombre_ips, True, similarity_score
+                        departamento, municipio, nombre_ips, True, sim_score
                     )
 
                 print(f"      ❌ No se encontró servicio para la geografía especificada")
                 print(f"      🚫 SERVICIO DESHABILITADO para esta ubicación geográfica")
                 return {
-                    'habilitado': False,
-                    'consulta_procedimiento': consulta_procedimiento,
-                    'edad_nt_rpms': edad_nt_rpms,
-                    'departamento': departamento,
-                    'municipio': municipio,
-                    'nombre_ips': nombre_ips,
-                    'cups': '',
-                    'periodo': 'ANUAL',
-                    'meta': 0,
-                    'frecuencia_indicada': 0,
-                    'proyeccion_tiempo': 0,
-                    'atenciones_realizar_anual': 0   # 🔥
+                    'habilitado':                False,
+                    'consulta_procedimiento':    consulta_procedimiento,
+                    'edad_nt_rpms':              edad_nt_rpms,
+                    'departamento':              departamento,
+                    'municipio':                 municipio,
+                    'nombre_ips':                nombre_ips,
+                    'cups':                      '',
+                    'periodo':                   'ANUAL',
+                    'meta':                      0,
+                    'frecuencia_indicada':       0,
+                    'proyeccion_tiempo':         0,
+                    'atenciones_realizar_anual': 0
                 }
 
             print(f"      🔍 Buscando SIN filtros geográficos...")
@@ -300,7 +324,9 @@ class NTRPMSIntegration:
                     depto_norm, muni_norm, ips_norm,
                     candidate_depto, candidate_muni, candidate_ips
                 )
-                print(f"         Candidato: Depto='{candidate_depto[:20]}', Muni='{candidate_muni[:20]}', IPS='{candidate_ips[:30]}' → Similitud: {score*100:.1f}%")
+                print(f"         Candidato: Depto='{candidate_depto[:20]}', "
+                      f"Muni='{candidate_muni[:20]}', IPS='{candidate_ips[:30]}' "
+                      f"→ Similitud: {score*100:.1f}%")
 
                 if score > best_score:
                     best_score = score
@@ -332,9 +358,9 @@ class NTRPMSIntegration:
           7  nombre_ips
           8  departamento
           9  municipio
-          10 intervenciones_realizadas   (NULL si no existe)
-          11 atenciones_realizar_anual   (NULL si no existe)  🔥 NUEVO
-          12 habilitado_column           (solo si existe)
+          10 intervenciones_realizadas  (NULL si no existe)
+          11 atenciones_realizar_anual  (NULL si no existe)
+          12 habilitado_column          (solo si existe)
         """
         fields = [
             'consultas_procedimientos',
@@ -348,17 +374,10 @@ class NTRPMSIntegration:
             'departamento',
             'municipio',
         ]
-
-        # Índice 10: histórico (siempre presente)
         fields.append(f'"{self.historico_column}"' if self.historico_column else 'NULL')
-
-        # Índice 11: atenciones_realizar_anual (siempre presente)  🔥
         fields.append(f'"{self.atenciones_column}"' if self.atenciones_column else 'NULL')
-
-        # Índice 12: habilitado (solo si existe)
         if self.habilitado_column:
             fields.append(f'"{self.habilitado_column}"')
-
         return fields
 
     # ============================================================
@@ -376,33 +395,40 @@ class NTRPMSIntegration:
         with_geo: bool,
         similarity_score: float
     ) -> Dict[str, Any]:
-        # Índice 10 → histórico
+
+        # ── Índice 10: histórico ──────────────────────────────────────
         historico_raw = result[10] if len(result) > 10 else None
-        historico = float(historico_raw) if historico_raw not in (None, '', 'NULL', 'null') else 0.0
+        historico = _parse_float(historico_raw)
         print(f"      📋 Histórico (intervenciones_realizadas): raw={repr(historico_raw)} → usado={historico}")
 
-        # 🔥 Índice 11 → atenciones_realizar_anual
+        # ── Índice 11: atenciones_realizar_anual ─────────────────────
         atenciones_raw = result[11] if len(result) > 11 else None
-        atenciones_realizar_anual = float(atenciones_raw) if atenciones_raw not in (None, '', 'NULL', 'null') else 0.0
+        atenciones_realizar_anual = _parse_float(atenciones_raw)
         print(f"      📋 Atenciones a realizar anual: raw={repr(atenciones_raw)} → usado={atenciones_realizar_anual}")
 
+        # ── Diagnóstico de meta para facilitar depuración ─────────────
+        meta_raw = result[2]
+        meta_parsed = _parse_float(meta_raw)
+        print(f"      📋 Meta: raw={repr(meta_raw)} → usado={meta_parsed}")
+
         result_dict = {
-            'consultas_procedimientos':   result[0],
-            'frecuencia_edad':            result[1],
-            'meta':                       float(result[2]) if result[2] else 0.0,
-            'frecuencia_indicada':        float(result[3]) if result[3] else 0.0,
-            'cups':                       result[4],
-            'periodo':                    result[5],
-            'proyeccion_tiempo':          int(result[6]) if result[6] else 12,
-            'nombre_ips':                 result[7],
-            'departamento':               result[8],
-            'municipio':                  result[9],
-            'intervenciones_realizadas':  historico,
-            'atenciones_realizar_anual':  atenciones_realizar_anual,   # 🔥
-            'similarity_score':           similarity_score,
+            'consultas_procedimientos':  result[0],
+            'frecuencia_edad':           result[1],
+            # _parse_float maneja '70%' → 0.70, '25,94%' → 0.2594, '0.7' → 0.7
+            'meta':                      meta_parsed,
+            'frecuencia_indicada':       _parse_float(result[3]),
+            'cups':                      result[4],
+            'periodo':                   result[5],
+            'proyeccion_tiempo':         _parse_int(result[6], default=12),
+            'nombre_ips':                result[7],
+            'departamento':              result[8],
+            'municipio':                 result[9],
+            'intervenciones_realizadas': historico,
+            'atenciones_realizar_anual': atenciones_realizar_anual,
+            'similarity_score':          similarity_score,
         }
 
-        # Índice 12 → habilitado
+        # ── Índice 12: habilitado ─────────────────────────────────────
         habilitado = 1
         if self.habilitado_column and len(result) > 12:
             habilitado_val = result[12]
@@ -414,13 +440,13 @@ class NTRPMSIntegration:
             print(f"      ⚠️ SERVICIO DESHABILITADO (servicios_habilitados = 0)")
             print(f"      💡 Numerador y denominador serán 0, semaforización NA")
             return {
-                'habilitado': False,
+                'habilitado':             False,
                 'consulta_procedimiento': consulta_procedimiento,
-                'edad_nt_rpms': edad_nt_rpms,
-                'departamento': departamento,
-                'municipio': municipio,
-                'nombre_ips': nombre_ips,
-                'similarity_score': similarity_score,
+                'edad_nt_rpms':           edad_nt_rpms,
+                'departamento':           departamento,
+                'municipio':              municipio,
+                'nombre_ips':             nombre_ips,
+                'similarity_score':       similarity_score,
                 **result_dict
             }
 
@@ -517,9 +543,9 @@ class NTRPMSIntegration:
                     'meta': 0.0, 'frecuencia_uso': 0.0, 'proyeccion_tiempo': 0
                 }
 
-            meta       = nt_data.get('meta', 0.0)
-            frecuencia = nt_data.get('frecuencia_indicada', 1.0)
-            proyeccion = nt_data.get('proyeccion_tiempo', 12)
+            meta       = _parse_float(nt_data.get('meta', 0.0))
+            frecuencia = _parse_float(nt_data.get('frecuencia_indicada', 1.0))
+            proyeccion = _parse_int(nt_data.get('proyeccion_tiempo', 12), default=12)
 
             poblacion_susceptible = poblacion_objeto * meta
             denominador_mensual   = (poblacion_susceptible * frecuencia) / proyeccion if proyeccion > 0 else 0
@@ -528,7 +554,7 @@ class NTRPMSIntegration:
                 'poblacion_susceptible': round(poblacion_susceptible, 1),
                 'valor_mensual':         round(denominador_mensual, 1),
                 'meta':                  meta,
-                'frecuencia_uso':        nt_data.get('frecuencia_uso', 0.0),
+                'frecuencia_uso':        _parse_float(nt_data.get('frecuencia_uso', 0.0)),
                 'proyeccion_tiempo':     proyeccion
             }
         except Exception as e:
